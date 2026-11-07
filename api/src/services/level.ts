@@ -12,11 +12,14 @@ export function levelForXp(xp: number): number {
 
 export function xpForMatch(m: {
   placement: number | null;
+  grade?: string | null;
   spbRounds?: { accuracy: number }[];
-}): number {
+}, firstWinToday = false): number {
   let xp = 10;                                   // game played
   if (m.placement === 1) xp += 50;               // win
+  if (m.grade === "SS") xp += 40;
+  else if (m.grade === "S") xp += 20;
   xp += (m.spbRounds ?? []).filter((r) => r.accuracy >= 1).length * 15; // perfect builds
-  // Grade bonus (SS +40, S +20) and first-win-of-day (+100) are added by the achievement pass.
+  if (m.placement === 1 && firstWinToday) xp += 100;
   return xp;
 }

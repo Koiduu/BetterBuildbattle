@@ -1,6 +1,6 @@
 // Read-only routes the website uses. Works for ANY tracked Build Battle player;
 // Better Battle extras (level, games, achievements) appear when the player uses the mod.
-import type { FastifyInstance } from "fastify";
+import { Router, fail } from "../http";
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
@@ -8,6 +8,7 @@ import { queuePlayers, refreshOne, globalRank } from "../jobs/crawler";
 import { titleProgress } from "../lib/titles";
 import { levelForXp, totalXpForLevel } from "../services/level";
 import { rateLimit } from "../plugins/auth";
+import { MOJANG_API, dashUuid } from "../lib/upstream";
 
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
 
@@ -21,10 +22,10 @@ async function resolvePlayer(name: string) {
 
   let uuid: string | undefined = known.rows[0]?.mc_uuid;
   if (!uuid) {
-    const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(name)}`);
+    const res = await fetch(`${MOJANG_API}/users/profiles/minecraft/${encodeURIComponent(name)}`);
     if (res.status !== 200) return null;
     const { id } = (await res.json()) as { id: string };
-    uuid = id.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
+    uuid = dashUuid(id);
     await queuePlayers([uuid], "search", true);
   }
   await refreshOne(uuid);
@@ -32,7 +33,7 @@ async function resolvePlayer(name: string) {
   return r.rows[0] ?? null;
 }
 
-export default async function publicRoutes(app: FastifyInstance) {
+export function publicRoutes(app: Router) {
   app.get("/stats", async () => {
     const [tracked, users] = await Promise.all([
       redis.zcard("lb:bb_score"),
@@ -71,7 +72,7 @@ export default async function publicRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/search", { preHandler: rateLimit(60, 60_000) }, async (req) => {
+  app.get("/search", [rateLimit(60, 60_000)], async (req) => {
     const { q } = z.object({ q: z.string().min(1).max(16) }).parse(req.query);
     const r = await pool.query(
       `SELECT mc_name, bb_score FROM tracked_players
@@ -81,12 +82,12 @@ export default async function publicRoutes(app: FastifyInstance) {
     return r.rows.map((x: any) => ({ name: x.mc_name, score: x.bb_score }));
   });
 
-  app.get("/players/:name", { preHandler: rateLimit(30, 60_000) }, async (req, reply) => {
-    const { name } = req.params as { name: string };
-    if (!NAME.test(name)) return reply.code(400).send({ error: "bad_name" });
+  app.get("/players/:name", [rateLimit(30, 60_000)], async (req) => {
+    const { name } = req.params;
+    if (!NAME.test(name)) fail(400, "bad_name");
     const p = await resolvePlayer(name);
-    if (!p) return reply.code(404).send({ error: "not_found" });
-    if (p.no_bb_stats) return reply.code(404).send({ error: "never_played_build_battle", name: p.mc_name });
+    if (!p) return fail(404, "not_found");
+    if (p.no_bb_stats) fail(404, "never_played_build_battle", { name: p.mc_name });
 
     const score = p.bb_score ?? 0;
     const { rank, of } = await globalRank(p.mc_uuid);
@@ -151,15 +152,15 @@ export default async function publicRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/players/:name/rank-history", async (req, reply) => {
-    const { name } = req.params as { name: string };
+  app.get("/players/:name/rank-history", async (req) => {
+    const { name } = req.params;
     const { days } = z.object({ days: z.coerce.number().int().min(7).max(730).default(90) }).parse(req.query);
     const r = await pool.query(
-      `SELECT h.taken_on, h.global_rank, h.bb_score FROM player_rank_history h
+      `SELECT h.taken_on::text AS taken_on, h.global_rank, h.bb_score FROM player_rank_history h
        JOIN tracked_players t ON t.mc_uuid = h.mc_uuid
        WHERE t.mc_name = $1 AND h.taken_on >= current_date - $2::int ORDER BY h.taken_on`,
       [name, days]);
-    if (!r.rowCount) return reply.send([]);
+    if (!r.rowCount) return [];
     return r.rows.map((x: any) => ({ date: x.taken_on, rank: x.global_rank, score: x.bb_score }));
   });
 
@@ -171,7 +172,7 @@ export default async function publicRoutes(app: FastifyInstance) {
   };
 
   app.get("/players/:name/matches", async (req) => {
-    const { name } = req.params as { name: string };
+    const { name } = req.params;
     const q = z.object({
       mode: z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]).optional(),
       before: z.string().datetime().optional(),
@@ -187,17 +188,17 @@ export default async function publicRoutes(app: FastifyInstance) {
   });
 
   app.get("/players/:name/heatmap", async (req) => {
-    const { name } = req.params as { name: string };
+    const { name } = req.params;
     const id = await userIdFor(name);
     if (!id) return [];
     const r = await pool.query(
-      `SELECT day::date AS day, games, wins FROM daily_activity
+      `SELECT day::date::text AS day, games, wins FROM daily_activity
        WHERE user_id = $1 AND day >= now() - interval '26 weeks' ORDER BY day`, [id]);
     return r.rows;
   });
 
   app.get("/players/:name/achievements", async (req) => {
-    const { name } = req.params as { name: string };
+    const { name } = req.params;
     const id = await userIdFor(name);
     if (!id) return { unlocked: [], total: 0 };
     const [unlocked, total] = await Promise.all([
@@ -211,7 +212,7 @@ export default async function publicRoutes(app: FastifyInstance) {
   });
 
   app.get("/players/:name/pins", async (req) => {
-    const { name } = req.params as { name: string };
+    const { name } = req.params;
     const id = await userIdFor(name);
     if (!id) return [];
     const r = await pool.query(

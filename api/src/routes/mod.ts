@@ -1,12 +1,13 @@
 // Mod-facing routes: Mojang handshake + batched, idempotent sync.
-import { FastifyInstance } from "fastify";
+import { Router, fail } from "../http";
 import { z } from "zod";
 import crypto from "node:crypto";
 import { pool } from "../db/pool";
 import { xpForMatch, levelForXp } from "../services/level";
 import { evaluateAchievements, catalog } from "../services/achievementEngine";
-import { rateLimit } from "../plugins/auth";
-import { queuePlayers, globalRank } from "../jobs/crawler";
+import { rateLimit, requireModToken } from "../plugins/auth";
+import { MOJANG_SESSION, dashUuid } from "../lib/upstream";
+import { queuePlayers, globalRank, refreshOne } from "../jobs/crawler";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -37,9 +38,9 @@ const SyncBody = z.object({
   seenPlayers: z.array(z.string().uuid()).max(2000).default([]),
 });
 
-export default async function modRoutes(app: FastifyInstance) {
+export function modRoutes(app: Router) {
   // ---- 1. Handshake: issue a random serverId ----
-  app.post("/auth/mod/challenge", { preHandler: rateLimit(10, 60_000) }, async () => {
+  app.post("/auth/mod/challenge", [rateLimit(10, 60_000)], async () => {
     const serverId = crypto.randomBytes(16).toString("hex");
     await pool.query(
       "INSERT INTO mod_challenges (server_id, expires_at) VALUES ($1, now() + interval '2 minutes')",
@@ -49,20 +50,20 @@ export default async function modRoutes(app: FastifyInstance) {
   });
 
   // ---- 2. Verify with Mojang hasJoined, mint a mod token ----
-  app.post("/auth/mod/verify", async (req, reply) => {
+  app.post("/auth/mod/verify", [rateLimit(10, 60_000)], async (req) => {
     const { name, serverId } = z.object({ name: z.string().max(16), serverId: z.string() }).parse(req.body);
     const ch = await pool.query(
       "DELETE FROM mod_challenges WHERE server_id = $1 AND expires_at > now() RETURNING 1",
       [serverId],
     );
-    if (ch.rowCount === 0) return reply.code(400).send({ error: "challenge_expired" });
+    if (ch.rowCount === 0) fail(400, "challenge_expired");
 
     const res = await fetch(
-      `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=${encodeURIComponent(name)}&serverId=${serverId}`,
+      `${MOJANG_SESSION}/session/minecraft/hasJoined?username=${encodeURIComponent(name)}&serverId=${serverId}`,
     );
-    if (res.status !== 200) return reply.code(401).send({ error: "not_verified" });
+    if (res.status !== 200) fail(401, "not_verified");
     const profile = (await res.json()) as { id: string; name: string };
-    const uuid = profile.id.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
+    const uuid = dashUuid(profile.id);
 
     const user = await pool.query(
       `INSERT INTO users (mc_uuid, mc_name) VALUES ($1, $2)
@@ -71,6 +72,7 @@ export default async function modRoutes(app: FastifyInstance) {
       [uuid, profile.name],
     );
     await queuePlayers([uuid], "mod_user", true);   // mod users are always in the global ranking
+    await refreshOne(uuid).catch(() => {});          // pull Hypixel totals now so retroactive achievements unlock on first sync
     const token = crypto.randomBytes(32).toString("base64url");
     await pool.query(
       `INSERT INTO sessions (user_id, kind, token_hash, expires_at)
@@ -81,7 +83,7 @@ export default async function modRoutes(app: FastifyInstance) {
   });
 
   // ---- Bootstrap: catalog + weekly challenges + confirmed achievements ----
-  app.get("/mod/bootstrap", { preHandler: app.requireModToken }, async (req) => {
+  app.get("/mod/bootstrap", [requireModToken], async (req) => {
     const [mine, weekly] = await Promise.all([
       pool.query("SELECT achievement_id FROM user_achievements WHERE user_id = $1", [req.user.id]),
       pool.query("SELECT id, text, xp FROM weekly_challenges WHERE week_start = date_trunc('week', now())::date"),
@@ -94,7 +96,7 @@ export default async function modRoutes(app: FastifyInstance) {
   });
 
   // ---- 3. Sync: idempotent batch insert ----
-  app.post("/mod/sync", { preHandler: [app.requireModToken, rateLimit(30, 60_000)] },
+  app.post("/mod/sync", [requireModToken, rateLimit(30, 60_000)],
     async (req) => {
       const userId: number = req.user.id;
       const body = SyncBody.parse(req.body);
@@ -102,12 +104,23 @@ export default async function modRoutes(app: FastifyInstance) {
       const accepted: string[] = [];
       let xpGained = 0;
       const rejected: { nonce: string; reason: string }[] = [];
+      // Oldest first, so streaks and first-win-of-day are counted in play order.
+      const ordered = [...body.matches].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
       try {
         await client.query("BEGIN");
-        for (const m of body.matches) {
+        const st = await client.query(
+          `INSERT INTO user_progress (user_id) VALUES ($1) ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+           RETURNING win_streak, best_win_streak`, [userId]);
+        let streak: number = st.rows[0].win_streak, best: number = st.rows[0].best_win_streak;
+        for (const m of ordered) {
           const problem = await sanityCheck(client, m);
           if (problem) { rejected.push({ nonce: m.nonce, reason: problem }); continue; }
 
+          const firstWinToday = m.placement === 1 && !(await client.query(
+            `SELECT 1 FROM matches WHERE user_id = $1 AND placement = 1
+               AND played_at >= date_trunc('day', $2::timestamptz) AND played_at < $2::timestamptz LIMIT 1`,
+            [userId, m.playedAt])).rowCount;
+          const xp = xpForMatch(m, firstWinToday);
           const ins = await client.query(
             `INSERT INTO matches (user_id, played_at, mode, theme, placement, players, score,
                                   duration_sec, blocks_placed, blocks_broken, max_score, palette,
@@ -118,11 +131,15 @@ export default async function modRoutes(app: FastifyInstance) {
             [userId, m.playedAt, m.mode, m.theme, m.placement, m.players, m.score, m.durationSec,
              m.blocksPlaced, m.blocksBroken, maxScore(m), m.palette ?? null,
              m.spbRounds ? JSON.stringify(m.spbRounds) : null, m.nonce,
-             body.modVersion, body.mcVersion, m.grade, xpForMatch(m)],
+             body.modVersion, body.mcVersion, m.grade, xp],
           );
           accepted.push(m.nonce); // duplicates count as accepted: the mod can mark them synced
           if (ins.rowCount === 0) continue;
-          xpGained += xpForMatch(m);
+          xpGained += xp;
+          if (m.mode !== "gtb" || m.placement !== null) {
+            streak = m.placement === 1 ? streak + 1 : 0;
+            best = Math.max(best, streak);
+          }
 
           await client.query(
             `INSERT INTO user_stats (user_id, mode, games_played, wins, total_score, playtime_sec)
@@ -144,7 +161,9 @@ export default async function modRoutes(app: FastifyInstance) {
           [userId, xpGained + apGained * 10],
         );
         const level = levelForXp(Number(prog.rows[0].xp));
-        await client.query("UPDATE user_progress SET level = $2, ap = ap + $3 WHERE user_id = $1", [userId, level, apGained]);
+        await client.query(
+          "UPDATE user_progress SET level = $2, ap = ap + $3, win_streak = $4, best_win_streak = $5 WHERE user_id = $1",
+          [userId, level, apGained, streak, best]);
         await client.query("COMMIT");
 
         // Lobby rosters → discovery queue for the global ranking.

@@ -15,6 +15,7 @@
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
 import { titleFor } from "../lib/titles";
+import { HYPIXEL_API, dashUuid } from "../lib/upstream";
 
 const KEY = process.env.HYPIXEL_API_KEY!;
 const REQUESTS_PER_5_MIN = Number(process.env.HYPIXEL_RATE ?? 280); // stay under the key's limit
@@ -32,7 +33,7 @@ export async function queuePlayers(uuids: string[], source: string, priority = f
 }
 
 export async function refreshOne(uuid: string) {
-  const res = await fetch(`https://api.hypixel.net/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
+  const res = await fetch(`${HYPIXEL_API}/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
   if (res.status === 429) throw new Error("rate_limited");
   if (!res.ok) {
     await pool.query(
@@ -69,7 +70,7 @@ export async function refreshOne(uuid: string) {
 }
 
 async function queueGuildOf(uuid: string) {
-  const res = await fetch(`https://api.hypixel.net/v2/guild?player=${uuid}`, { headers: { "API-Key": KEY } });
+  const res = await fetch(`${HYPIXEL_API}/v2/guild?player=${uuid}`, { headers: { "API-Key": KEY } });
   if (!res.ok) return;
   const { guild } = await res.json();
   if (!guild) return;
@@ -82,7 +83,7 @@ async function queueGuildOf(uuid: string) {
 }
 
 export async function crawlLeaderboards() {
-  const res = await fetch("https://api.hypixel.net/v2/leaderboards", { headers: { "API-Key": KEY } });
+  const res = await fetch(`${HYPIXEL_API}/v2/leaderboards`, { headers: { "API-Key": KEY } });
   if (!res.ok) return;
   const { leaderboards } = await res.json();
   const boards = leaderboards?.BUILD_BATTLE ?? [];
@@ -109,7 +110,7 @@ export async function runCrawler(signal: AbortSignal) {
     const extra: { mc_uuid: string }[] = due.rowCount ? [] : (await pool.query(
       `SELECT mc_uuid FROM tracked_players WHERE no_bb_stats AND next_check <= now() LIMIT 20`)).rows;
     const batch = [...due.rows, ...extra];
-    if (!batch.length) { await sleep(30_000); continue; }
+    if (!batch.length) { await sleep(10_000); continue; }
     for (const row of batch) {
       if (signal.aborted) return;
       try { await refreshOne(row.mc_uuid); }
@@ -132,5 +133,5 @@ function numericOnly(bb: Record<string, unknown>) {
   return out;
 }
 
-const dash = (u: string) => u.includes("-") ? u : u.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
+const dash = dashUuid;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

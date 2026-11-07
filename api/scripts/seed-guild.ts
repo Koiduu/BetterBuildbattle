@@ -3,17 +3,17 @@
 //   npx tsx api/scripts/seed-guild.ts "Some Guild"
 import { queuePlayers } from "../src/jobs/crawler";
 import { pool } from "../src/db/pool";
+import { HYPIXEL_API, dashUuid } from "../src/lib/upstream";
 
 const name = process.argv[2] ?? "Aspiring";
-const res = await fetch(`https://api.hypixel.net/v2/guild?name=${encodeURIComponent(name)}`, {
+const res = await fetch(`${HYPIXEL_API}/v2/guild?name=${encodeURIComponent(name)}`, {
   headers: { "API-Key": process.env.HYPIXEL_API_KEY! },
 });
 if (!res.ok) throw new Error(`Hypixel API ${res.status}`);
 const { guild } = await res.json();
 if (!guild) throw new Error(`Guild "${name}" not found`);
 
-const uuids = guild.members.map((m: { uuid: string }) =>
-  m.uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5"));
+const uuids: string[] = guild.members.map((m: { uuid: string }) => dashUuid(m.uuid));
 await queuePlayers(uuids, "guild", true);      // priority: looked up first
 await pool.query(
   `INSERT INTO crawled_guilds (guild_id, name) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET last_crawled = now()`,

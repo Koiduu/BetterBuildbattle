@@ -21,12 +21,18 @@ const pointsById = new Map<string, number>();
 for (const t of catalog.tracks) t.tiers.forEach((_, i) => pointsById.set(tierId(t.track, i), t.points[i]));
 for (const o of catalog.one_offs) pointsById.set(o.id, o.points);
 
+/** "Win {n} games" → "Win 1 game" / "Win 1,000 games". */
+function describe(template: string, n: number) {
+  const text = template.replace("{n}", n.toLocaleString("en-US"));
+  return n === 1 ? text.replace(/\b(games|grades|rounds|bests|builds|themes|days)\b/, (w) => w.slice(0, -1)) : text;
+}
+
 /** Upsert the YAML catalog into the achievements table. Runs at startup. */
 export async function seedCatalog() {
   const rows: any[][] = [];
   for (const t of catalog.tracks) {
     t.tiers.forEach((n, i) => rows.push([
-      tierId(t.track, i), `${t.name} ${ROMAN[i]}`, t.description.replace("{n}", n.toLocaleString("en-US")),
+      tierId(t.track, i), `${t.name} ${ROMAN[i]}`, describe(t.description, n),
       t.category, t.track, i + 1, n, t.points[i], false,
     ]));
   }
@@ -99,7 +105,10 @@ export async function evaluateAchievements(client: PoolClient, userId: number, c
   const confirmed: string[] = [];
   const revoked: string[] = [];
 
-  const u = await client.query("SELECT hypixel_bb, flagged FROM users WHERE id = $1", [userId]);
+  // Hypixel totals: from the user row, or from the crawler's copy if the user row hasn't been refreshed yet.
+  const u = await client.query(
+    `SELECT coalesce(u.hypixel_bb, t.hypixel_bb) AS hypixel_bb, u.flagged
+     FROM users u LEFT JOIN tracked_players t ON t.mc_uuid = u.mc_uuid WHERE u.id = $1`, [userId]);
   const hyp = (u.rows[0]?.hypixel_bb ?? {}) as Record<string, number>;
   const flagged = !!u.rows[0]?.flagged;
   const local = await localTotals(client, userId);
