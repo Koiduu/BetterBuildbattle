@@ -34,11 +34,17 @@ mod/
 
 | Metric | Formula | Where the data comes from |
 |---|---|---|
-| Crowd score | your vote score ÷ best possible score in that lobby | results chat |
+| Crowd score | your score ÷ (voters × 18). Voters = lobby minus you (and your teammate in Teams); 18 = Legendary | results chat |
 | SPB precision | blocks the build needs ÷ (blocks placed + broken) | your own placements, `spb_builds.block_count` |
 | Theme range | distinct themes you've built | `user_themes` |
 
 Country ranking is intentionally left out: there's no reliable country source.
+
+## Global rank, levels, achievements
+
+- **Global rank** = Hypixel Build Battle score only, read from the Hypixel API by `api/src/jobs/verifyStats.ts` (never trusted from the client).
+- **Aspiring Level**: XP from n to n+1 = 500 + 100n. Same math in `progress/Level.java` and `api/src/services/level.ts`.
+- **Catalog**: `api/db/seeds/achievements.yaml`, with 14 tiered tracks (78 tiers), 26 one-off challenges, and a pool of 10 weekly challenges.
 
 ## Local database guarantees
 

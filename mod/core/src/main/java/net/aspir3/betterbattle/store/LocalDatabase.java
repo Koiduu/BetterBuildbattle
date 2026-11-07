@@ -82,7 +82,8 @@ public final class LocalDatabase implements AutoCloseable {
             p.setInt(9, m.durationSec);
             p.setInt(10, m.blocksPlaced);
             p.setInt(11, m.blocksBroken);
-            if (m.maxScore == null) p.setNull(12, Types.REAL); else p.setDouble(12, m.maxScore);
+            Integer max = m.maxScore();
+            if (max == null) p.setNull(12, Types.REAL); else p.setDouble(12, max);
             p.setString(13, m.paletteJson());
             p.setString(14, m.spbRoundsJson);
             boolean inserted = p.executeUpdate() == 1;

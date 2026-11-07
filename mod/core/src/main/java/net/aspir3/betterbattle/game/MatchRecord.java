@@ -19,7 +19,7 @@ public final class MatchRecord {
     public int durationSec;
     public int blocksPlaced;
     public int blocksBroken;
-    public Double maxScore;        // best possible score in the lobby, for crowd score
+    public static final int LEGENDARY_VOTE = 18;   // highest vote one player can give
     public final Map<String, Integer> palette = new LinkedHashMap<String, Integer>();
     public String spbRoundsJson;   // set by SpbTracker
 
@@ -37,9 +37,23 @@ public final class MatchRecord {
         return touched == 0 ? 0 : Math.min(1.0, blocksNeeded / (double) touched);
     }
 
-    /** Build Battle crowd score: how close the votes got to a perfect score. */
+    /** Players who could vote on your build: everyone except you, and your teammate in Teams. */
+    public int voters() {
+        if (players == null) return 0;
+        return Math.max(0, players - ("teams".equals(mode) ? 2 : 1));
+    }
+
+    /** Best possible score: every voter gives Legendary (18). */
+    public Integer maxScore() {
+        int v = voters();
+        return v == 0 ? null : v * LEGENDARY_VOTE;
+    }
+
+    /** Crowd score 0.0 – 1.0. Only for voted modes (solo, teams, pro). */
     public Double crowdScore() {
-        return score == null || maxScore == null || maxScore <= 0 ? null : score / maxScore;
+        Integer max = maxScore();
+        if (score == null || max == null || "gtb".equals(mode) || "speed_builders".equals(mode)) return null;
+        return Math.min(1.0, score / max);
     }
 
     public String paletteJson() {
@@ -66,7 +80,6 @@ public final class MatchRecord {
         m.durationSec = r.getInt("duration_sec");
         m.blocksPlaced = r.getInt("blocks_placed");
         m.blocksBroken = r.getInt("blocks_broken");
-        double mx = r.getDouble("max_score"); m.maxScore = r.wasNull() ? null : mx;
         m.spbRoundsJson = r.getString("spb_rounds");
         // palette stays as JSON text on the way out; SyncService sends it raw
         return m;

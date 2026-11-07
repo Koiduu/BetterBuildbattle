@@ -23,7 +23,8 @@ public interface ApiClient {
         public List<String> confirmed = new ArrayList<String>();
         public List<String> revoked = new ArrayList<String>();
         public boolean fullResyncRequested;
-        public Double rating;
+        public Integer level;
+        public Long xp;
         public Integer globalRank;
     }
 }

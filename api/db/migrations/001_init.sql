@@ -16,6 +16,9 @@ CREATE TABLE users (
   banner_url    TEXT,
   bio           TEXT CHECK (length(bio) <= 1000),
   role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','mod','admin')),
+  hypixel_bb_score  INT,                            -- Build Battle score from Hypixel API: THE global rank metric
+  hypixel_title     TEXT,                           -- e.g. 'Grandmaster'
+  hypixel_synced_at TIMESTAMPTZ,
   claimed       BOOLEAN NOT NULL DEFAULT false,     -- false = stub created by first mod login
   flagged       BOOLEAN NOT NULL DEFAULT false,     -- hidden from leaderboards
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -53,7 +56,6 @@ CREATE TABLE user_stats (
   playtime_sec    BIGINT NOT NULL DEFAULT 0,
   grade_ss INT NOT NULL DEFAULT 0, grade_s INT NOT NULL DEFAULT 0, grade_a INT NOT NULL DEFAULT 0,
   grade_b  INT NOT NULL DEFAULT 0, grade_c INT NOT NULL DEFAULT 0,
-  rating          REAL   NOT NULL DEFAULT 0,
   crowd_score     REAL,                             -- avg (your vote score / max possible in lobby)
   spb_precision   REAL,                             -- avg (blocks needed / blocks placed + broken)
   themes_built    INT    NOT NULL DEFAULT 0,        -- distinct themes ever built
@@ -74,12 +76,12 @@ CREATE TABLE matches (
   players       SMALLINT,
   score         REAL,
   grade         TEXT CHECK (grade IN ('SS','S','A','B','C')),
-  performance   REAL,                               -- input to rating
-  rating_delta  REAL,
   duration_sec  INT,
   blocks_placed INT,
   blocks_broken INT,
-  max_score     REAL,                               -- highest score possible in that lobby, for crowd score
+  max_score     REAL,                               -- (players - you - teammate) x 18 (all Legendary votes)
+  crowd_score   REAL GENERATED ALWAYS AS (CASE WHEN max_score > 0 THEN LEAST(score / max_score, 1) END) STORED,
+  xp_earned     INT,
   palette       JSONB,                              -- {"minecraft:oak_planks": 120, ...}
   spb_rounds    JSONB,                              -- [{"build":"pagoda","time_ms":7840,"accuracy":1.0}]
   client_nonce  UUID NOT NULL,
@@ -110,8 +112,9 @@ CREATE TABLE rank_snapshots (
   user_id      BIGINT NOT NULL REFERENCES users ON DELETE CASCADE,
   mode         bb_mode NOT NULL,
   taken_on     DATE NOT NULL,
-  global_rank  INT,
-  rating       REAL,
+  global_rank  INT,                                 -- position by hypixel_bb_score
+  bb_score     INT,
+  level        INT,
   PRIMARY KEY (user_id, mode, taken_on)
 );
 SELECT create_hypertable('rank_snapshots', 'taken_on', chunk_time_interval => INTERVAL '90 days');
@@ -137,6 +140,34 @@ CREATE TABLE user_themes (
   times   INT  NOT NULL DEFAULT 1,
   best_score REAL,
   PRIMARY KEY (user_id, theme)
+);
+
+-- Aspiring Level
+CREATE TABLE user_progress (
+  user_id   BIGINT PRIMARY KEY REFERENCES users ON DELETE CASCADE,
+  xp        BIGINT NOT NULL DEFAULT 0,
+  level     INT    NOT NULL DEFAULT 1,               -- derived from xp, same formula as mod's Level.java
+  ap        INT    NOT NULL DEFAULT 0,               -- Aspiring Points total
+  win_streak INT   NOT NULL DEFAULT 0,
+  best_win_streak INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Weekly challenges
+CREATE TABLE weekly_challenges (
+  week_start DATE NOT NULL,
+  id         TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  xp         INT  NOT NULL,
+  PRIMARY KEY (week_start, id)
+);
+CREATE TABLE user_weekly_challenges (
+  user_id    BIGINT REFERENCES users ON DELETE CASCADE,
+  week_start DATE NOT NULL,
+  id         TEXT NOT NULL,
+  progress   INT  NOT NULL DEFAULT 0,
+  completed_at TIMESTAMPTZ,
+  PRIMARY KEY (user_id, week_start, id)
 );
 
 CREATE TABLE achievements (

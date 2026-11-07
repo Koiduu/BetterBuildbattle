@@ -1,0 +1,286 @@
+# Better Battle achievement + challenge catalog
+# Shipped inside the mod jar AND seeded into the server (`achievements` table).
+# Bump catalog_version whenever you add or change entries.
+#
+# points = Aspiring Points (AP). Each AP is also worth 10 XP toward your Aspiring Level.
+# tracks: unlock automatically (and retroactively) from totals.
+# one_offs: unlocked by a rule class in mod/core/.../achieve (rule: <ClassName>).
+# secret: hidden in the menu until unlocked.
+
+catalog_version: 1
+
+tracks:
+  # ---------------- Build Battle, from Hypixel totals (retroactive) ----------------
+  - track: bb_wins
+    name: "Winner Winner"
+    description: "Win {n} Build Battle games"
+    category: general
+    tiers: [10, 100, 500, 1000, 2500, 5000, 10000]
+    points: [5, 10, 15, 20, 25, 35, 50]
+  - track: bb_score
+    name: "Score Climber"
+    description: "Reach {n} Build Battle score"
+    category: general
+    tiers: [1000, 10000, 50000, 100000, 200000, 300000, 500000]
+    points: [5, 10, 15, 20, 30, 40, 60]
+  - track: perfect_builds
+    name: "Flawless"
+    description: "Get {n} Perfect Builds"
+    category: speed_builders
+    tiers: [10, 100, 500, 1000, 2500, 5000, 10000]
+    points: [5, 10, 15, 20, 25, 35, 50]
+  - track: correct_guesses
+    name: "Mind Reader"
+    description: "Correctly guess {n} builds in Guess The Build"
+    category: gtb
+    tiers: [50, 500, 2500, 5000, 10000, 20000]
+    points: [5, 10, 15, 20, 30, 45]
+  - track: pro_wins
+    name: "Professional"
+    description: "Win {n} Pro games"
+    category: pro
+    tiers: [10, 50, 100, 250, 500, 1000]
+    points: [5, 10, 15, 20, 30, 45]
+  - track: teams_wins
+    name: "Dynamic Duo"
+    description: "Win {n} Teams games"
+    category: teams
+    tiers: [10, 100, 500, 1000, 2500, 5000]
+    points: [5, 10, 15, 20, 30, 45]
+  - track: solo_wins
+    name: "Lone Architect"
+    description: "Win {n} Solo games"
+    category: solo
+    tiers: [10, 100, 500, 1000, 2500, 5000]
+    points: [5, 10, 15, 20, 30, 45]
+  - track: spb_wins
+    name: "Speed Demon"
+    description: "Win {n} Speed Builders games"
+    category: speed_builders
+    tiers: [10, 50, 250, 500, 1000, 2500]
+    points: [5, 10, 15, 20, 30, 45]
+
+  # ---------------- Better Battle-only tracks (counted by the mod from your local DB) ----------------
+  - track: themes_built
+    name: "Theme Collector"
+    description: "Build {n} different themes"
+    category: better_battle
+    tiers: [25, 100, 250, 500, 1000]
+    points: [5, 10, 20, 30, 50]
+  - track: ss_grades
+    name: "Double S"
+    description: "Earn {n} SS grades"
+    category: better_battle
+    tiers: [1, 10, 50, 250, 1000]
+    points: [5, 10, 20, 30, 50]
+  - track: crowd_90
+    name: "Crowd Pleaser"
+    description: "Finish {n} games with a crowd score of 90% or higher"
+    category: better_battle
+    tiers: [1, 10, 50, 200]
+    points: [10, 15, 25, 40]
+  - track: precision_100
+    name: "Zero Waste"
+    description: "Finish {n} Speed Builders rounds at 100% precision"
+    category: speed_builders
+    tiers: [1, 25, 100, 500, 1000]
+    points: [5, 10, 20, 30, 50]
+  - track: pbs_set
+    name: "Personal Best"
+    description: "Set {n} Speed Builders personal bests"
+    category: speed_builders
+    tiers: [1, 25, 100, 250]
+    points: [5, 10, 20, 35]
+  - track: days_played
+    name: "Regular"
+    description: "Play on {n} different days"
+    category: better_battle
+    tiers: [7, 30, 100, 365]
+    points: [5, 15, 30, 60]
+
+one_offs:
+  # ---------------- Palette challenges ----------------
+  - id: all_wood
+    name: "Lumberjack"
+    description: "Win a game using only wood-type blocks"
+    category: challenge
+    points: 20
+    rule: AllWood
+  - id: monochrome
+    name: "Monochrome"
+    description: "Win a game using blocks of a single colour family (all wool, concrete, terracotta and glass of one colour)"
+    category: challenge
+    points: 25
+    rule: Monochrome
+  - id: minimalist
+    name: "Less Is More"
+    description: "Win a Solo game while placing fewer than 100 blocks"
+    category: challenge
+    points: 25
+    rule: Minimalist
+  - id: one_block_wonder
+    name: "One Block Wonder"
+    description: "Get 1st place using only one block type"
+    category: challenge
+    points: 40
+    secret: true
+    rule: OneBlockType
+  - id: rainbow
+    name: "Taste the Rainbow"
+    description: "Use all 16 wool colours in a single winning build"
+    category: challenge
+    points: 20
+    rule: Rainbow
+  - id: no_glass
+    name: "Stone Age"
+    description: "Win using only stone-family blocks (stone, cobble, bricks, deepslate, andesite, diorite, granite)"
+    category: challenge
+    points: 20
+    rule: StoneOnly
+  - id: nether_native
+    name: "Nether Native"
+    description: "Win using only blocks found in the Nether"
+    category: challenge
+    points: 25
+    rule: NetherOnly
+
+  # ---------------- Time and streak challenges ----------------
+  - id: mode_marathon
+    name: "Mode Marathon"
+    description: "Win in Solo, Teams, Pro, Guess The Build and Speed Builders within one hour"
+    category: challenge
+    points: 40
+    rule: ModeMarathon
+  - id: hat_trick
+    name: "Hat Trick"
+    description: "Win 3 games in a row"
+    category: challenge
+    points: 10
+    rule: WinStreak3
+  - id: unstoppable
+    name: "Unstoppable"
+    description: "Win 10 games in a row"
+    category: challenge
+    points: 40
+    rule: WinStreak10
+  - id: night_owl
+    name: "Night Owl"
+    description: "Win a game between 2 AM and 5 AM your local time"
+    category: challenge
+    points: 10
+    secret: true
+    rule: NightOwl
+  - id: century_day
+    name: "Century"
+    description: "Play 100 games in a single day"
+    category: challenge
+    points: 25
+    rule: HundredInADay
+  - id: comeback
+    name: "Comeback Kid"
+    description: "Win the game right after finishing last"
+    category: challenge
+    points: 15
+    rule: Comeback
+
+  # ---------------- Score challenges ----------------
+  - id: perfect_crowd
+    name: "Standing Ovation"
+    description: "Get a 100% crowd score: every voter gave you Legendary"
+    category: challenge
+    points: 50
+    secret: true
+    rule: PerfectCrowd
+  - id: ss_streak
+    name: "S-Tier"
+    description: "Earn 5 SS grades in a row"
+    category: challenge
+    points: 30
+    rule: SsStreak5
+  - id: underdog
+    name: "Underdog"
+    description: "Win a 16-player Solo game"
+    category: challenge
+    points: 10
+    rule: FullLobbyWin
+
+  # ---------------- Speed Builders challenges ----------------
+  - id: spb_sweep
+    name: "Clean Sweep"
+    description: "Get a Perfect Build in every round of a Speed Builders game you win"
+    category: speed_builders
+    points: 30
+    rule: SpbSweep
+  - id: spb_wr_close
+    name: "Ghost Hunter"
+    description: "Finish a Speed Builders round within 0.5s of the world record"
+    category: speed_builders
+    points: 25
+    rule: WithinHalfSecondOfWr
+  - id: spb_wr
+    name: "World Record"
+    description: "Set a Better Battle world record on any Speed Builders build"
+    category: speed_builders
+    points: 75
+    rule: SetWr
+  - id: spb_no_break
+    name: "Measure Twice"
+    description: "Win a Speed Builders game without breaking a single block"
+    category: speed_builders
+    points: 20
+    rule: SpbNoBreak
+
+  # ---------------- Guess The Build challenges ----------------
+  - id: gtb_first_guess
+    name: "Lightning Guess"
+    description: "Guess a build within 3 seconds of the round starting"
+    category: gtb
+    points: 15
+    rule: GtbFastGuess
+  - id: gtb_all_rounds
+    name: "Telepathic"
+    description: "Correctly guess every round in one Guess The Build game"
+    category: gtb
+    points: 30
+    rule: GtbAllRounds
+
+  # ---------------- Better Battle meta ----------------
+  - id: welcome
+    name: "Aspiring"
+    description: "Play your first game with Better Battle installed"
+    category: better_battle
+    points: 5
+    rule: FirstGame
+  - id: random_palette_win
+    name: "Dice Roller"
+    description: "Win using only blocks from a /bb palette roll"
+    category: better_battle
+    points: 20
+    rule: PaletteRollWin
+  - id: pinned
+    name: "Proud Builder"
+    description: "Pin a build to your profile"
+    category: better_battle
+    points: 5
+    rule: ServerOnly
+  - id: offline_saver
+    name: "Off the Grid"
+    description: "Play 10 games while the Better Battle server is unreachable"
+    category: better_battle
+    points: 10
+    secret: true
+    rule: OfflineGames
+
+# Weekly challenges rotate every Monday 00:00 UTC. The server picks 3 from this pool
+# and sends them in /mod/bootstrap. Completing one gives XP, not AP.
+weekly_pool:
+  - { id: w_wood_win, text: "Win a game using only wood", xp: 300 }
+  - { id: w_crowd_85, text: "Get 85%+ crowd score 3 times", xp: 250 }
+  - { id: w_themes_10, text: "Build 10 new themes", xp: 250 }
+  - { id: w_spb_precision, text: "Finish 5 SPB rounds at 100% precision", xp: 300 }
+  - { id: w_gtb_15, text: "Guess 15 builds correctly", xp: 200 }
+  - { id: w_pro_win, text: "Win a Pro game", xp: 300 }
+  - { id: w_teams_3, text: "Win 3 Teams games", xp: 250 }
+  - { id: w_streak_3, text: "Win 3 games in a row", xp: 350 }
+  - { id: w_palette, text: "Win with a /bb palette roll", xp: 400 }
+  - { id: w_marathon, text: "Play every mode at least once", xp: 200 }

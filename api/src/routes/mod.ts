@@ -3,7 +3,7 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import crypto from "node:crypto";
 import { pool } from "../db/pool";
-import { recomputeRating } from "../services/rating";
+import { xpForMatch, levelForXp } from "../services/level";
 import { evaluateAchievements } from "../services/achievementEngine";
 import { redis } from "../db/redis";
 
@@ -20,7 +20,6 @@ const MatchIn = z.object({
   durationSec: z.number().int().min(0).max(3600),
   blocksPlaced: z.number().int().min(0).max(20000),
   blocksBroken: z.number().int().min(0).max(20000).default(0),
-  maxScore: z.number().nullable().default(null),
   palette: z.record(z.number().int().min(0)).optional(),
   spbRounds: z
     .array(z.object({ build: z.string(), timeMs: z.number().int().positive(), accuracy: z.number().min(0).max(1) }))
@@ -83,6 +82,7 @@ export default async function modRoutes(app: FastifyInstance) {
       const body = SyncBody.parse(req.body);
       const client = await pool.connect();
       const accepted: string[] = [];
+      let xpGained = 0;
       const rejected: { nonce: string; reason: string }[] = [];
       try {
         await client.query("BEGIN");
@@ -92,17 +92,19 @@ export default async function modRoutes(app: FastifyInstance) {
 
           const ins = await client.query(
             `INSERT INTO matches (user_id, played_at, mode, theme, placement, players, score,
-                                  duration_sec, blocks_placed, palette, spb_rounds, client_nonce,
-                                  mod_version, mc_version)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                                  duration_sec, blocks_placed, blocks_broken, max_score, palette,
+                                  spb_rounds, client_nonce, mod_version, mc_version)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
              ON CONFLICT (user_id, client_nonce, played_at) DO NOTHING
              RETURNING id`,
             [userId, m.playedAt, m.mode, m.theme, m.placement, m.players, m.score, m.durationSec,
-             m.blocksPlaced, m.palette ?? null, JSON.stringify(m.spbRounds ?? null), m.nonce,
+             m.blocksPlaced, m.blocksBroken, maxScore(m), m.palette ?? null,
+             JSON.stringify(m.spbRounds ?? null), m.nonce,
              body.modVersion, body.mcVersion],
           );
           accepted.push(m.nonce); // duplicates count as accepted: the mod can mark them synced
           if (ins.rowCount === 0) continue;
+          xpGained += xpForMatch(m);
 
           await client.query(
             `INSERT INTO user_stats (user_id, mode, games_played, wins, total_score, playtime_sec)
@@ -116,13 +118,21 @@ export default async function modRoutes(app: FastifyInstance) {
             [userId, m.mode, m.placement === 1 ? 1 : 0, Math.round(m.score ?? 0), m.durationSec],
           );
         }
-        const rating = await recomputeRating(client, userId);
-        const confirmed = await evaluateAchievements(client, userId, body.localAchievements);
+        const { confirmed, revoked, apGained } = await evaluateAchievements(client, userId, body.localAchievements);
+        const prog = await client.query(
+          `INSERT INTO user_progress (user_id, xp) VALUES ($1, $2)
+           ON CONFLICT (user_id) DO UPDATE SET xp = user_progress.xp + EXCLUDED.xp, updated_at = now()
+           RETURNING xp`,
+          [userId, xpGained + apGained * 10],
+        );
+        const level = levelForXp(Number(prog.rows[0].xp));
+        await client.query("UPDATE user_progress SET level = $2, ap = ap + $3 WHERE user_id = $1", [userId, level, apGained]);
         await client.query("COMMIT");
 
-        await redis.zadd("lb:rating:overall", rating, String(userId));
-        const rank = await redis.zrevrank("lb:rating:overall", String(userId));
-        return { accepted, rejected, confirmed, rating, globalRank: rank === null ? null : rank + 1 };
+        // Global rank = Hypixel Build Battle score (kept fresh by the verifyStats job, not by the client).
+        const rank = await redis.zrevrank("lb:bb_score", String(userId));
+        return { accepted, rejected, confirmed, revoked, level, xp: Number(prog.rows[0].xp),
+                 globalRank: rank === null ? null : rank + 1 };
       } catch (e) {
         await client.query("ROLLBACK");
         throw e;
@@ -130,6 +140,13 @@ export default async function modRoutes(app: FastifyInstance) {
         client.release();
       }
     });
+}
+
+/** Every voter (everyone but you and your teammate) gives Legendary = 18. */
+function maxScore(m: z.infer<typeof MatchIn>): number | null {
+  if (!m.players || m.mode === "gtb" || m.mode === "speed_builders") return null;
+  const voters = m.players - (m.mode === "teams" ? 2 : 1);
+  return voters > 0 ? voters * 18 : null;
 }
 
 async function sanityCheck(client: any, m: z.infer<typeof MatchIn>): Promise<string | null> {
