@@ -63,6 +63,13 @@ Country ranking is intentionally left out: there's no reliable country source.
 - Mod: `org.xerial:sqlite-jdbc` (shade into both jars), Gson (already in Minecraft).
 - API: Node 20+, `fastify`, `zod`, `pg`, `ioredis`, `@fastify/rate-limit`, `argon2`.
 
+## Running it on your laptop
+
+1. Install Docker Desktop.
+2. `cp .env.example .env` and fill in `DB_PASSWORD` and `HYPIXEL_API_KEY`.
+3. `docker compose up -d` starts PostgreSQL (with TimescaleDB) and Redis, and creates all tables.
+4. Seed the ranking with the Aspiring guild: `npx tsx api/scripts/seed-guild.ts`.
+
 ## Design docs
 
 - Architecture plan: https://claude.ai/artifact/NCbTPpibjoCtzUcMMAh9gp
