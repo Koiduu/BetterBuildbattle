@@ -4,7 +4,7 @@ import { Router, fail } from "../http";
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
-import { queuePlayers, refreshOne, globalRank } from "../jobs/crawler";
+import { queuePlayers, refreshOne, globalRank, HypixelKeyError } from "../jobs/crawler";
 import { titleProgress } from "../lib/titles";
 import { levelForXp, totalXpForLevel } from "../services/level";
 import { rateLimit } from "../plugins/auth";
@@ -28,9 +28,16 @@ async function resolvePlayer(name: string) {
     uuid = dashUuid(id);
     await queuePlayers([uuid], "search", true);
   }
-  await refreshOne(uuid);
+  try {
+    await refreshOne(uuid);
+  } catch (e) {
+    if (e instanceof HypixelKeyError) fail(503, "hypixel_unavailable", { reason: "api_key" });
+    fail(503, "hypixel_unavailable");
+  }
   const r = await pool.query("SELECT * FROM tracked_players WHERE mc_uuid = $1", [uuid]);
-  return r.rows[0] ?? null;
+  const row = r.rows[0];
+  if (row && !row.last_checked) fail(503, "hypixel_unavailable");
+  return row ?? null;
 }
 
 export function publicRoutes(app: Router) {

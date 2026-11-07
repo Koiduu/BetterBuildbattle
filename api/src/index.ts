@@ -5,7 +5,7 @@ import { Router, createServer } from "./http";
 import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
 import { seedCatalog, catalog } from "./services/achievementEngine";
-import { runCrawler, crawlLeaderboards } from "./jobs/crawler";
+import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
 import { daily, snapshotRanks, rebuildLeaderboard } from "./jobs/daily";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +50,7 @@ process.on("SIGINT", shutdown);
 
 if (process.env.NO_JOBS !== "1") {
   if (process.env.HYPIXEL_API_KEY) {
+    await checkKey();
     runCrawler(ac.signal).catch((e) => console.error("crawler stopped", e));
     crawlLeaderboards().catch((e) => console.error("leaderboard crawl failed", e));
     daily(1, 0, crawlLeaderboards);

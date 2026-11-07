@@ -32,10 +32,18 @@ export async function queuePlayers(uuids: string[], source: string, priority = f
   );
 }
 
+export class HypixelKeyError extends Error {}
+
 export async function refreshOne(uuid: string) {
   const res = await fetch(`${HYPIXEL_API}/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
   if (res.status === 429) throw new Error("rate_limited");
+  if (res.status === 401 || res.status === 403) {
+    // The key is the problem, not this player, so don't push their next check back.
+    const body = await res.json().catch(() => ({}));
+    throw new HypixelKeyError(body.cause ?? `HTTP ${res.status}`);
+  }
   if (!res.ok) {
+    console.warn(`Hypixel returned ${res.status} for ${uuid}`);
     await pool.query(
       `UPDATE tracked_players SET check_failures = check_failures + 1,
          next_check = now() + interval '1 day' * power(2, LEAST(check_failures, 6)) WHERE mc_uuid = $1`, [uuid]);
@@ -43,7 +51,7 @@ export async function refreshOne(uuid: string) {
   }
   const { player } = await res.json();
   const bb = player?.stats?.BuildBattle;
-  if (!bb || !bb.games_played) {
+  if (!bb || !(bb.games_played || bb.score || bb.wins)) {
     await pool.query(
       `UPDATE tracked_players SET mc_name = $2, no_bb_stats = true, last_checked = now(),
          next_check = now() + interval '60 days' WHERE mc_uuid = $1`, [uuid, player?.displayname ?? null]);
@@ -82,6 +90,19 @@ async function queueGuildOf(uuid: string) {
   if (seen.rowCount) await queuePlayers(guild.members.map((m: any) => dash(m.uuid)), "guild");
 }
 
+/** One cheap call at startup so a bad key shows up straight away in the logs. */
+export async function checkKey() {
+  try {
+    const res = await fetch(`${HYPIXEL_API}/v2/counts`, { headers: { "API-Key": KEY } });
+    if (res.ok) return console.log("Hypixel API key OK");
+    const body = await res.json().catch(() => ({}));
+    console.error(`Hypixel API key rejected (${res.status}): ${body.cause ?? "no reason given"}`);
+    if (res.status === 403) console.error("New Production keys only work once Hypixel has approved them.");
+  } catch (e: any) {
+    console.error("Couldn't reach the Hypixel API:", e.message);
+  }
+}
+
 export async function crawlLeaderboards() {
   const res = await fetch(`${HYPIXEL_API}/v2/leaderboards`, { headers: { "API-Key": KEY } });
   if (!res.ok) return;
@@ -113,8 +134,17 @@ export async function runCrawler(signal: AbortSignal) {
     if (!batch.length) { await sleep(10_000); continue; }
     for (const row of batch) {
       if (signal.aborted) return;
-      try { await refreshOne(row.mc_uuid); }
-      catch (e: any) { if (e.message === "rate_limited") await sleep(60_000); }
+      try {
+        await refreshOne(row.mc_uuid);
+      } catch (e: any) {
+        if (e instanceof HypixelKeyError) {
+          console.error(`Hypixel rejected the API key (${e.message}). Crawler paused for 5 minutes.`);
+          await sleep(5 * 60_000);
+          break;
+        }
+        if (e.message === "rate_limited") await sleep(60_000);
+        else console.warn("refresh failed", row.mc_uuid, e.message);
+      }
       await sleep(INTERVAL_MS);
     }
   }
