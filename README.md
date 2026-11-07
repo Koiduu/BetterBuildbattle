@@ -1,0 +1,61 @@
+# Better Battle — starter code
+
+Created by **Koidu**. Mod + web platform for Hypixel Build Battle and Speed Builders.
+Website: `battle.aspir3.net` · API: `api.aspir3.net/bb/v1`
+
+## Layout
+
+```
+api/
+  db/migrations/001_init.sql     PostgreSQL 16 + TimescaleDB schema (all server tables)
+  src/routes/mod.ts              Mojang handshake + idempotent batched /mod/sync
+mod/
+  core/                          Java 8-compatible, no Minecraft imports: shared by both builds
+    store/LocalDatabase.java     The mod's own SQLite DB: works with no server at all
+    game/GameStateMachine.java   IDLE → LOBBY → BUILDING → VOTING → RESULTS
+    game/MatchRecord.java, Grades.java
+    parse/ChatParser.java        Regex table driven by patterns.json (server can push updates)
+    sync/SyncService.java        Outbox → server, backoff, full-resync on request
+    sync/ApiClient.java          HTTP interface, implemented per loader
+    achieve/AchievementRules.java All-Wood, Mode Marathon, tiered tracks
+  core/src/main/resources/betterbattle/patterns.json   PLACEHOLDER regexes
+  fabric-26.3/                   (next) thin adapter: mixins for chat, scoreboard, block place, UI
+  forge-1.8.9/                   (next) same adapter for Forge 1.8.9; maps old block ids to modern names
+```
+
+## What's still a stub
+
+- `patterns.json` regexes are guesses. Record real chat from a few games per mode and replace them.
+- `api/src/services/rating.ts`, `achievementEngine.ts`, `db/pool.ts`, `db/redis.ts` and the
+  `requireModToken` hook are referenced by `mod.ts` but not written yet.
+- The two loader adapters and UI screens (toasts, `/bb` menu, local profile, credits screen).
+
+## Build metrics (instead of a vague "accuracy")
+
+| Metric | Formula | Where the data comes from |
+|---|---|---|
+| Crowd score | your vote score ÷ best possible score in that lobby | results chat |
+| SPB precision | blocks the build needs ÷ (blocks placed + broken) | your own placements, `spb_builds.block_count` |
+| Theme range | distinct themes you've built | `user_themes` |
+
+Country ranking is intentionally left out: there's no reliable country source.
+
+## Local database guarantees
+
+- Every game is committed to `config/betterbattle/<uuid>.db` before any network call.
+- Stats are always recomputed from matches, both locally and on the server, so they can't drift.
+- Each match has a `nonce`; re-uploading the same match is a no-op on the server.
+- If the server loses data, it sets `fullResyncRequested`, and every mod re-uploads its whole history.
+- `/bb export` (planned in `store/Exporter`) dumps JSON/CSV. The `.db` file opens in any SQLite viewer.
+
+## Dependencies
+
+- Mod: `org.xerial:sqlite-jdbc` (shade into both jars), Gson (already in Minecraft).
+- API: Node 20+, `fastify`, `zod`, `pg`, `ioredis`, `@fastify/rate-limit`, `argon2`.
+
+## Design docs
+
+- Architecture plan: https://claude.ai/artifact/NCbTPpibjoCtzUcMMAh9gp
+- Profile page mockup: https://claude.ai/artifact/GaD1XVZ2wTdLs18ofSRcSE
+
+(Both links are private until you share them.)

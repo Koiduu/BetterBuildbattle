@@ -1,0 +1,19 @@
+{
+  "_note": "PLACEHOLDER regexes. Capture real Hypixel chat lines (colour codes stripped) from a few games in each mode and replace these before release. The server can push a newer version via /mod/bootstrap.",
+  "version": 1,
+  "scoreboard_modes": {
+    "BUILD BATTLE.*PRO": "pro",
+    "BUILD BATTLE.*TEAMS": "teams",
+    "GUESS THE BUILD": "gtb",
+    "SPEED BUILDERS": "speed_builders",
+    "BUILD BATTLE": "solo"
+  },
+  "chat": {
+    "GAME_START": "^The game starts in .*|^(\\d+) players? (?:are )?building",
+    "THEME": "^\\s*Theme: (.+)$",
+    "VOTING_START": "^\\s*Time's up!|^Voting has started",
+    "PLACEMENT": "^\\s*You finished in (\\d+)(?:st|nd|rd|th)",
+    "SCORE": "^\\s*Your score: ([\\d.]+)",
+    "GAME_END": "^\\s*Reward Summary|^\\s*Thanks for playing"
+  }
+}
