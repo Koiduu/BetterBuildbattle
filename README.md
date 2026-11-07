@@ -8,7 +8,13 @@ Website: `battle.aspir3.net` · API: `api.aspir3.net/bb/v1`
 ```
 api/
   db/migrations/001_init.sql     PostgreSQL 16 + TimescaleDB schema (all server tables)
-  src/routes/mod.ts              Mojang handshake + idempotent batched /mod/sync
+  src/routes/mod.ts              Mojang handshake, /mod/bootstrap, idempotent batched /mod/sync
+  src/routes/public.ts           Profiles, leaderboard, search, rank history, heatmap, achievements
+  src/jobs/crawler.ts            Finds and refreshes every Build Battle player (global ranking)
+  src/jobs/daily.ts              Rank snapshots, leaderboard rebuild
+  src/index.ts                   Server entry: API under /bb/v1 + serves the website
+web/                             The website (plain HTML/CSS/JS, no build step)
+tools/preview.mjs                Website preview with sample data
 mod/
   core/                          Java 8-compatible, no Minecraft imports: shared by both builds
     store/LocalDatabase.java     The mod's own SQLite DB: works with no server at all
@@ -26,8 +32,10 @@ mod/
 ## What's still a stub
 
 - `patterns.json` regexes are guesses. Record real chat from a few games per mode and replace them.
-- `api/src/services/rating.ts`, `achievementEngine.ts`, `db/pool.ts`, `db/redis.ts` and the
-  `requireModToken` hook are referenced by `mod.ts` but not written yet.
+- The API's TypeScript has not been compiled or run yet. Its SQL was tested against PostgreSQL 16,
+  and the website was tested in Chrome against `tools/preview.mjs`. Expect a few small fixes on first `docker compose up`.
+- Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
+- Accounts on the website (sign up, Discord login, pinning, bio) are not built yet. Profiles are public and read-only.
 - The two loader adapters and UI screens (toasts, `/bb` menu, local profile, credits screen).
 
 ## Build metrics (instead of a vague "accuracy")
@@ -63,13 +71,25 @@ Country ranking is intentionally left out: there's no reliable country source.
 - Mod: `org.xerial:sqlite-jdbc` (shade into both jars), Gson (already in Minecraft).
 - API: Node 20+, `fastify`, `zod`, `pg`, `ioredis`, `@fastify/rate-limit`, `argon2`.
 
-## Running it on your laptop
+## Preview the website (no setup)
+
+```
+node tools/preview.mjs
+```
+Open http://localhost:5173. This uses sample data (Koidu's Hypixel numbers are real) and needs nothing installed except Node.
+
+## Running it for real on your laptop
 
 1. Install Docker Desktop.
-2. `cp .env.example .env` and fill in `DB_PASSWORD` and `HYPIXEL_API_KEY`.
-3. `docker compose up -d` starts PostgreSQL (with TimescaleDB) and Redis, and creates all tables.
-4. Seed the ranking with the Aspiring guild: `npx tsx api/scripts/seed-guild.ts`.
+2. `cp .env.example .env`, then fill in `DB_PASSWORD` and `HYPIXEL_API_KEY` (from https://developer.hypixel.net).
+3. `docker compose up -d --build` starts PostgreSQL + TimescaleDB, Redis and the app, and creates all tables.
+4. Open http://localhost:4000. The crawler starts filling the leaderboard straight away.
+5. Seed the Aspiring guild: `docker compose exec app npm run seed-guild` (or pass another guild name).
+6. Point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.net`.
 
+Logs: `docker compose logs -f app`
+
+## Design docs
 ## Design docs
 
 - Architecture plan: https://claude.ai/artifact/NCbTPpibjoCtzUcMMAh9gp

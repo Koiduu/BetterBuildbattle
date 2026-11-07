@@ -31,7 +31,7 @@ export async function queuePlayers(uuids: string[], source: string, priority = f
   );
 }
 
-async function refreshOne(uuid: string) {
+export async function refreshOne(uuid: string) {
   const res = await fetch(`https://api.hypixel.net/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
   if (res.status === 429) throw new Error("rate_limited");
   if (!res.ok) {
@@ -51,10 +51,16 @@ async function refreshOne(uuid: string) {
   const score: number = bb.score ?? 0;
   await pool.query(
     `UPDATE tracked_players SET mc_name = $2, bb_score = $3, bb_wins = $4, bb_games = $5, title = $6,
-       no_bb_stats = false, check_failures = 0, last_checked = now(),
+       hypixel_bb = $7, no_bb_stats = false, check_failures = 0, last_checked = now(),
        next_check = now() + CASE WHEN $3 > 1000 THEN interval '3 days' ELSE interval '14 days' END
      WHERE mc_uuid = $1`,
-    [uuid, player.displayname, score, bb.wins ?? 0, bb.games_played ?? 0, titleFor(score).name],
+    [uuid, player.displayname, score, bb.wins ?? 0, bb.games_played ?? 0, titleFor(score).name, numericOnly(bb)],
+  );
+  // If this player has a Better Battle account, keep their verified totals in sync too.
+  await pool.query(
+    `UPDATE users SET hypixel_bb = $2, hypixel_bb_score = $3, hypixel_title = $4, hypixel_synced_at = now(),
+       mc_name = $5 WHERE mc_uuid = $1`,
+    [uuid, numericOnly(bb), score, titleFor(score).name, player.displayname],
   );
   await redis.zadd("lb:bb_score", score, uuid);   // global ranking keyed by UUID
 
@@ -100,7 +106,7 @@ export async function runCrawler(signal: AbortSignal) {
     const due = await pool.query(
       `SELECT mc_uuid FROM tracked_players WHERE next_check <= now() AND NOT no_bb_stats
        ORDER BY next_check LIMIT 100`);
-    const extra = due.rowCount ? [] : (await pool.query(
+    const extra: { mc_uuid: string }[] = due.rowCount ? [] : (await pool.query(
       `SELECT mc_uuid FROM tracked_players WHERE no_bb_stats AND next_check <= now() LIMIT 20`)).rows;
     const batch = [...due.rows, ...extra];
     if (!batch.length) { await sleep(30_000); continue; }
@@ -117,6 +123,13 @@ export async function runCrawler(signal: AbortSignal) {
 export async function globalRank(uuid: string): Promise<{ rank: number | null; of: number }> {
   const [r, total] = await Promise.all([redis.zrevrank("lb:bb_score", uuid), redis.zcard("lb:bb_score")]);
   return { rank: r === null ? null : r + 1, of: total };
+}
+
+/** Keep only numeric Build Battle fields (drops cosmetics, settings, etc.). */
+function numericOnly(bb: Record<string, unknown>) {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(bb)) if (typeof v === "number") out[k] = v;
+  return out;
 }
 
 const dash = (u: string) => u.includes("-") ? u : u.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");

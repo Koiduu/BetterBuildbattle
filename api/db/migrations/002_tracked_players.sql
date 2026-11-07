@@ -26,9 +26,7 @@ CREATE TABLE crawled_guilds (
   last_crawled TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Rank snapshots now cover tracked players too (not only signed-up users)
-ALTER TABLE rank_snapshots DROP CONSTRAINT rank_snapshots_user_id_fkey;
-ALTER TABLE rank_snapshots RENAME COLUMN user_id TO player_key;   -- users.id for mod users
+-- Daily global rank history for every tracked player (powers the rank graph).
 CREATE TABLE player_rank_history (
   mc_uuid     UUID NOT NULL,
   taken_on    DATE NOT NULL,

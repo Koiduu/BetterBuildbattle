@@ -1,5 +1,5 @@
 # Runs the whole backend on your laptop:  docker compose up -d
-# Then point a Cloudflare Tunnel at localhost:3000 (website) and localhost:4000 (API).
+# Then point a Cloudflare Tunnel at localhost:4000 for battle.aspir3.net (site + API under /bb/v1).
 services:
   db:
     image: timescale/timescaledb:latest-pg16
@@ -20,14 +20,19 @@ services:
     ports: ["127.0.0.1:6379:6379"]
     restart: unless-stopped
 
-  # api:  (added once api/package.json exists)
-  #   build: ./api
-  #   env_file: .env
-  #   ports: ["127.0.0.1:4000:4000"]
-  #   depends_on: [db, redis]
-  # web:  (added once web/ exists)
-  #   build: ./web
-  #   ports: ["127.0.0.1:3000:3000"]
+  # API + website (the API serves the site from /web). One container.
+  app:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://bb:${DB_PASSWORD}@db:5432/betterbattle
+      REDIS_URL: redis://redis:6379
+      PORT: "4000"
+    ports: ["127.0.0.1:4000:4000"]
+    depends_on: [db, redis]
+    restart: unless-stopped
 
 volumes:
   pgdata:

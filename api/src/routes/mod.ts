@@ -4,8 +4,8 @@ import { z } from "zod";
 import crypto from "node:crypto";
 import { pool } from "../db/pool";
 import { xpForMatch, levelForXp } from "../services/level";
-import { evaluateAchievements } from "../services/achievementEngine";
-import { redis } from "../db/redis";
+import { evaluateAchievements, catalog } from "../services/achievementEngine";
+import { rateLimit } from "../plugins/auth";
 import { queuePlayers, globalRank } from "../jobs/crawler";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
@@ -18,6 +18,7 @@ const MatchIn = z.object({
   placement: z.number().int().min(1).max(32).nullable(),
   players: z.number().int().min(1).max(32).nullable(),
   score: z.number().nullable(),
+  grade: z.enum(["SS", "S", "A", "B", "C"]).nullable().default(null),
   durationSec: z.number().int().min(0).max(3600),
   blocksPlaced: z.number().int().min(0).max(20000),
   blocksBroken: z.number().int().min(0).max(20000).default(0),
@@ -38,7 +39,7 @@ const SyncBody = z.object({
 
 export default async function modRoutes(app: FastifyInstance) {
   // ---- 1. Handshake: issue a random serverId ----
-  app.post("/auth/mod/challenge", async () => {
+  app.post("/auth/mod/challenge", { preHandler: rateLimit(10, 60_000) }, async () => {
     const serverId = crypto.randomBytes(16).toString("hex");
     await pool.query(
       "INSERT INTO mod_challenges (server_id, expires_at) VALUES ($1, now() + interval '2 minutes')",
@@ -69,6 +70,7 @@ export default async function modRoutes(app: FastifyInstance) {
        RETURNING id`,
       [uuid, profile.name],
     );
+    await queuePlayers([uuid], "mod_user", true);   // mod users are always in the global ranking
     const token = crypto.randomBytes(32).toString("base64url");
     await pool.query(
       `INSERT INTO sessions (user_id, kind, token_hash, expires_at)
@@ -78,8 +80,21 @@ export default async function modRoutes(app: FastifyInstance) {
     return { token, expiresInDays: 30 };
   });
 
+  // ---- Bootstrap: catalog + weekly challenges + confirmed achievements ----
+  app.get("/mod/bootstrap", { preHandler: app.requireModToken }, async (req) => {
+    const [mine, weekly] = await Promise.all([
+      pool.query("SELECT achievement_id FROM user_achievements WHERE user_id = $1", [req.user.id]),
+      pool.query("SELECT id, text, xp FROM weekly_challenges WHERE week_start = date_trunc('week', now())::date"),
+    ]);
+    return {
+      catalogVersion: catalog.catalog_version,
+      confirmedAchievements: mine.rows.map((r: any) => r.achievement_id),
+      weeklyChallenges: weekly.rows,
+    };
+  });
+
   // ---- 3. Sync: idempotent batch insert ----
-  app.post("/mod/sync", { preHandler: app.requireModToken, config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+  app.post("/mod/sync", { preHandler: [app.requireModToken, rateLimit(30, 60_000)] },
     async (req) => {
       const userId: number = req.user.id;
       const body = SyncBody.parse(req.body);
@@ -96,14 +111,14 @@ export default async function modRoutes(app: FastifyInstance) {
           const ins = await client.query(
             `INSERT INTO matches (user_id, played_at, mode, theme, placement, players, score,
                                   duration_sec, blocks_placed, blocks_broken, max_score, palette,
-                                  spb_rounds, client_nonce, mod_version, mc_version)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                                  spb_rounds, client_nonce, mod_version, mc_version, grade, xp_earned)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
              ON CONFLICT (user_id, client_nonce, played_at) DO NOTHING
              RETURNING id`,
             [userId, m.playedAt, m.mode, m.theme, m.placement, m.players, m.score, m.durationSec,
              m.blocksPlaced, m.blocksBroken, maxScore(m), m.palette ?? null,
-             JSON.stringify(m.spbRounds ?? null), m.nonce,
-             body.modVersion, body.mcVersion],
+             m.spbRounds ? JSON.stringify(m.spbRounds) : null, m.nonce,
+             body.modVersion, body.mcVersion, m.grade, xpForMatch(m)],
           );
           accepted.push(m.nonce); // duplicates count as accepted: the mod can mark them synced
           if (ins.rowCount === 0) continue;
