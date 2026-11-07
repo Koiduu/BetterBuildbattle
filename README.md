@@ -80,14 +80,24 @@ Open http://localhost:5173. This uses sample data (Koidu's Hypixel numbers are r
 
 ## Running it for real on your laptop
 
-1. Install Docker Desktop.
-2. `cp .env.example .env`, then fill in `DB_PASSWORD` and `HYPIXEL_API_KEY` (from https://developer.hypixel.net).
-3. `docker compose up -d --build` starts PostgreSQL + TimescaleDB, Redis and the app, and creates all tables.
-4. Open http://localhost:4000. The crawler starts filling the leaderboard straight away.
-5. Seed the Aspiring guild: `docker compose exec app npm run seed-guild` (or pass another guild name).
-6. Point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.net`.
+**Windows:** install Docker Desktop, then double-click **`bb.cmd`**. The first time, it asks for your Hypixel API key
+and writes `.env` for you, starts everything, and opens http://localhost:4000.
+**macOS / Linux:** `./bb.sh`
 
-Logs: `docker compose logs -f app`
+| Command | What it does |
+|---|---|
+| `bb start` (or double-click) | Start everything and open the site |
+| `bb stop` | Stop (all data is kept) |
+| `bb restart` | Restart the app, e.g. after editing `.env` |
+| `bb logs` | Watch the app's logs |
+| `bb status` | Show what's running |
+| `bb seed` / `bb seed "Guild Name"` | Add a guild to the ranking (default: Aspiring) |
+| `bb snapshot` | Record today's ranks now (normally automatic at 00:05 UTC) |
+| `bb update` | Rebuild after getting new code |
+| `bb reset` | Delete all data and start fresh (asks first) |
+
+Run commands from a terminal in the project folder (`.\bb seed` in PowerShell, `bb seed` in Command Prompt).
+To go public, point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.net`.
 
 ## Design docs
 ## Design docs
