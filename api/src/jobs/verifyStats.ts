@@ -21,7 +21,8 @@ export async function verifyUser(userId: number, uuid: string) {
      WHERE user_id = $1 AND mode = 'overall'`,
     [userId, bb.wins ?? 0],
   );
-  await redis.zadd("lb:bb_score", score, String(userId));
+  // Ranking is keyed by UUID so mod users and crawled players share one leaderboard.
+  await redis.zadd("lb:bb_score", score, uuid);
   // Retroactive tracks (bb_wins, bb_score, perfect_builds, correct_guesses, per-mode wins)
   // are granted from these verified numbers by achievementEngine.grantFromTotals().
 }

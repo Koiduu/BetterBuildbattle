@@ -78,6 +78,22 @@ public final class GameStateMachine {
         if (state == State.BUILDING && current != null) current.countBlock(blockId);
     }
 
+    private final java.util.Set<java.util.UUID> seenPlayers = new java.util.HashSet<java.util.UUID>();
+
+    /** Adapter calls this with the tab list UUIDs once per game. Sent with the next sync for ranking discovery. */
+    public void onLobbyRoster(java.util.Collection<java.util.UUID> uuids) {
+        synchronized (seenPlayers) { seenPlayers.addAll(uuids); }
+    }
+
+    /** SyncService drains this each sync. Not stored in the local DB: it's only useful to the server. */
+    public java.util.List<java.util.UUID> drainSeenPlayers() {
+        synchronized (seenPlayers) {
+            java.util.List<java.util.UUID> out = new java.util.ArrayList<java.util.UUID>(seenPlayers);
+            seenPlayers.clear();
+            return out;
+        }
+    }
+
     /** Player's own block break (Speed Builders precision). */
     public void onOwnBlockBroken() {
         if (state == State.BUILDING && current != null) current.blocksBroken++;

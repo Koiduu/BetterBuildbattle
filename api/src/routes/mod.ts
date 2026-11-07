@@ -6,6 +6,7 @@ import { pool } from "../db/pool";
 import { xpForMatch, levelForXp } from "../services/level";
 import { evaluateAchievements } from "../services/achievementEngine";
 import { redis } from "../db/redis";
+import { queuePlayers, globalRank } from "../jobs/crawler";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -31,6 +32,8 @@ const SyncBody = z.object({
   mcVersion: z.enum(["26.3", "1.8.9"]),
   matches: z.array(MatchIn).max(50),
   localAchievements: z.array(z.string()).max(500).default([]),
+  // UUIDs of other players seen in this player's lobbies since last sync (tab list). Feeds the global ranking.
+  seenPlayers: z.array(z.string().uuid()).max(2000).default([]),
 });
 
 export default async function modRoutes(app: FastifyInstance) {
@@ -129,10 +132,14 @@ export default async function modRoutes(app: FastifyInstance) {
         await client.query("UPDATE user_progress SET level = $2, ap = ap + $3 WHERE user_id = $1", [userId, level, apGained]);
         await client.query("COMMIT");
 
-        // Global rank = Hypixel Build Battle score (kept fresh by the verifyStats job, not by the client).
-        const rank = await redis.zrevrank("lb:bb_score", String(userId));
+        // Lobby rosters → discovery queue for the global ranking.
+        await queuePlayers(body.seenPlayers, "lobby");
+
+        // Global rank = Hypixel Build Battle score among ALL tracked players (crawler keeps it fresh).
+        const uuid = (await pool.query("SELECT mc_uuid FROM users WHERE id = $1", [userId])).rows[0].mc_uuid;
+        const { rank, of } = await globalRank(uuid);
         return { accepted, rejected, confirmed, revoked, level, xp: Number(prog.rows[0].xp),
-                 globalRank: rank === null ? null : rank + 1 };
+                 globalRank: rank, rankedPlayers: of };
       } catch (e) {
         await client.query("ROLLBACK");
         throw e;

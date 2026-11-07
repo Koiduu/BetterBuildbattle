@@ -42,7 +42,11 @@ Country ranking is intentionally left out: there's no reliable country source.
 
 ## Global rank, levels, achievements
 
-- **Global rank** = Hypixel Build Battle score only, read from the Hypixel API by `api/src/jobs/verifyStats.ts` (never trusted from the client).
+- **Global rank** = Hypixel Build Battle score only, among **every Build Battle player we can discover**, not just mod users.
+  `api/src/jobs/crawler.ts` finds players from mod users' lobby rosters, their guilds, Hypixel's Build Battle
+  leaderboards and website searches, then refreshes scores from the Hypixel API on a schedule (top 10k every 6 h).
+  The ranking is keyed by UUID in Redis (`lb:bb_score`); scores are never trusted from the client.
+- **Titles**: `progress/Titles.java` and `api/src/lib/titles.ts` (Rookie 0 → Ascended 500,000, with § colours).
 - **Aspiring Level**: XP from n to n+1 = 500 + 100n. Same math in `progress/Level.java` and `api/src/services/level.ts`.
 - **Catalog**: `api/db/seeds/achievements.yaml`, with 14 tiered tracks (78 tiers), 26 one-off challenges, and a pool of 10 weekly challenges.
 
