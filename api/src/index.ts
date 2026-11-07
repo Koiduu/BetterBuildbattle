@@ -32,6 +32,29 @@ async function pickWeekly() {
   }
 }
 
+// The database container can take a few seconds longer to start than the app.
+async function waitForDatabase() {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await pool.query("SELECT 1");
+      return;
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+      if (err?.code === "28P01" || msg.includes("password authentication failed")) {
+        console.error(
+          "\nThe database password in .env (DB_PASSWORD) doesn't match the one the database was created with.\n" +
+          "Either put the old DB_PASSWORD back in .env, or wipe the database and start fresh with:\n" +
+          "  bb reset\n  bb start\n");
+        process.exit(1);
+      }
+      if (attempt >= 30) throw err;
+      console.log(`Waiting for the database... (${msg.split("\n")[0]})`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+}
+
+await waitForDatabase();
 await seedCatalog();
 await pickWeekly();
 

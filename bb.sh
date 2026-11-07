@@ -41,7 +41,7 @@ case "$CMD" in
     echo "The app did not answer after 2 minutes. Logs:"; docker compose logs --tail 60 app; exit 1 ;;
   stop)     docker compose stop ;;
   restart)  docker compose up -d --force-recreate app ;;
-  logs)     docker compose logs -f --tail 100 app ;;
+  logs|log) docker compose logs -f --tail 100 app ;;
   status)   docker compose ps ;;
   seed)     docker compose exec app npm run seed-guild -- "${2:-Aspiring}" ;;
   snapshot) docker compose exec app npm run snapshot ;;

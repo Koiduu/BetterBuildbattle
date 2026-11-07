@@ -25,6 +25,7 @@ if /i "%CMD%"=="start"    goto :start
 if /i "%CMD%"=="stop"     ( docker compose stop & goto :done )
 if /i "%CMD%"=="restart"  ( docker compose up -d --force-recreate app & goto :done )
 if /i "%CMD%"=="logs"     ( docker compose logs -f --tail 100 app & goto :done )
+if /i "%CMD%"=="log"      ( docker compose logs -f --tail 100 app & goto :done )
 if /i "%CMD%"=="status"   ( docker compose ps & goto :done )
 if /i "%CMD%"=="seed"     goto :seed
 if /i "%CMD%"=="snapshot" ( docker compose exec app npm run snapshot & goto :done )
