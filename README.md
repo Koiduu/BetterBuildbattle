@@ -99,7 +99,65 @@ and writes `.env` for you, starts everything, and opens http://localhost:4000.
 Run commands from a terminal in the project folder (`.\bb seed` in PowerShell, `bb seed` in Command Prompt).
 To go public, point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.net`.
 
+## Testing the mod
+
+Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
+
+- **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
+- **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
+
+In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb sync`, `/bb palette [3-12]`,
+`/bb debug`, `/bb credits`.
+
+Settings live in `config/betterbattle/config.json`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `apiBase` | `https://battle.aspir3.net/bb/v1` | Stats server. Use `http://localhost:4000/bb/v1` to test against the server on the same PC |
+| `website` | `https://battle.aspir3.net` | Where "View Profile" goes |
+| `anyServer` | `false` | Track games on any server, not only Hypixel |
+| `debug` | `false` | Write chat and sidebar lines to `config/betterbattle/debug.log` (toggle with `/bb debug`) |
+| `shareVotes` | `true` | Save your own votes for Build Battle Wrapped |
+| `toasts`, `chatMessages` | `true` | Achievement toasts and chat lines |
+
+**Tuning game detection:** Hypixel's exact chat wording isn't documented, so `patterns.json` holds best guesses.
+Turn on `/bb debug`, play a game or two, and the log shows the real lines to fix the patterns with.
+
+## Admin: votes
+
+Set `ADMIN_TOKEN` in `.env` (a long random string), restart, and open `/admin.html`. It shows how every mod user
+votes and who they vote for. Only votes cast by people running the mod are known: Hypixel never reveals other players' votes.
+
 ## Design docs
+## Testing the mod
+
+Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
+
+- **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
+- **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
+
+In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb sync`, `/bb palette [3-12]`,
+`/bb debug`, `/bb credits`.
+
+Settings live in `config/betterbattle/config.json`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `apiBase` | `https://battle.aspir3.net/bb/v1` | Stats server. Use `http://localhost:4000/bb/v1` to test against the server on the same PC |
+| `website` | `https://battle.aspir3.net` | Where "View Profile" goes |
+| `anyServer` | `false` | Track games on any server, not only Hypixel |
+| `debug` | `false` | Write chat and sidebar lines to `config/betterbattle/debug.log` (toggle with `/bb debug`) |
+| `shareVotes` | `true` | Save your own votes for Build Battle Wrapped |
+| `toasts`, `chatMessages` | `true` | Achievement toasts and chat lines |
+
+**Tuning game detection:** Hypixel's exact chat wording isn't documented, so `patterns.json` holds best guesses.
+Turn on `/bb debug`, play a game or two, and the log shows the real lines to fix the patterns with.
+
+## Admin: votes
+
+Set `ADMIN_TOKEN` in `.env` (a long random string), restart, and open `/admin.html`. It shows how every mod user
+votes and who they vote for. Only votes cast by people running the mod are known: Hypixel never reveals other players' votes.
+
 ## Design docs
 
 - Architecture plan: https://claude.ai/artifact/NCbTPpibjoCtzUcMMAh9gp
