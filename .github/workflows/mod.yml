@@ -59,3 +59,26 @@ jobs:
           name: betterbattle-forge-1.8.9
           path: mod/forge-1.8.9/build/libs/betterbattle-forge-1.8.9-*.jar
           if-no-files-found: error
+
+  release:
+    name: Publish test build
+    needs: [fabric, forge]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: jars
+          merge-multiple: true
+      - name: Replace the "dev" release with these jars
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          ls -la jars
+          gh release delete dev --repo "$REPO" --yes --cleanup-tag || true
+          gh release create dev jars/*.jar --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
+            --title "Latest test build" \
+            --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jar: Minecraft 26.3 with Fabric API. Forge jar: Minecraft 1.8.9."
