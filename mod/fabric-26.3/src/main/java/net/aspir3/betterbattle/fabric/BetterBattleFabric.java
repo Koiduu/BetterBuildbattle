@@ -238,7 +238,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     }
 
     private static boolean isFloor(Minecraft client, int x, int y, int z) {
-        return client.level.getBlockState(new BlockPos(x, y, z)).is(Blocks.DYED_TERRACOTTA.get(DyeColor.WHITE));
+        return client.level.getBlockState(new BlockPos(x, y, z)).is(Blocks.DYED_TERRACOTTA.pick(DyeColor.WHITE));
     }
 
     private void onUseBlock(ItemStack stack, Level level, BlockHitResult hit) {
@@ -294,6 +294,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
     @Override
     public void chat(String message) {
-        Minecraft.getInstance().gui.getChat().addMessage(Component.literal(message));
+        Minecraft.getInstance().gui.chatListener().handleSystemMessage(Component.literal(message), false);
     }
 }
