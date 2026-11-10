@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "net.aspir3.betterbattle.fabric.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"ConnectionAccessor"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

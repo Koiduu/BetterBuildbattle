@@ -5,11 +5,10 @@ import net.aspir3.betterbattle.achieve.Catalog;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.AbstractSelectionList;
+import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
-import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -98,7 +97,7 @@ public final class AchievementsScreen extends Screen {
         minecraft.gui.setScreen(parent);
     }
 
-    final class EntryList extends AbstractSelectionList<Row> {
+    final class EntryList extends ObjectSelectionList<Row> {
         EntryList(Minecraft minecraft, int width, int height, int top) {
             super(minecraft, width, height, top, 28);
         }
@@ -116,12 +115,9 @@ public final class AchievementsScreen extends Screen {
             return Math.min(320, width - 40);
         }
 
-        @Override
-        public void updateWidgetNarration(NarrationElementOutput output) {
-        }
     }
 
-    final class Row extends AbstractSelectionList.Entry<Row> {
+    final class Row extends ObjectSelectionList.Entry<Row> {
         private final Catalog.Entry achievement;
         private final boolean done;
         private final ItemStack icon;
@@ -130,6 +126,11 @@ public final class AchievementsScreen extends Screen {
             this.achievement = achievement;
             this.done = done;
             this.icon = Icons.of(achievement);
+        }
+
+        @Override
+        public Component getNarration() {
+            return Component.literal(achievement.name);
         }
 
         @Override

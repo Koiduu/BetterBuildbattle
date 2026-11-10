@@ -35,6 +35,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -237,7 +238,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     }
 
     private static boolean isFloor(Minecraft client, int x, int y, int z) {
-        return client.level.getBlockState(new BlockPos(x, y, z)).is(Blocks.WHITE_TERRACOTTA);
+        return client.level.getBlockState(new BlockPos(x, y, z)).is(Blocks.DYED_TERRACOTTA.get(DyeColor.WHITE));
     }
 
     private void onUseBlock(ItemStack stack, Level level, BlockHitResult hit) {
@@ -288,7 +289,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
     @Override
     public void showAchievement(Catalog.Entry achievement) {
-        Minecraft.getInstance().getToastManager().addToast(new AchievementToast(achievement));
+        Minecraft.getInstance().gui.toastManager().addToast(new AchievementToast(achievement));
     }
 
     @Override

@@ -4,7 +4,9 @@
 	"version": "${version}",
 	"name": "Better Battle",
 	"description": "Stats, achievements, levels and Speed Builders tools for Hypixel Build Battle.",
-	"authors": ["Koidu"],
+	"authors": [
+		"Koidu"
+	],
 	"contact": {
 		"homepage": "https://battle.aspir3.net",
 		"sources": "https://github.com/Koiduu/BetterBuildbattle"
@@ -13,12 +15,17 @@
 	"icon": "assets/betterbattle/icon.png",
 	"environment": "client",
 	"entrypoints": {
-		"client": ["net.aspir3.betterbattle.fabric.BetterBattleFabric"]
+		"client": [
+			"net.aspir3.betterbattle.fabric.BetterBattleFabric"
+		]
 	},
 	"depends": {
 		"fabricloader": ">=0.20.1",
 		"minecraft": "~26.3",
 		"java": ">=25",
 		"fabric-api": "*"
-	}
+	},
+	"mixins": [
+		"betterbattle.mixins.json"
+	]
 }

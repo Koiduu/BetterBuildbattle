@@ -5,6 +5,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.aspir3.betterbattle.fabric.mixin.ConnectionAccessor;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
@@ -29,7 +30,7 @@ final class PacketWatcher extends ChannelInboundHandlerAdapter {
     }
 
     static void install(Connection connection, Consumer<BlockChange> out) {
-        Channel channel = connection.channel();
+        Channel channel = ((ConnectionAccessor) connection).betterbattle$channel();
         channel.eventLoop().execute(() -> {
             try {
                 if (channel.pipeline().get(NAME) == null) {

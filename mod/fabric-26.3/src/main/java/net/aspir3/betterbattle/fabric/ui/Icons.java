@@ -1,6 +1,7 @@
 package net.aspir3.betterbattle.fabric.ui;
 
 import net.aspir3.betterbattle.achieve.Catalog;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -19,8 +20,8 @@ final class Icons {
     static {
         BY_ID.put("all_wood", Items.OAK_LOG);
         BY_ID.put("stone_age", Items.STONE_BRICKS);
-        BY_ID.put("rainbow", Items.RED_WOOL);
-        BY_ID.put("monochrome", Items.WHITE_WOOL);
+        BY_ID.put("rainbow", Items.WOOL.get(DyeColor.RED));
+        BY_ID.put("monochrome", Items.WOOL.get(DyeColor.WHITE));
         BY_ID.put("minimalist", Items.FLOWER_POT);
         BY_ID.put("one_block_wonder", Items.DIAMOND_BLOCK);
         BY_ID.put("nether_native", Items.NETHERRACK);
@@ -29,19 +30,19 @@ final class Icons {
         BY_ID.put("old_school", Items.COBBLESTONE);
         BY_ID.put("steam_engine", Items.LAVA_BUCKET);
         BY_ID.put("tab_building", Items.BRICKS);
-        BY_ID.put("tab_colored", Items.CYAN_WOOL);
+        BY_ID.put("tab_colored", Items.WOOL.get(DyeColor.CYAN));
         BY_ID.put("tab_natural", Items.GRASS_BLOCK);
         BY_ID.put("tab_functional", Items.CRAFTING_TABLE);
         BY_ID.put("tab_redstone", Items.REDSTONE);
         BY_ID.put("sky_high", Items.LADDER);
         BY_ID.put("grounded", Items.IRON_BOOTS);
         BY_ID.put("floor_is_lava", Items.MAGMA_BLOCK);
-        BY_ID.put("factory_settings", Items.WHITE_TERRACOTTA);
+        BY_ID.put("factory_settings", Items.DYED_TERRACOTTA.get(DyeColor.WHITE));
         BY_ID.put("indecisive", Items.PAINTING);
         BY_ID.put("mode_marathon", Items.CLOCK);
         BY_ID.put("hat_trick", Items.GOLDEN_HELMET);
         BY_ID.put("unstoppable", Items.BLAZE_POWDER);
-        BY_ID.put("night_owl", Items.BLACK_BED);
+        BY_ID.put("night_owl", Items.BED.get(DyeColor.BLACK));
         BY_ID.put("century_day", Items.EXPERIENCE_BOTTLE);
         BY_ID.put("comeback", Items.TOTEM_OF_UNDYING);
         BY_ID.put("perfect_crowd", Items.JUKEBOX);

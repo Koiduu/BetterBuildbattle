@@ -25,17 +25,37 @@ jobs:
         run: |
           JAR=$(find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources | head -1)
           echo "jar: $JAR"
-          for c in net.minecraft.world.item.Items net.minecraft.world.level.block.Blocks net.minecraft.client.Minecraft \
-                   net.minecraft.client.gui.Gui net.minecraft.network.Connection \
-                   net.minecraft.client.gui.components.AbstractSelectionList 'net.minecraft.client.gui.components.AbstractSelectionList$Entry' \
-                   net.minecraft.client.gui.components.ObjectSelectionList 'net.minecraft.client.gui.components.ObjectSelectionList$Entry' \
-                   net.minecraft.client.gui.screens.ConfirmLinkScreen net.minecraft.client.gui.components.toasts.Toast \
-                   net.minecraft.client.gui.components.toasts.ToastManager net.minecraft.client.gui.components.ChatComponent; do
-            echo "===== $c"; javap -cp "$JAR" "$c" 2>&1 | grep -iE "wool|terracotta|bed\b|_bed|toast|chat|channel|getContent|extract|confirm|class |Entry|render|public .*(int|void) get" | head -60
+          for c in net.minecraft.world.level.block.ColorCollection net.minecraft.client.multiplayer.chat.ChatListener \
+                   net.minecraft.client.gui.Hud net.minecraft.client.player.LocalPlayer net.minecraft.world.item.DyeColor \
+                   net.minecraft.client.gui.components.AbstractSelectionList net.minecraft.client.gui.components.ObjectSelectionList \
+                   net.minecraft.client.gui.components.AbstractScrollArea net.minecraft.client.gui.Gui net.minecraft.client.Minecraft; do
+            echo "===== $c"; javap -p -cp "$JAR" "$c" 2>&1 | grep -vE "lambda|synthetic|static \{\}" | head -80
           done
-          echo "===== Items with WOOL/TERRACOTTA/BED"; javap -cp "$JAR" net.minecraft.world.item.Items | grep -E "WOOL|TERRACOTTA| BED|_BED" | head
+          echo "===== Connection fields"; javap -p -cp "$JAR" net.minecraft.network.Connection | grep -iE "channel" | head
       - uses: actions/upload-artifact@v4
         with:
           name: betterbattle-fabric-26.3
           path: mod/fabric-26.3/build/libs/betterbattle-fabric-26.3-*[0-9].jar
+          if-no-files-found: error
+
+  forge:
+    name: Forge 1.8.9
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mod/forge-1.8.9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            8
+            17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew && ./gradlew build --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: betterbattle-forge-1.8.9
+          path: mod/forge-1.8.9/build/libs/betterbattle-forge-1.8.9-*.jar
           if-no-files-found: error
