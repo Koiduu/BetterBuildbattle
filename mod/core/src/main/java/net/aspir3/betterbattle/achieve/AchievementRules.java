@@ -22,7 +22,7 @@ public final class AchievementRules {
     public static List<Rule> all() {
         List<Rule> rules = new ArrayList<Rule>(Arrays.<Rule>asList(
             new AllWood(), new StoneOnly(), new Rainbow(), new HotbarOnly(), new HundredBlockTypes(),
-            new LegacyBlocksOnly(), new LatestReleaseOnly(), new WaterAndLava(), new ModeMarathon(),
+            new LegacyBlocksOnly(), new WaterAndLava(), new ModeMarathon(),
             new HeightLimit(), new NoFlying(), new LavaFloor(), new DefaultPlot(), new BackgroundSwitches()));
         for (String tab : new String[] {"building", "colored", "natural", "functional", "redstone"}) {
             rules.add(new CreativeTabOnly(tab));
@@ -134,17 +134,6 @@ public final class AchievementRules {
         boolean allowed(String b) { return BlockLists.LEGACY_1_8_9.contains(b); }
     }
 
-    public static final class LatestReleaseOnly extends OnlyBlocks {
-        public String id() { return "fresh_off_the_press"; }
-
-        public boolean onMatch(MatchRecord m, LocalDatabase db) {
-            if (BlockLists.LATEST_RELEASE.isEmpty()) return false;
-            return super.onMatch(m, db);
-        }
-
-        boolean allowed(String b) { return BlockLists.LATEST_RELEASE.contains(b); }
-    }
-
     /** Bucket placements are reported by the adapter as minecraft:water / minecraft:lava. */
     public static final class WaterAndLava implements Rule {
         public String id() { return "steam_engine"; }
@@ -208,13 +197,13 @@ public final class AchievementRules {
 
         public boolean onMatch(MatchRecord m, LocalDatabase db) {
             boolean votedMode = "solo".equals(m.mode) || "teams".equals(m.mode) || "pro".equals(m.mode);
-            return votedMode && m.won() && m.floorChanges == 0 && m.backgroundChanges == 0;
+            return votedMode && m.won() && m.floorChanges == 0 && m.backdropChanges == 0;
         }
     }
 
     public static final class BackgroundSwitches implements Rule {
         public String id() { return "indecisive"; }
-        public boolean onMatch(MatchRecord m, LocalDatabase db) { return m.backgroundChanges >= 5; }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) { return m.backdropChanges >= 5; }
     }
 
     // ---- Time and streak challenges

@@ -26,10 +26,10 @@ public final class MatchRecord {
     // Filled in by the loader adapter while the build is going on
     public String mcVersion;                 // "26.3" or "1.8.9"
     public boolean flew;                     // player flew at any point while building
-    public boolean reachedHeightLimit;       // placed a block at the plot's ceiling
-    public String floor;                     // floor block chosen in the plot options, null = default
+    public boolean reachedHeightLimit;       // placed a block on the plot's top layer
+    public String floor;                     // floor block at the end of the build
     public int floorChanges;
-    public int backgroundChanges;
+    public int backdropChanges;
     /** Creative tab of each placed block ("building", "colored", "natural", "functional", "redstone"). */
     public final Map<String, String> blockTabs = new LinkedHashMap<String, String>();
 

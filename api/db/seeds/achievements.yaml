@@ -162,12 +162,6 @@ one_offs:
     category: challenge
     points: 25
     rule: LegacyBlocksOnly
-  - id: fresh_off_the_press
-    name: "Fresh Off the Press"
-    description: "Win using only blocks added in the latest Minecraft release"
-    category: challenge
-    points: 40
-    rule: LatestReleaseOnly
   - id: steam_engine
     name: "Steam Engine"
     description: "Win a build that uses both water and lava"
@@ -210,7 +204,7 @@ one_offs:
   # ---------------- Plot and movement challenges ----------------
   - id: sky_high
     name: "Sky's the Limit"
-    description: "Win a build that reaches the plot's height limit"
+    description: "Win a build that reaches the plot's 50-block height limit"
     category: challenge
     points: 15
     rule: HeightLimit
@@ -228,13 +222,13 @@ one_offs:
     rule: LavaFloor
   - id: factory_settings
     name: "Factory Settings"
-    description: "Win a game without changing your floor or background"
+    description: "Win a game without changing your floor or backdrop"
     category: challenge
     points: 10
     rule: DefaultPlot
   - id: indecisive
     name: "Indecisive"
-    description: "Switch your background 5 times in one match"
+    description: "Switch your plot backdrop 5 times in one match"
     category: challenge
     points: 10
     secret: true

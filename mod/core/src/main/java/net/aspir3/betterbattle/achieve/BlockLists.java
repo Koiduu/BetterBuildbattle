@@ -13,7 +13,6 @@ public final class BlockLists {
     private BlockLists() {}
 
     public static final Set<String> LEGACY_1_8_9 = load("legacy_1_8_9.txt");
-    public static final Set<String> LATEST_RELEASE = load("latest_release.txt");
 
     static Set<String> load(String name) {
         Set<String> out = new HashSet<String>();

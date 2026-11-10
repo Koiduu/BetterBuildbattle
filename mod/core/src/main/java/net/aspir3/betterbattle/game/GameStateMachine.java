@@ -81,14 +81,30 @@ public final class GameStateMachine {
         return state == State.BUILDING && current != null;
     }
 
+    private PlotTracker plot;
+
+    /**
+     * The adapter calls this once building starts: the block under the player is the floor,
+     * and the white terracotta around it marks out the plot.
+     */
+    public void onPlotFound(int minX, int minZ, int maxX, int maxZ, int floorY) {
+        if (building()) plot = new PlotTracker(minX, minZ, maxX, maxZ, floorY);
+    }
+
+    /** Every block change the server sends (single updates and chunk section updates). */
+    public void onBlockUpdate(int x, int y, int z, String blockId) {
+        if (building() && plot != null) plot.onBlockUpdate(x, y, z, blockId, System.currentTimeMillis());
+    }
+
     /**
      * Player's own placement only. Bucket placements count too: the adapter reports them
      * as "minecraft:water" / "minecraft:lava". creativeTab may be null if unknown.
      */
-    public void onOwnBlockPlaced(String blockId, String creativeTab) {
+    public void onOwnBlockPlaced(String blockId, String creativeTab, int y) {
         if (!building()) return;
         current.countBlock(blockId);
         if (creativeTab != null) current.blockTabs.put(blockId, creativeTab);
+        if (plot != null) plot.onPlace(y);
     }
 
     /** Called every tick the player is flying. */
@@ -96,22 +112,7 @@ public final class GameStateMachine {
         if (building()) current.flew = true;
     }
 
-    /** Placement landed on the plot's top layer, or the server refused one for being too high. */
-    public void onHeightLimitReached() {
-        if (building()) current.reachedHeightLimit = true;
-    }
 
-    /** Floor picked in the plot options menu. */
-    public void onFloorChanged(String blockId) {
-        if (!building()) return;
-        current.floor = blockId;
-        current.floorChanges++;
-    }
-
-    /** Background picked in the plot options menu. */
-    public void onBackgroundChanged() {
-        if (building()) current.backgroundChanges++;
-    }
 
     private final java.util.Set<java.util.UUID> seenPlayers = new java.util.HashSet<java.util.UUID>();
 
@@ -140,6 +141,12 @@ public final class GameStateMachine {
         current.playedAt = System.currentTimeMillis();
         current.durationSec = (int) ((current.playedAt - startedAt) / 1000L);
         current.grade = Grades.of(current.placement, current.players, current.score);
+        if (plot != null) {
+            current.floor = plot.floor();
+            current.floorChanges = plot.floorChanges();
+            current.backdropChanges = plot.backdropChanges();
+            current.reachedHeightLimit = plot.reachedTop();
+        }
         MatchRecord done = current;
         reset();
         listener.onMatchFinished(done);
@@ -147,6 +154,7 @@ public final class GameStateMachine {
 
     private void reset() {
         current = null;
+        plot = null;
         state = State.IDLE;
     }
 }
