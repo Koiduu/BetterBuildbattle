@@ -1,5 +1,5 @@
 {
-  "_note": "PLACEHOLDER regexes. Capture real Hypixel chat lines (colour codes stripped) from a few games in each mode and replace these before release. The server can push a newer version via /mod/bootstrap.",
+  "_note": "Best guesses at Hypixel's wording. Turn on debug logging (/bb debug) and play a few games to collect the real lines, then fix these. The server can also hand out a newer copy.",
   "version": 1,
   "scoreboard_modes": {
     "BUILD BATTLE.*PRO": "pro",
@@ -15,5 +15,6 @@
     "PLACEMENT": "^\\s*You finished in (\\d+)(?:st|nd|rd|th)",
     "SCORE": "^\\s*Your score: ([\\d.]+)",
     "GAME_END": "^\\s*Reward Summary|^\\s*Thanks for playing"
-  }
+  },
+  "sidebar_theme": "^Theme: (.+)$"
 }

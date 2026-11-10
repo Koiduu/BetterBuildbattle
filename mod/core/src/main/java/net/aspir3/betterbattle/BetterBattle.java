@@ -1,0 +1,274 @@
+package net.aspir3.betterbattle;
+
+import net.aspir3.betterbattle.achieve.AchievementRules;
+import net.aspir3.betterbattle.achieve.Catalog;
+import net.aspir3.betterbattle.game.GameStateMachine;
+import net.aspir3.betterbattle.game.MatchRecord;
+import net.aspir3.betterbattle.parse.ChatParser;
+import net.aspir3.betterbattle.progress.Level;
+import net.aspir3.betterbattle.store.LocalDatabase;
+import net.aspir3.betterbattle.sync.ApiClient;
+import net.aspir3.betterbattle.sync.HttpApiClient;
+import net.aspir3.betterbattle.sync.SyncService;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Everything version-independent, in one place. Each loader adapter feeds it game events
+ * and implements Platform for the few things only the game can do.
+ */
+public final class BetterBattle {
+    public static final String MOD_ID = "betterbattle";
+    public static final String CREDIT = "Better Battle, created by Koidu";
+
+    private static BetterBattle instance;
+
+    private final Platform platform;
+    private final File dir;
+    private final String modVersion;
+    private final String mcVersion;
+    private final Config config;
+    private final ChatParser parser;
+
+    private LocalDatabase db;
+    private SyncService sync;
+    private GameStateMachine game;
+    private String playerName;
+    private final Set<UUID> seenThisSession = new HashSet<UUID>();
+    private String lastSidebarTitle = "";
+    private List<String> lastSidebar = new ArrayList<String>();
+    private PrintWriter debugLog;
+
+    private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
+        this.platform = platform;
+        this.dir = new File(configDir, MOD_ID);
+        this.dir.mkdirs();
+        this.modVersion = modVersion;
+        this.mcVersion = mcVersion;
+        this.config = Config.load(dir);
+        this.parser = new ChatParser(new InputStreamReader(
+            BetterBattle.class.getResourceAsStream("/betterbattle/patterns.json"), StandardCharsets.UTF_8));
+    }
+
+    public static BetterBattle init(Platform platform, File configDir, String modVersion, String mcVersion) {
+        instance = new BetterBattle(platform, configDir, modVersion, mcVersion);
+        return instance;
+    }
+
+    public static BetterBattle get() {
+        return instance;
+    }
+
+    public Config config() { return config; }
+    public String mcVersion() { return mcVersion; }
+    public boolean active() { return game != null; }
+    public GameStateMachine game() { return game; }
+    public LocalDatabase db() { return db; }
+
+    /** Called when the player joins a server. Only Hypixel unless anyServer is on. */
+    public void onJoin(String address, UUID uuid, String name) {
+        onLeave();
+        String host = address == null ? "" : address.toLowerCase();
+        if (!config.anyServer && !host.contains("hypixel.net")) return;
+        try {
+            playerName = name;
+            db = new LocalDatabase(dir.getParentFile(), uuid.toString());
+            HttpApiClient api = new HttpApiClient(config.apiBase, modVersion, mcVersion);
+            sync = new SyncService(db, api, name, new SyncListener());
+            game = new GameStateMachine(parser, new GameListener(), mcVersion);
+            sync.start();
+            if (config.debug) openDebugLog();
+            debug("joined " + address + " as " + name);
+        } catch (Exception e) {
+            game = null;
+            System.err.println("[Better Battle] couldn't start: " + e);
+        }
+    }
+
+    public void onLeave() {
+        if (sync != null) sync.shutdown();
+        if (db != null) {
+            try { db.close(); } catch (Exception ignored) { }
+        }
+        if (debugLog != null) debugLog.close();
+        sync = null;
+        db = null;
+        game = null;
+        debugLog = null;
+        seenThisSession.clear();
+    }
+
+    // ---- game events from the adapter
+
+    public void onChat(String plain) {
+        if (game == null) return;
+        debug("chat: " + plain);
+        game.onChat(plain);
+    }
+
+    /** Sidebar title and lines, top to bottom, colour codes stripped. Call every tick; cheap when unchanged. */
+    public void onSidebar(String title, List<String> lines) {
+        if (game == null) return;
+        if (!title.equals(lastSidebarTitle)) {
+            lastSidebarTitle = title;
+            debug("sidebar title: " + title);
+            game.onScoreboardTitle(title);
+        }
+        if (!lines.equals(lastSidebar)) {
+            lastSidebar = new ArrayList<String>(lines);
+            if (config.debug) debug("sidebar: " + String.join(" | ", lines));
+            for (String line : lines) game.onSidebarLine(line);
+        }
+    }
+
+    public void onTabList(Collection<UUID> uuids) {
+        if (sync == null) return;
+        List<String> fresh = new ArrayList<String>();
+        for (UUID u : uuids) if (seenThisSession.add(u)) fresh.add(u.toString());
+        if (!fresh.isEmpty()) sync.addSeenPlayers(fresh);
+    }
+
+    public void syncNow() {
+        if (sync != null) sync.syncNow();
+    }
+
+    public void setDebug(boolean on) {
+        config.debug = on;
+        config.save();
+        if (on && game != null) openDebugLog();
+        if (!on && debugLog != null) {
+            debugLog.close();
+            debugLog = null;
+        }
+    }
+
+    public File debugFile() {
+        return new File(dir, "debug.log");
+    }
+
+    public void debug(String line) {
+        if (debugLog == null) return;
+        debugLog.println(new SimpleDateFormat("HH:mm:ss.SSS").format(new Date()) + "  " + line);
+        debugLog.flush();
+    }
+
+    private void openDebugLog() {
+        try {
+            debugLog = new PrintWriter(new OutputStreamWriter(new FileOutputStream(debugFile(), true), StandardCharsets.UTF_8));
+            debug("---- Better Battle " + modVersion + " on " + mcVersion);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Level, XP into level and XP needed, from the last sync (or counted locally while offline). */
+    public long[] levelProgress() {
+        long xp = 0;
+        try {
+            if (db != null) xp = Long.parseLong(db.getMeta("xp", "0"));
+        } catch (Exception ignored) {
+        }
+        int level = Level.levelForXp(xp);
+        long base = Level.totalXpForLevel(level);
+        return new long[] {level, xp - base, Level.totalXpForLevel(level + 1) - base};
+    }
+
+    // ---- internals
+
+    private final class GameListener implements GameStateMachine.Listener {
+        public void onStateChanged(GameStateMachine.State state) {
+            debug("state: " + state);
+        }
+
+        public void onMatchFinished(MatchRecord m) {
+            debug("finished: mode=" + m.mode + " theme=" + m.theme + " place=" + m.placement + "/" + m.players
+                + " score=" + m.score + " blocks=" + m.blocksPlaced + " floor=" + m.floor);
+            try {
+                if (!db.insertMatch(m)) return;
+                // Count XP locally so the level bar moves even while offline; the server's number replaces it on sync.
+                long xp = Long.parseLong(db.getMeta("xp", "0"));
+                db.setMeta("xp", String.valueOf(xp + Level.xpForMatch(m.mode, m.won(), m.grade, 0, 0, false)));
+                unlock("welcome", m);
+                for (AchievementRules.Rule rule : AchievementRules.all()) {
+                    if (rule.onMatch(m, db)) unlock(rule.id(), m);
+                }
+            } catch (Exception e) {
+                System.err.println("[Better Battle] couldn't save game: " + e);
+            }
+            if (config.chatMessages && m.placement != null) {
+                String grade = m.grade == null ? "" : "  §7Grade §f" + m.grade;
+                platform.chat("§d§lBetter Battle §8» §7Game saved." + grade + "  §8(" + m.blocksPlaced + " blocks)");
+            }
+            if (sync != null) sync.nudge();
+        }
+
+        private void unlock(String id, MatchRecord m) throws Exception {
+            if (!db.unlockLocal(id, m.playedAt)) return;
+            final Catalog.Entry entry = Catalog.get(id);
+            if (entry == null) return;
+            if (config.toasts) platform.showAchievement(entry);
+            if (config.chatMessages) {
+                platform.chat("§a>> §6Achievement Unlocked: §e" + entry.name + " §a<<  §7(+" + entry.points + " AP)");
+            }
+        }
+    }
+
+    private final class SyncListener implements SyncService.Listener {
+        public void joinServer(String serverId) throws Exception {
+            platform.joinServer(serverId);
+        }
+
+        public void offline(final int pending) {
+            if (!config.chatMessages) return;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    platform.chat("§d§lBetter Battle §8» §7Can't reach the stats server right now. "
+                        + "Your games are saved and will upload later.");
+                }
+            });
+        }
+
+        private final List<Catalog.Entry> fromServer = new ArrayList<Catalog.Entry>();
+
+        public void achievementConfirmed(String id) {
+            // Unlocked on the server first, e.g. from Hypixel stats. Shown together after the sync.
+            Catalog.Entry entry = Catalog.get(id);
+            if (entry != null) fromServer.add(entry);
+        }
+
+        public void synced(ApiClient.SyncResult result) {
+            final List<Catalog.Entry> unlocked = new ArrayList<Catalog.Entry>(fromServer);
+            fromServer.clear();
+            if (unlocked.isEmpty()) return;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    if (unlocked.size() <= 3) {
+                        for (Catalog.Entry e : unlocked) {
+                            if (config.toasts) platform.showAchievement(e);
+                        }
+                        return;
+                    }
+                    int ap = 0;
+                    for (Catalog.Entry e : unlocked) ap += e.points;
+                    platform.chat("§d§lBetter Battle §8» §6" + unlocked.size() + " achievements unlocked §7from your Hypixel stats §8(+"
+                        + ap + " AP)§7. Press §fB §7to see them.");
+                }
+            });
+        }
+
+        public void achievementRevoked(String id) {
+        }
+    }
+}

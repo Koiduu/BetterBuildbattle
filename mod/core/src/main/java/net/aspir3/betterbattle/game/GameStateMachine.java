@@ -13,11 +13,20 @@ import net.aspir3.betterbattle.parse.ChatParser.Event;
 public final class GameStateMachine {
     public enum State { IDLE, LOBBY, BUILDING, VOTING, RESULTS }
 
-    public interface Listener { void onMatchFinished(MatchRecord m); }
+    public interface Listener {
+        void onStateChanged(State state);
+        void onMatchFinished(MatchRecord m);
+    }
 
     private final ChatParser parser;
     private final Listener listener;
     private State state = State.IDLE;
+
+    private void setState(State next) {
+        if (next == state) return;
+        state = next;
+        listener.onStateChanged(next);
+    }
     private MatchRecord current;
     private long startedAt;
 
@@ -35,14 +44,29 @@ public final class GameStateMachine {
     public void onScoreboardTitle(String plainTitle) {
         String mode = parser.modeFromScoreboard(plainTitle);
         if (mode == null) {
-            if (state != State.IDLE && state != State.RESULTS) reset(); // left the game
+            // Left the game. If they built something, keep it; otherwise forget the lobby.
+            if (state == State.BUILDING || state == State.VOTING) finish();
+            else if (state != State.IDLE) reset();
             return;
         }
         if (state == State.IDLE) {
             current = new MatchRecord();
             current.mode = mode;
             current.mcVersion = mcVersion;
-            state = State.LOBBY;
+            setState(State.LOBBY);
+        }
+    }
+
+    /** One sidebar line (colour codes stripped). Hypixel shows the theme there while building. */
+    public void onSidebarLine(String line) {
+        if (current == null) return;
+        String theme = parser.themeFromSidebar(line);
+        if (theme == null) return;
+        if (current.theme == null) current.theme = theme;
+        if (state == State.LOBBY) {
+            // The theme only shows once building has started, so this is a reliable start signal.
+            startedAt = System.currentTimeMillis();
+            setState(State.BUILDING);
         }
     }
 
@@ -55,13 +79,13 @@ public final class GameStateMachine {
             case GAME_START:
                 startedAt = System.currentTimeMillis();
                 current.players = e.intValue;
-                state = State.BUILDING;
+                setState(State.BUILDING);
                 break;
             case THEME:
                 current.theme = e.text;
                 break;
             case VOTING_START:
-                if (state == State.BUILDING) state = State.VOTING;
+                if (state == State.BUILDING) setState(State.VOTING);
                 break;
             case PLACEMENT:
                 current.placement = e.intValue;
@@ -137,7 +161,7 @@ public final class GameStateMachine {
 
     private void finish() {
         if (current == null) return;
-        state = State.RESULTS;
+        setState(State.RESULTS);
         current.playedAt = System.currentTimeMillis();
         current.durationSec = (int) ((current.playedAt - startedAt) / 1000L);
         current.grade = Grades.of(current.placement, current.players, current.score);
@@ -155,6 +179,6 @@ public final class GameStateMachine {
     private void reset() {
         current = null;
         plot = null;
-        state = State.IDLE;
+        setState(State.IDLE);
     }
 }

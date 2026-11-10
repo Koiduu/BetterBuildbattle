@@ -30,6 +30,7 @@ public final class ChatParser {
         int version;
         @SerializedName("scoreboard_modes") Map<String, String> scoreboardModes;
         Map<String, String> chat;
+        String sidebar_theme;
     }
 
     private static final class Rule {
@@ -38,12 +39,14 @@ public final class ChatParser {
     }
 
     private final int version;
+    private Pattern sidebarTheme;
     private final List<Rule> rules = new ArrayList<Rule>();
     private final List<Map.Entry<Pattern, String>> modes = new ArrayList<Map.Entry<Pattern, String>>();
 
     public ChatParser(Reader json) {
         Spec s = new Gson().fromJson(json, Spec.class);
         version = s.version;
+        if (s.sidebar_theme != null) sidebarTheme = Pattern.compile(s.sidebar_theme);
         for (Map.Entry<String, String> e : s.scoreboardModes.entrySet()) {
             modes.add(new java.util.AbstractMap.SimpleEntry<Pattern, String>(
                     Pattern.compile(e.getKey(), Pattern.CASE_INSENSITIVE), e.getValue()));
@@ -54,6 +57,12 @@ public final class ChatParser {
     }
 
     public int version() { return version; }
+
+    public String themeFromSidebar(String line) {
+        if (sidebarTheme == null) return null;
+        Matcher m = sidebarTheme.matcher(line);
+        return m.find() ? m.group(1).trim() : null;
+    }
 
     public String modeFromScoreboard(String title) {
         for (Map.Entry<Pattern, String> m : modes) if (m.getKey().matcher(title).find()) return m.getValue();

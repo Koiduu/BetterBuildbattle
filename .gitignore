@@ -1,6 +1,7 @@
-node_modules/
-build/
-.gradle/
-out/
 *.db
 .env
+.gradle/
+build/
+node_modules/
+out/
+run/

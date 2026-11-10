@@ -1,0 +1,1105 @@
+{
+ "version": 2,
+ "achievements": [
+  {
+   "id": "bb_wins_t1",
+   "name": "Winner Winner I",
+   "description": "Win 10 Build Battle games",
+   "category": "general",
+   "points": 5,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 10
+  },
+  {
+   "id": "bb_wins_t2",
+   "name": "Winner Winner II",
+   "description": "Win 100 Build Battle games",
+   "category": "general",
+   "points": 10,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 100
+  },
+  {
+   "id": "bb_wins_t3",
+   "name": "Winner Winner III",
+   "description": "Win 500 Build Battle games",
+   "category": "general",
+   "points": 15,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 500
+  },
+  {
+   "id": "bb_wins_t4",
+   "name": "Winner Winner IV",
+   "description": "Win 1,000 Build Battle games",
+   "category": "general",
+   "points": 20,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 1000
+  },
+  {
+   "id": "bb_wins_t5",
+   "name": "Winner Winner V",
+   "description": "Win 2,500 Build Battle games",
+   "category": "general",
+   "points": 25,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 2500
+  },
+  {
+   "id": "bb_wins_t6",
+   "name": "Winner Winner VI",
+   "description": "Win 5,000 Build Battle games",
+   "category": "general",
+   "points": 35,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 5000
+  },
+  {
+   "id": "bb_wins_t7",
+   "name": "Winner Winner VII",
+   "description": "Win 10,000 Build Battle games",
+   "category": "general",
+   "points": 50,
+   "secret": false,
+   "track": "bb_wins",
+   "threshold": 10000
+  },
+  {
+   "id": "bb_score_t1",
+   "name": "Score Climber I",
+   "description": "Reach 1,000 Build Battle score",
+   "category": "general",
+   "points": 5,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 1000
+  },
+  {
+   "id": "bb_score_t2",
+   "name": "Score Climber II",
+   "description": "Reach 10,000 Build Battle score",
+   "category": "general",
+   "points": 10,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 10000
+  },
+  {
+   "id": "bb_score_t3",
+   "name": "Score Climber III",
+   "description": "Reach 50,000 Build Battle score",
+   "category": "general",
+   "points": 15,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 50000
+  },
+  {
+   "id": "bb_score_t4",
+   "name": "Score Climber IV",
+   "description": "Reach 100,000 Build Battle score",
+   "category": "general",
+   "points": 20,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 100000
+  },
+  {
+   "id": "bb_score_t5",
+   "name": "Score Climber V",
+   "description": "Reach 200,000 Build Battle score",
+   "category": "general",
+   "points": 30,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 200000
+  },
+  {
+   "id": "bb_score_t6",
+   "name": "Score Climber VI",
+   "description": "Reach 300,000 Build Battle score",
+   "category": "general",
+   "points": 40,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 300000
+  },
+  {
+   "id": "bb_score_t7",
+   "name": "Score Climber VII",
+   "description": "Reach 500,000 Build Battle score",
+   "category": "general",
+   "points": 60,
+   "secret": false,
+   "track": "bb_score",
+   "threshold": 500000
+  },
+  {
+   "id": "perfect_builds_t1",
+   "name": "Flawless I",
+   "description": "Get 10 Perfect Builds",
+   "category": "speed_builders",
+   "points": 5,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 10
+  },
+  {
+   "id": "perfect_builds_t2",
+   "name": "Flawless II",
+   "description": "Get 100 Perfect Builds",
+   "category": "speed_builders",
+   "points": 10,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 100
+  },
+  {
+   "id": "perfect_builds_t3",
+   "name": "Flawless III",
+   "description": "Get 500 Perfect Builds",
+   "category": "speed_builders",
+   "points": 15,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 500
+  },
+  {
+   "id": "perfect_builds_t4",
+   "name": "Flawless IV",
+   "description": "Get 1,000 Perfect Builds",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 1000
+  },
+  {
+   "id": "perfect_builds_t5",
+   "name": "Flawless V",
+   "description": "Get 2,500 Perfect Builds",
+   "category": "speed_builders",
+   "points": 25,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 2500
+  },
+  {
+   "id": "perfect_builds_t6",
+   "name": "Flawless VI",
+   "description": "Get 5,000 Perfect Builds",
+   "category": "speed_builders",
+   "points": 35,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 5000
+  },
+  {
+   "id": "perfect_builds_t7",
+   "name": "Flawless VII",
+   "description": "Get 10,000 Perfect Builds",
+   "category": "speed_builders",
+   "points": 50,
+   "secret": false,
+   "track": "perfect_builds",
+   "threshold": 10000
+  },
+  {
+   "id": "correct_guesses_t1",
+   "name": "Mind Reader I",
+   "description": "Correctly guess 50 builds in Guess The Build",
+   "category": "gtb",
+   "points": 5,
+   "secret": false,
+   "track": "correct_guesses",
+   "threshold": 50
+  },
+  {
+   "id": "correct_guesses_t2",
+   "name": "Mind Reader II",
+   "description": "Correctly guess 500 builds in Guess The Build",
+   "category": "gtb",
+   "points": 10,
+   "secret": false,
+   "track": "correct_guesses",
+   "threshold": 500
+  },
+  {
+   "id": "correct_guesses_t3",
+   "name": "Mind Reader III",
+   "description": "Correctly guess 2,500 builds in Guess The Build",
+   "category": "gtb",
+   "points": 15,
+   "secret": false,
+   "track": "correct_guesses",
+   "threshold": 2500
+  },
+  {
+   "id": "correct_guesses_t4",
+   "name": "Mind Reader IV",
+   "description": "Correctly guess 5,000 builds in Guess The Build",
+   "category": "gtb",
+   "points": 20,
+   "secret": false,
+   "track": "correct_guesses",
+   "threshold": 5000
+  },
+  {
+   "id": "correct_guesses_t5",
+   "name": "Mind Reader V",
+   "description": "Correctly guess 10,000 builds in Guess The Build",
+   "category": "gtb",
+   "points": 30,
+   "secret": false,
+   "track": "correct_guesses",
+   "threshold": 10000
+  },
+  {
+   "id": "correct_guesses_t6",
+   "name": "Mind Reader VI",
+   "description": "Correctly guess 20,000 builds in Guess The Build",
+   "category": "gtb",
+   "points": 45,
+   "secret": false,
+   "track": "correct_guesses",
+   "threshold": 20000
+  },
+  {
+   "id": "pro_wins_t1",
+   "name": "Professional I",
+   "description": "Win 10 Pro games",
+   "category": "pro",
+   "points": 5,
+   "secret": false,
+   "track": "pro_wins",
+   "threshold": 10
+  },
+  {
+   "id": "pro_wins_t2",
+   "name": "Professional II",
+   "description": "Win 50 Pro games",
+   "category": "pro",
+   "points": 10,
+   "secret": false,
+   "track": "pro_wins",
+   "threshold": 50
+  },
+  {
+   "id": "pro_wins_t3",
+   "name": "Professional III",
+   "description": "Win 100 Pro games",
+   "category": "pro",
+   "points": 15,
+   "secret": false,
+   "track": "pro_wins",
+   "threshold": 100
+  },
+  {
+   "id": "pro_wins_t4",
+   "name": "Professional IV",
+   "description": "Win 250 Pro games",
+   "category": "pro",
+   "points": 20,
+   "secret": false,
+   "track": "pro_wins",
+   "threshold": 250
+  },
+  {
+   "id": "pro_wins_t5",
+   "name": "Professional V",
+   "description": "Win 500 Pro games",
+   "category": "pro",
+   "points": 30,
+   "secret": false,
+   "track": "pro_wins",
+   "threshold": 500
+  },
+  {
+   "id": "pro_wins_t6",
+   "name": "Professional VI",
+   "description": "Win 1,000 Pro games",
+   "category": "pro",
+   "points": 45,
+   "secret": false,
+   "track": "pro_wins",
+   "threshold": 1000
+  },
+  {
+   "id": "teams_wins_t1",
+   "name": "Dynamic Duo I",
+   "description": "Win 10 Teams games",
+   "category": "teams",
+   "points": 5,
+   "secret": false,
+   "track": "teams_wins",
+   "threshold": 10
+  },
+  {
+   "id": "teams_wins_t2",
+   "name": "Dynamic Duo II",
+   "description": "Win 100 Teams games",
+   "category": "teams",
+   "points": 10,
+   "secret": false,
+   "track": "teams_wins",
+   "threshold": 100
+  },
+  {
+   "id": "teams_wins_t3",
+   "name": "Dynamic Duo III",
+   "description": "Win 500 Teams games",
+   "category": "teams",
+   "points": 15,
+   "secret": false,
+   "track": "teams_wins",
+   "threshold": 500
+  },
+  {
+   "id": "teams_wins_t4",
+   "name": "Dynamic Duo IV",
+   "description": "Win 1,000 Teams games",
+   "category": "teams",
+   "points": 20,
+   "secret": false,
+   "track": "teams_wins",
+   "threshold": 1000
+  },
+  {
+   "id": "teams_wins_t5",
+   "name": "Dynamic Duo V",
+   "description": "Win 2,500 Teams games",
+   "category": "teams",
+   "points": 30,
+   "secret": false,
+   "track": "teams_wins",
+   "threshold": 2500
+  },
+  {
+   "id": "teams_wins_t6",
+   "name": "Dynamic Duo VI",
+   "description": "Win 5,000 Teams games",
+   "category": "teams",
+   "points": 45,
+   "secret": false,
+   "track": "teams_wins",
+   "threshold": 5000
+  },
+  {
+   "id": "solo_wins_t1",
+   "name": "Lone Architect I",
+   "description": "Win 10 Solo games",
+   "category": "solo",
+   "points": 5,
+   "secret": false,
+   "track": "solo_wins",
+   "threshold": 10
+  },
+  {
+   "id": "solo_wins_t2",
+   "name": "Lone Architect II",
+   "description": "Win 100 Solo games",
+   "category": "solo",
+   "points": 10,
+   "secret": false,
+   "track": "solo_wins",
+   "threshold": 100
+  },
+  {
+   "id": "solo_wins_t3",
+   "name": "Lone Architect III",
+   "description": "Win 500 Solo games",
+   "category": "solo",
+   "points": 15,
+   "secret": false,
+   "track": "solo_wins",
+   "threshold": 500
+  },
+  {
+   "id": "solo_wins_t4",
+   "name": "Lone Architect IV",
+   "description": "Win 1,000 Solo games",
+   "category": "solo",
+   "points": 20,
+   "secret": false,
+   "track": "solo_wins",
+   "threshold": 1000
+  },
+  {
+   "id": "solo_wins_t5",
+   "name": "Lone Architect V",
+   "description": "Win 2,500 Solo games",
+   "category": "solo",
+   "points": 30,
+   "secret": false,
+   "track": "solo_wins",
+   "threshold": 2500
+  },
+  {
+   "id": "solo_wins_t6",
+   "name": "Lone Architect VI",
+   "description": "Win 5,000 Solo games",
+   "category": "solo",
+   "points": 45,
+   "secret": false,
+   "track": "solo_wins",
+   "threshold": 5000
+  },
+  {
+   "id": "spb_wins_t1",
+   "name": "Speed Demon I",
+   "description": "Win 10 Speed Builders games",
+   "category": "speed_builders",
+   "points": 5,
+   "secret": false,
+   "track": "spb_wins",
+   "threshold": 10
+  },
+  {
+   "id": "spb_wins_t2",
+   "name": "Speed Demon II",
+   "description": "Win 50 Speed Builders games",
+   "category": "speed_builders",
+   "points": 10,
+   "secret": false,
+   "track": "spb_wins",
+   "threshold": 50
+  },
+  {
+   "id": "spb_wins_t3",
+   "name": "Speed Demon III",
+   "description": "Win 250 Speed Builders games",
+   "category": "speed_builders",
+   "points": 15,
+   "secret": false,
+   "track": "spb_wins",
+   "threshold": 250
+  },
+  {
+   "id": "spb_wins_t4",
+   "name": "Speed Demon IV",
+   "description": "Win 500 Speed Builders games",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false,
+   "track": "spb_wins",
+   "threshold": 500
+  },
+  {
+   "id": "spb_wins_t5",
+   "name": "Speed Demon V",
+   "description": "Win 1,000 Speed Builders games",
+   "category": "speed_builders",
+   "points": 30,
+   "secret": false,
+   "track": "spb_wins",
+   "threshold": 1000
+  },
+  {
+   "id": "spb_wins_t6",
+   "name": "Speed Demon VI",
+   "description": "Win 2,500 Speed Builders games",
+   "category": "speed_builders",
+   "points": 45,
+   "secret": false,
+   "track": "spb_wins",
+   "threshold": 2500
+  },
+  {
+   "id": "themes_built_t1",
+   "name": "Theme Collector I",
+   "description": "Build 25 different themes",
+   "category": "better_battle",
+   "points": 5,
+   "secret": false,
+   "track": "themes_built",
+   "threshold": 25
+  },
+  {
+   "id": "themes_built_t2",
+   "name": "Theme Collector II",
+   "description": "Build 100 different themes",
+   "category": "better_battle",
+   "points": 10,
+   "secret": false,
+   "track": "themes_built",
+   "threshold": 100
+  },
+  {
+   "id": "themes_built_t3",
+   "name": "Theme Collector III",
+   "description": "Build 250 different themes",
+   "category": "better_battle",
+   "points": 20,
+   "secret": false,
+   "track": "themes_built",
+   "threshold": 250
+  },
+  {
+   "id": "themes_built_t4",
+   "name": "Theme Collector IV",
+   "description": "Build 500 different themes",
+   "category": "better_battle",
+   "points": 30,
+   "secret": false,
+   "track": "themes_built",
+   "threshold": 500
+  },
+  {
+   "id": "themes_built_t5",
+   "name": "Theme Collector V",
+   "description": "Build 1,000 different themes",
+   "category": "better_battle",
+   "points": 50,
+   "secret": false,
+   "track": "themes_built",
+   "threshold": 1000
+  },
+  {
+   "id": "ss_grades_t1",
+   "name": "Double S I",
+   "description": "Earn 1 SS grade",
+   "category": "better_battle",
+   "points": 5,
+   "secret": false,
+   "track": "ss_grades",
+   "threshold": 1
+  },
+  {
+   "id": "ss_grades_t2",
+   "name": "Double S II",
+   "description": "Earn 10 SS grades",
+   "category": "better_battle",
+   "points": 10,
+   "secret": false,
+   "track": "ss_grades",
+   "threshold": 10
+  },
+  {
+   "id": "ss_grades_t3",
+   "name": "Double S III",
+   "description": "Earn 50 SS grades",
+   "category": "better_battle",
+   "points": 20,
+   "secret": false,
+   "track": "ss_grades",
+   "threshold": 50
+  },
+  {
+   "id": "ss_grades_t4",
+   "name": "Double S IV",
+   "description": "Earn 250 SS grades",
+   "category": "better_battle",
+   "points": 30,
+   "secret": false,
+   "track": "ss_grades",
+   "threshold": 250
+  },
+  {
+   "id": "ss_grades_t5",
+   "name": "Double S V",
+   "description": "Earn 1,000 SS grades",
+   "category": "better_battle",
+   "points": 50,
+   "secret": false,
+   "track": "ss_grades",
+   "threshold": 1000
+  },
+  {
+   "id": "crowd_90_t1",
+   "name": "Crowd Pleaser I",
+   "description": "Finish 1 game with a crowd score of 90% or higher",
+   "category": "better_battle",
+   "points": 10,
+   "secret": false,
+   "track": "crowd_90",
+   "threshold": 1
+  },
+  {
+   "id": "crowd_90_t2",
+   "name": "Crowd Pleaser II",
+   "description": "Finish 10 games with a crowd score of 90% or higher",
+   "category": "better_battle",
+   "points": 15,
+   "secret": false,
+   "track": "crowd_90",
+   "threshold": 10
+  },
+  {
+   "id": "crowd_90_t3",
+   "name": "Crowd Pleaser III",
+   "description": "Finish 50 games with a crowd score of 90% or higher",
+   "category": "better_battle",
+   "points": 25,
+   "secret": false,
+   "track": "crowd_90",
+   "threshold": 50
+  },
+  {
+   "id": "crowd_90_t4",
+   "name": "Crowd Pleaser IV",
+   "description": "Finish 200 games with a crowd score of 90% or higher",
+   "category": "better_battle",
+   "points": 40,
+   "secret": false,
+   "track": "crowd_90",
+   "threshold": 200
+  },
+  {
+   "id": "precision_100_t1",
+   "name": "Zero Waste I",
+   "description": "Finish 1 Speed Builders round at 100% precision",
+   "category": "speed_builders",
+   "points": 5,
+   "secret": false,
+   "track": "precision_100",
+   "threshold": 1
+  },
+  {
+   "id": "precision_100_t2",
+   "name": "Zero Waste II",
+   "description": "Finish 25 Speed Builders rounds at 100% precision",
+   "category": "speed_builders",
+   "points": 10,
+   "secret": false,
+   "track": "precision_100",
+   "threshold": 25
+  },
+  {
+   "id": "precision_100_t3",
+   "name": "Zero Waste III",
+   "description": "Finish 100 Speed Builders rounds at 100% precision",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false,
+   "track": "precision_100",
+   "threshold": 100
+  },
+  {
+   "id": "precision_100_t4",
+   "name": "Zero Waste IV",
+   "description": "Finish 500 Speed Builders rounds at 100% precision",
+   "category": "speed_builders",
+   "points": 30,
+   "secret": false,
+   "track": "precision_100",
+   "threshold": 500
+  },
+  {
+   "id": "precision_100_t5",
+   "name": "Zero Waste V",
+   "description": "Finish 1,000 Speed Builders rounds at 100% precision",
+   "category": "speed_builders",
+   "points": 50,
+   "secret": false,
+   "track": "precision_100",
+   "threshold": 1000
+  },
+  {
+   "id": "pbs_set_t1",
+   "name": "Personal Best I",
+   "description": "Set 1 Speed Builders personal best",
+   "category": "speed_builders",
+   "points": 5,
+   "secret": false,
+   "track": "pbs_set",
+   "threshold": 1
+  },
+  {
+   "id": "pbs_set_t2",
+   "name": "Personal Best II",
+   "description": "Set 25 Speed Builders personal bests",
+   "category": "speed_builders",
+   "points": 10,
+   "secret": false,
+   "track": "pbs_set",
+   "threshold": 25
+  },
+  {
+   "id": "pbs_set_t3",
+   "name": "Personal Best III",
+   "description": "Set 100 Speed Builders personal bests",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false,
+   "track": "pbs_set",
+   "threshold": 100
+  },
+  {
+   "id": "pbs_set_t4",
+   "name": "Personal Best IV",
+   "description": "Set 250 Speed Builders personal bests",
+   "category": "speed_builders",
+   "points": 35,
+   "secret": false,
+   "track": "pbs_set",
+   "threshold": 250
+  },
+  {
+   "id": "days_played_t1",
+   "name": "Regular I",
+   "description": "Play on 7 different days",
+   "category": "better_battle",
+   "points": 5,
+   "secret": false,
+   "track": "days_played",
+   "threshold": 7
+  },
+  {
+   "id": "days_played_t2",
+   "name": "Regular II",
+   "description": "Play on 30 different days",
+   "category": "better_battle",
+   "points": 15,
+   "secret": false,
+   "track": "days_played",
+   "threshold": 30
+  },
+  {
+   "id": "days_played_t3",
+   "name": "Regular III",
+   "description": "Play on 100 different days",
+   "category": "better_battle",
+   "points": 30,
+   "secret": false,
+   "track": "days_played",
+   "threshold": 100
+  },
+  {
+   "id": "days_played_t4",
+   "name": "Regular IV",
+   "description": "Play on 365 different days",
+   "category": "better_battle",
+   "points": 60,
+   "secret": false,
+   "track": "days_played",
+   "threshold": 365
+  },
+  {
+   "id": "all_wood",
+   "name": "Lumberjack",
+   "description": "Win a game using only wood-type blocks",
+   "category": "challenge",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "monochrome",
+   "name": "Monochrome",
+   "description": "Win a game using blocks of a single colour family (all wool, concrete, terracotta and glass of one colour)",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "minimalist",
+   "name": "Less Is More",
+   "description": "Win a Solo game while placing fewer than 100 blocks",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "one_block_wonder",
+   "name": "One Block Wonder",
+   "description": "Get 1st place using only one block type",
+   "category": "challenge",
+   "points": 40,
+   "secret": true
+  },
+  {
+   "id": "rainbow",
+   "name": "Taste the Rainbow",
+   "description": "Win a build that uses every colour of the rainbow: red, orange, yellow, green, blue and purple",
+   "category": "challenge",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "stone_age",
+   "name": "Stone Age",
+   "description": "Win using only stone-related blocks (stone, cobblestone, stone bricks, deepslate, andesite, diorite, granite, blackstone, tuff)",
+   "category": "challenge",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "nether_native",
+   "name": "Nether Native",
+   "description": "Win using only blocks found in the Nether",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "hotbar_hero",
+   "name": "Hotbar Hero",
+   "description": "Win using only a hotbar's worth of blocks (9 block types or fewer)",
+   "category": "challenge",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "block_hoarder",
+   "name": "Block Hoarder",
+   "description": "Place 100 different types of blocks in one match",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "old_school",
+   "name": "Old School",
+   "description": "Win using only blocks that existed in 1.8.9 (on a 26.3 client)",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "steam_engine",
+   "name": "Steam Engine",
+   "description": "Win a build that uses both water and lava",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "tab_building",
+   "name": "By the Book",
+   "description": "Win using only blocks from the Building Blocks tab",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "tab_colored",
+   "name": "Colour Theory",
+   "description": "Win using only blocks from the Colored Blocks tab",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "tab_natural",
+   "name": "Back to Nature",
+   "description": "Win using only blocks from the Natural Blocks tab",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "tab_functional",
+   "name": "Form Follows Function",
+   "description": "Win using only blocks from the Functional Blocks tab",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "tab_redstone",
+   "name": "Redstone Engineer",
+   "description": "Win using only blocks from the Redstone Blocks tab",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "sky_high",
+   "name": "Sky's the Limit",
+   "description": "Win a build that reaches the plot's 50-block height limit",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "grounded",
+   "name": "Grounded",
+   "description": "Win a build without flying",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "floor_is_lava",
+   "name": "The Floor Is Lava",
+   "description": "Win a game with your floor set to lava",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "factory_settings",
+   "name": "Factory Settings",
+   "description": "Win a game without changing your floor or backdrop",
+   "category": "challenge",
+   "points": 10,
+   "secret": false
+  },
+  {
+   "id": "indecisive",
+   "name": "Indecisive",
+   "description": "Switch your plot backdrop 5 times in one match",
+   "category": "challenge",
+   "points": 10,
+   "secret": true
+  },
+  {
+   "id": "mode_marathon",
+   "name": "Mode Marathon",
+   "description": "Win in Solo, Teams, Pro, Guess The Build and Speed Builders within one hour",
+   "category": "challenge",
+   "points": 40,
+   "secret": false
+  },
+  {
+   "id": "hat_trick",
+   "name": "Hat Trick",
+   "description": "Win 3 games in a row",
+   "category": "challenge",
+   "points": 10,
+   "secret": false
+  },
+  {
+   "id": "unstoppable",
+   "name": "Unstoppable",
+   "description": "Win 10 games in a row",
+   "category": "challenge",
+   "points": 40,
+   "secret": false
+  },
+  {
+   "id": "night_owl",
+   "name": "Night Owl",
+   "description": "Win a game between 2 AM and 5 AM your local time",
+   "category": "challenge",
+   "points": 10,
+   "secret": true
+  },
+  {
+   "id": "century_day",
+   "name": "Century",
+   "description": "Play 100 games in a single day",
+   "category": "challenge",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "comeback",
+   "name": "Comeback Kid",
+   "description": "Win the game right after finishing last",
+   "category": "challenge",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "perfect_crowd",
+   "name": "Standing Ovation",
+   "description": "Get a 100% crowd score: every voter gave you Legendary",
+   "category": "challenge",
+   "points": 50,
+   "secret": true
+  },
+  {
+   "id": "ss_streak",
+   "name": "S-Tier",
+   "description": "Earn 5 SS grades in a row",
+   "category": "challenge",
+   "points": 30,
+   "secret": false
+  },
+  {
+   "id": "underdog",
+   "name": "Underdog",
+   "description": "Win a 16-player Solo game",
+   "category": "challenge",
+   "points": 10,
+   "secret": false
+  },
+  {
+   "id": "spb_sweep",
+   "name": "Clean Sweep",
+   "description": "Get a Perfect Build in every round of a Speed Builders game you win",
+   "category": "speed_builders",
+   "points": 30,
+   "secret": false
+  },
+  {
+   "id": "spb_wr_close",
+   "name": "Ghost Hunter",
+   "description": "Finish a Speed Builders round within 0.5s of the world record",
+   "category": "speed_builders",
+   "points": 25,
+   "secret": false
+  },
+  {
+   "id": "spb_wr",
+   "name": "World Record",
+   "description": "Set a Better Battle world record on any Speed Builders build",
+   "category": "speed_builders",
+   "points": 75,
+   "secret": false
+  },
+  {
+   "id": "spb_no_break",
+   "name": "Measure Twice",
+   "description": "Win a Speed Builders game without breaking a single block",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "gtb_first_guess",
+   "name": "Lightning Guess",
+   "description": "Guess a build within 3 seconds of the round starting",
+   "category": "gtb",
+   "points": 15,
+   "secret": false
+  },
+  {
+   "id": "gtb_all_rounds",
+   "name": "Telepathic",
+   "description": "Correctly guess every round in one Guess The Build game",
+   "category": "gtb",
+   "points": 30,
+   "secret": false
+  },
+  {
+   "id": "welcome",
+   "name": "Aspiring",
+   "description": "Play your first game with Better Battle installed",
+   "category": "better_battle",
+   "points": 5,
+   "secret": false
+  },
+  {
+   "id": "random_palette_win",
+   "name": "Dice Roller",
+   "description": "Win using only blocks from a /bb palette roll",
+   "category": "better_battle",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "pinned",
+   "name": "Proud Builder",
+   "description": "Pin a build to your profile",
+   "category": "better_battle",
+   "points": 5,
+   "secret": false
+  },
+  {
+   "id": "offline_saver",
+   "name": "Off the Grid",
+   "description": "Play 10 games while the Better Battle server is unreachable",
+   "category": "better_battle",
+   "points": 10,
+   "secret": true
+  }
+ ]
+}

@@ -200,6 +200,27 @@ public final class LocalDatabase implements AutoCloseable {
         return out;
     }
 
+    /** id → unlocked time, for achievements that weren't revoked. */
+    public synchronized java.util.Map<String, Long> achievementTimes() throws SQLException {
+        java.util.Map<String, Long> out = new java.util.HashMap<String, Long>();
+        try (Statement s = conn.createStatement();
+             ResultSet r = s.executeQuery("SELECT id, unlocked_at FROM achievements WHERE state != 'revoked'")) {
+            while (r.next()) out.put(r.getString(1), r.getLong(2));
+        }
+        return out;
+    }
+
+    public synchronized List<MatchRecord> recentMatches(int limit) throws SQLException {
+        List<MatchRecord> out = new ArrayList<MatchRecord>();
+        try (PreparedStatement p = conn.prepareStatement("SELECT * FROM matches ORDER BY played_at DESC LIMIT ?")) {
+            p.setInt(1, limit);
+            try (ResultSet r = p.executeQuery()) {
+                while (r.next()) out.add(MatchRecord.fromRow(r));
+            }
+        }
+        return out;
+    }
+
     // ---------------- meta ----------------
 
     public synchronized String getMeta(String key, String def) throws SQLException {

@@ -1,0 +1,27 @@
+name: Build mod
+
+on:
+  push:
+    paths: ["mod/**", ".github/workflows/mod.yml"]
+  workflow_dispatch:
+
+jobs:
+  fabric:
+    name: Fabric 26.3
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mod/fabric-26.3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew && ./gradlew build --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: betterbattle-fabric-26.3
+          path: mod/fabric-26.3/build/libs/betterbattle-fabric-26.3-*[0-9].jar
+          if-no-files-found: error

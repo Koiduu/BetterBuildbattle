@@ -5,13 +5,16 @@ import net.aspir3.betterbattle.game.MatchRecord;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Thin HTTP wrapper around https://api.aspir3.net/bb/v1.
- * Implemented per loader with whatever HTTP stack is handy
- * (java.net.HttpURLConnection works on both Java 8 and 21+).
- */
+/** The Better Battle server API. HttpApiClient is the real one. */
 public interface ApiClient {
-    SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds) throws Exception;
+    String challenge() throws Exception;
+
+    /** Returns a mod token once Mojang confirms the player joined with this serverId. */
+    String verify(String playerName, String serverId) throws Exception;
+
+    void setToken(String token);
+
+    SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception;
 
     final class Rejection {
         public String nonce, reason;
@@ -26,5 +29,11 @@ public interface ApiClient {
         public Integer level;
         public Long xp;
         public Integer globalRank;
+        public Integer rankedPlayers;
+    }
+
+    /** Thrown when the server says the token is missing or expired. */
+    final class Unauthorized extends Exception {
+        public Unauthorized() { super("unauthorized"); }
     }
 }
