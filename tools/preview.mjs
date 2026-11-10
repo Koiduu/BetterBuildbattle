@@ -38,12 +38,30 @@ players[3].uuid = "koidu";   // mc-heads resolves names too
 players[3].wins = 6124;
 
 const json = (res, code, body) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
+const redirect = (res, location) => { res.writeHead(302, { location }); res.end(); };
+const readBody = async (req) => {
+  let text = "";
+  for await (const chunk of req) text += chunk;
+  try { return JSON.parse(text || "{}"); } catch { return {}; }
+};
+
+// ---- sample account (one signed-in user at a time, kept in memory) ----
+// Getting a link code links the account to Koidu a few seconds later, as if you typed /bb link in game.
+let account = null;
+let linkCodeAt = 0;
+let koiduBio = "Building since 2014. Mostly organics and pagodas. Find me in Aspiring.";
+let koiduPins = ["7", "6", "8"];
+const KOIDU = { uuid: "koidu", name: "Koidu" };
+const linked = () => account?.minecraft?.name === "Koidu";
+const meJson = () => ({ ...account, bio: linked() ? koiduBio : account.bio });
+const pinRows = () => koiduPins.map((id, i) => ({ ...matches().find((m) => m.id === id), position: i + 1 }));
 
 function profile(p) {
   const rank = players.indexOf(p) + 1;
   const isKoidu = p.name === "Koidu";
   return {
     name: p.name, uuid: p.uuid, score: p.score, title: titleProgress(p.score), rank, rankedPlayers: 412806,
+    bio: isKoidu ? koiduBio : null, claimed: isKoidu || p.name === "Celestia",
     lastChecked: new Date(Date.now() - 42 * 60_000).toISOString(),
     hypixel: {
       wins: p.wins, gamesPlayed: p.wins * 3, correctGuesses: isKoidu ? 14462 : Math.round(p.score / 25), totalVotes: isKoidu ? 60227 : Math.round(p.score / 5),
@@ -51,7 +69,7 @@ function profile(p) {
                         : { solo: Math.round(p.wins * .3), teams: Math.round(p.wins * .3), pro: Math.round(p.wins * .05), gtb: Math.round(p.wins * .25), speedBuilders: Math.round(p.wins * .1) },
     },
     betterBattle: p.usesMod ? {
-      memberSince: "2026-11-01T00:00:00Z", bio: null, level: p.level, xp: 0, xpIntoLevel: 3180, xpForNext: 4700,
+      memberSince: "2026-11-01T00:00:00Z", bio: isKoidu ? koiduBio : null, level: p.level, xp: 0, xpIntoLevel: 3180, xpForNext: 4700,
       ap: 1265, bestWinStreak: 14, games: 4812, crowdScore: 0.873, themesBuilt: 1284,
       grades: { SS: 214, S: 1032, A: 1588 }, playtimeSec: 612 * 3600,
     } : null,
@@ -101,11 +119,65 @@ const ACH = [
   ["Mind Reader V", "Correctly guess 10,000 builds in Guess The Build", 30], ["Aspiring", "Play your first game with Better Battle installed", 5],
 ].map(([name, description, points], i) => ({ id: "a" + i, name, description, points, category: "general", unlocked_at: new Date().toISOString() }));
 
+async function accountRoute(req, res, route, url) {
+  const body = req.method === "GET" ? {} : await readBody(req);
+  if (route === "/auth/providers") return json(res, 200, { discord: true });
+  if (route === "/auth/signup" || route === "/auth/login") {
+    if (!/^\S+@\S+\.\S+$/.test(body.email ?? "") || String(body.password ?? "").length < 8) return json(res, 400, { error: "bad_request" });
+    if (body.password === "wrongpass") return json(res, 401, { error: "wrong_login" });
+    account = { id: 1, email: body.email, hasPassword: true, discord: null, minecraft: null, bio: null, createdAt: new Date().toISOString() };
+    return json(res, 200, meJson());
+  }
+  if (route === "/auth/logout") { account = null; return json(res, 200, { ok: true }); }
+  if (route === "/auth/discord") return redirect(res, "/bb/v1/auth/discord/callback");
+  if (route === "/auth/discord/callback") {
+    const discord = { id: "1", name: "koidu", avatarUrl: null };
+    account = account ? { ...account, discord }
+      : { id: 1, email: null, hasPassword: false, discord, minecraft: null, bio: null, createdAt: new Date().toISOString() };
+    return redirect(res, "/account");
+  }
+  if (!account) return json(res, 401, { error: "not_logged_in" });
+  if (route === "/me" && req.method === "GET") {
+    if (linkCodeAt && Date.now() - linkCodeAt > 6000) { account.minecraft = KOIDU; linkCodeAt = 0; }
+    return json(res, 200, meJson());
+  }
+  if (route === "/me" && req.method === "PUT") {
+    const bio = String(body.bio ?? "").trim() || null;
+    if (bio && bio.length > 1000) return json(res, 400, { error: "bad_request" });
+    if (linked()) koiduBio = bio; else account.bio = bio;
+    return json(res, 200, meJson());
+  }
+  if (route === "/me/link-code") {
+    linkCodeAt = Date.now();
+    return json(res, 200, { code: "K7QX2M", expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() });
+  }
+  if (route === "/me/claim/hypixel") {
+    if (!account.discord) return json(res, 400, { error: "discord_required" });
+    const pl = players.find((x) => x.name.toLowerCase() === String(body.name).toLowerCase());
+    if (!pl) return json(res, 404, { error: "not_found" });
+    if (pl.name !== "Koidu") return json(res, 400, { error: "discord_mismatch", hypixelDiscord: null });
+    account.minecraft = KOIDU;
+    return json(res, 200, meJson());
+  }
+  if (route === "/me/matches") return json(res, 200, linked() && !url.searchParams.get("before") ? matches() : []);
+  if (route === "/me/pins" && req.method === "GET") return json(res, 200, linked() ? pinRows() : []);
+  if (route === "/me/pins" && req.method === "PUT") {
+    if (!linked()) return json(res, 400, { error: "no_minecraft" });
+    const ids = body.matchIds ?? [];
+    if (ids.length > 10 || new Set(ids).size !== ids.length) return json(res, 400, { error: "bad_request" });
+    if (ids.some((id) => !matches().some((m) => m.id === id))) return json(res, 400, { error: "unknown_match" });
+    koiduPins = ids;
+    return json(res, 200, pinRows());
+  }
+  return json(res, 404, { error: "not_found" });
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   if (p.startsWith("/bb/v1/")) {
     const route = p.slice(6);
+    if (route.startsWith("/auth/") || route === "/me" || route.startsWith("/me/")) return accountRoute(req, res, route, url);
     if (route === "/stats") return json(res, 200, { rankedPlayers: 412806, modUsers: 318 });
     if (route === "/leaderboard") {
       const page = Number(url.searchParams.get("page") ?? 1);
@@ -132,10 +204,7 @@ const server = http.createServer((req, res) => {
       if (sub === "/matches") return json(res, 200, matches(url.searchParams.get("mode")));
       if (sub === "/heatmap") return json(res, 200, heatmap());
       if (sub === "/achievements") return json(res, 200, { unlocked: ACH, total: 104 });
-      if (sub === "/pins") return json(res, 200, [
-        { id: "p1", theme: "Haunted Lighthouse", mode: "pro", placement: 1, players: 12, score: 192, grade: "SS", position: 1 },
-        { id: "p2", theme: "Treehouse", mode: "solo", placement: 1, players: 16, score: 260, grade: "SS", position: 2 },
-        { id: "p3", theme: "Space Station", mode: "teams", placement: 2, players: 12, score: 158, grade: "S", position: 3 }]);
+      if (sub === "/pins") return json(res, 200, pl.name === "Koidu" ? pinRows() : []);
     }
     return json(res, 404, { error: "not_found" });
   }

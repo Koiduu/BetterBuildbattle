@@ -49,8 +49,12 @@ function title(t) {
   return `<span class="mc-title${t.bold ? " bold" : ""}" style="color:${esc(t.hex)}">${esc(t.name)}</span>`;
 }
 
-async function get(path) {
-  const res = await fetch(API + path);
+async function request(method, path, payload) {
+  const res = await fetch(API + path, {
+    method,
+    headers: payload === undefined ? {} : { "content-type": "application/json" },
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+  });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(body.error || res.statusText);
@@ -61,12 +65,17 @@ async function get(path) {
   return body;
 }
 
+const get = (path) => request("GET", path);
+
 // Routing
 
 const routes = [
   { path: /^\/$/, page: homePage, nav: "home" },
   { path: /^\/leaderboard\/?$/, page: leaderboardPage, nav: "leaderboard" },
   { path: /^\/p\/([A-Za-z0-9_]{1,16})\/?$/, page: profilePage },
+  { path: /^\/login\/?$/, page: () => authPage("login") },
+  { path: /^\/signup\/?$/, page: () => authPage("signup") },
+  { path: /^\/account\/?$/, page: accountPage },
 ];
 
 function go(url) {
@@ -81,6 +90,7 @@ async function render() {
     else link.removeAttribute("aria-current");
   });
   window.scrollTo(0, 0);
+  clearInterval(linkPoll);
 
   if (!route) {
     app.innerHTML = `<div class="card empty">Page not found. <a href="/" data-link>Back to home</a></div>`;
@@ -276,7 +286,7 @@ async function profilePage(name) {
 
   let p;
   try {
-    p = await get("/players/" + encodeURIComponent(name));
+    [p] = await Promise.all([get("/players/" + encodeURIComponent(name)), meReady]);
   } catch (err) {
     app.innerHTML = `<div class="card empty">${profileError(err, name)}</div>`;
     return;
@@ -306,6 +316,7 @@ async function profilePage(name) {
             ${bb ? `<span class="chip pink">Better Battle</span>` : ""}
           </div>
           <h1>${esc(p.name)}</h1>
+          ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}
           ${levelMeter}
           ${titleMeter}
         </div>
@@ -330,6 +341,7 @@ async function profilePage(name) {
           <span>Stats updated ${timeAgo(p.lastChecked)}</span>
         </div>
       </div>
+      ${profileAction(p)}
       <button class="btn primary" id="share">Share profile</button>
     </section>
 
@@ -392,6 +404,12 @@ async function profilePage(name) {
 
   showRange(90);
   if (bb) loadModData(p.name);
+}
+
+function profileAction(p) {
+  if (me?.minecraft?.uuid === p.uuid) return `<a class="btn" href="/account" data-link>Edit profile</a>`;
+  if (p.claimed || me?.minecraft) return "";
+  return `<a class="btn" href="${me ? "/account" : "/signup"}" data-link>This is me</a>`;
 }
 
 function getModCard() {
@@ -630,4 +648,458 @@ function drawGraph(el, points, days) {
   svg.addEventListener("mouseleave", () => (tip.hidden = true));
 }
 
+// Accounts
+
+let me = null;
+let linkPoll;
+
+const DISCORD_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>`;
+
+const AUTH_ERRORS = {
+  email_taken: `There's already an account with that email. <a href="/login" data-link>Log in instead</a>`,
+  wrong_login: "That email and password don't match.",
+  rate_limited: "Too many tries. Wait a minute and try again.",
+  bad_request: "Enter a valid email and a password of at least 8 characters.",
+  discord: "Discord login didn't go through. Try again.",
+  discord_off: "Discord login isn't set up on this site yet.",
+};
+
+function displayName(user) {
+  return user.minecraft?.name ?? user.discord?.name ?? user.email?.split("@")[0] ?? "You";
+}
+
+function faceFor(user, size) {
+  if (user.minecraft) return avatar(user.minecraft.uuid, size);
+  return user.discord?.avatarUrl ?? null;
+}
+
+function renderAccountLink() {
+  const link = document.getElementById("account-link");
+  if (!me) {
+    link.href = "/login";
+    link.className = "account-link";
+    link.textContent = "Log in";
+    return;
+  }
+  const face = faceFor(me, 32);
+  link.href = "/account";
+  link.className = "account-link signed-in";
+  link.innerHTML = `
+    ${face ? `<img src="${esc(face)}" alt="" width="28" height="28">` : `<span class="initial">${esc(displayName(me)[0].toUpperCase())}</span>`}
+    <span>${esc(displayName(me))}</span>`;
+}
+
+async function loadMe() {
+  me = await get("/me").catch(() => null);
+  renderAccountLink();
+}
+
+function setMe(user) {
+  me = user;
+  renderAccountLink();
+}
+
+function queryError() {
+  return new URLSearchParams(location.search).get("error");
+}
+
+async function authPage(mode) {
+  await meReady;
+  if (me) {
+    history.replaceState(null, "", "/account");
+    return accountPage();
+  }
+
+  const signup = mode === "signup";
+  document.title = `${signup ? "Sign up" : "Log in"} · Better Battle`;
+  const providers = await get("/auth/providers").catch(() => ({ discord: false }));
+  const error = AUTH_ERRORS[queryError()];
+
+  app.innerHTML = `
+    <section class="card auth">
+      <div class="auth-head">
+        <h1>${signup ? "Create your account" : "Welcome back"}</h1>
+        <p class="sub">${signup
+          ? "Claim your profile, write a bio and pin your best builds."
+          : "Log in to edit your profile and pins."}</p>
+      </div>
+      ${providers.discord ? `
+        <a class="btn discord" href="${API}/auth/discord">${DISCORD_ICON}Continue with Discord</a>
+        <div class="or"><span>or with email</span></div>` : ""}
+      <form class="form" id="auth-form" novalidate>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="email" required maxlength="254">
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" name="password" autocomplete="${signup ? "new-password" : "current-password"}" required minlength="8" maxlength="200">
+          ${signup ? `<small>At least 8 characters.</small>` : ""}
+        </label>
+        <p class="form-error" id="auth-error" role="alert"${error ? "" : " hidden"}>${error ?? ""}</p>
+        <button class="btn primary wide" type="submit">${signup ? "Create account" : "Log in"}</button>
+      </form>
+      <p class="auth-switch">${signup
+        ? `Already have an account? <a href="/login" data-link>Log in</a>`
+        : `New here? <a href="/signup" data-link>Create an account</a>`}</p>
+    </section>`;
+
+  const form = document.getElementById("auth-form");
+  const errorBox = document.getElementById("auth-error");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = form.email.value.trim();
+    const password = form.password.value;
+    if (!email || password.length < 8) {
+      errorBox.innerHTML = AUTH_ERRORS.bad_request;
+      errorBox.hidden = false;
+      return;
+    }
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      setMe(await request("POST", signup ? "/auth/signup" : "/auth/login", { email, password }));
+      go("/account");
+    } catch (err) {
+      errorBox.innerHTML = AUTH_ERRORS[err.message] ?? "Something went wrong. Try again in a minute.";
+      errorBox.hidden = false;
+      button.disabled = false;
+    }
+  });
+}
+
+async function accountPage() {
+  await meReady;
+  if (!me) {
+    history.replaceState(null, "", "/login");
+    return authPage("login");
+  }
+  document.title = "Your account · Better Battle";
+  const providers = await get("/auth/providers").catch(() => ({ discord: false }));
+  const error = queryError() === "discord_taken"
+    ? "That Discord account is already linked to a different Better Battle account."
+    : null;
+  if (queryError()) history.replaceState(null, "", "/account");
+
+  app.innerHTML = `
+    <section class="account-top">
+      <div>
+        <h1>Your account</h1>
+        <p class="sub">Signed in as ${esc(me.email ?? me.discord?.name ?? displayName(me))}</p>
+      </div>
+      <button class="btn" id="logout">Log out</button>
+    </section>
+    ${error ? `<p class="form-error">${esc(error)}</p>` : ""}
+
+    <section class="card" id="mc-card"></section>
+
+    <div class="cols even">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2>Bio</h2>
+            <p class="sub">${me.minecraft ? "Shown on your public profile" : "Shown on your profile once your Minecraft account is linked"}</p>
+          </div>
+          <span class="muted counter" id="bio-count"></span>
+        </div>
+        <form class="form" id="bio-form">
+          <label class="sr-only" for="bio">Bio</label>
+          <textarea id="bio" name="bio" maxlength="1000" rows="5" placeholder="What do you like to build?">${esc(me.bio ?? "")}</textarea>
+          <div class="form-row">
+            <span class="muted saved" id="bio-status" role="status"></span>
+            <button class="btn primary" type="submit">Save bio</button>
+          </div>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Sign-in methods</h2>
+        <div class="list">
+          <div class="row-item">
+            <div class="row-icon">@</div>
+            <div class="row-text"><b>Email</b><span>${me.email ? esc(me.email) : "Not set"}</span></div>
+          </div>
+          <div class="row-item">
+            <div class="row-icon discord-icon">${DISCORD_ICON}</div>
+            <div class="row-text"><b>Discord</b><span>${me.discord ? esc(me.discord.name) : "Not connected"}</span></div>
+            ${me.discord
+              ? `<span class="chip pink">Connected</span>`
+              : providers.discord ? `<a class="btn small" href="${API}/auth/discord">Connect</a>` : ""}
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" id="pins-card"></section>`;
+
+  document.getElementById("logout").addEventListener("click", async () => {
+    await request("POST", "/auth/logout").catch(() => {});
+    setMe(null);
+    go("/");
+  });
+
+  renderMinecraftCard(providers);
+  setUpBio();
+  setUpPins();
+}
+
+function renderMinecraftCard(providers) {
+  const card = document.getElementById("mc-card");
+  if (me.minecraft) {
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="linked">
+          <img class="avatar small" src="${avatar(me.minecraft.uuid, 64)}" alt="" width="56" height="56">
+          <div>
+            <span class="sub">Minecraft account</span>
+            <h2 class="linked-name">${esc(me.minecraft.name)}</h2>
+          </div>
+          <span class="chip pink">Linked</span>
+        </div>
+        <a class="btn" href="/p/${esc(me.minecraft.name)}" data-link>View your profile</a>
+      </div>`;
+    return;
+  }
+
+  card.innerHTML = `
+    <div>
+      <h2>Link your Minecraft account</h2>
+      <p class="sub">This claims your profile: your games from the mod show up on it, and your bio and pins appear on it.</p>
+    </div>
+    <div class="link-ways">
+      <div class="link-way">
+        <div class="step-title"><span class="step">1</span><b>In game, with the mod</b></div>
+        <p class="muted">Get a code, then type the command in Minecraft chat while the Better Battle mod is running.</p>
+        <div id="code-box"><button class="btn primary" id="get-code">Get a link code</button></div>
+      </div>
+      <div class="link-way">
+        <div class="step-title"><span class="step">2</span><b>Through your Hypixel profile</b></div>
+        ${me.discord ? `
+          <p class="muted">On Hypixel, open <b>My Profile</b> (your head in the hotbar) → <b>Social Media</b> → <b>Discord</b>, and enter <code>${esc(me.discord.name)}</code>. Then check it here.</p>
+          <form class="inline-form" id="hypixel-form">
+            <label class="sr-only" for="mc-name">Minecraft username</label>
+            <input id="mc-name" placeholder="Minecraft username" maxlength="16" autocomplete="off" spellcheck="false">
+            <button class="btn" type="submit">Check</button>
+          </form>
+          <p class="form-error" id="hypixel-error" role="alert" hidden></p>` : `
+          <p class="muted">Uses the Discord link on your Hypixel profile, so it needs Discord connected here first.</p>
+          ${providers.discord ? `<a class="btn" href="${API}/auth/discord">${DISCORD_ICON}Connect Discord</a>` : `<p class="muted">Discord login isn't set up on this site yet.</p>`}`}
+      </div>
+    </div>`;
+
+  document.getElementById("get-code").addEventListener("click", getLinkCode);
+
+  const form = document.getElementById("hypixel-form");
+  if (!form) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("mc-name").value.trim();
+    const errorBox = document.getElementById("hypixel-error");
+    if (!NAME_RE.test(name)) {
+      errorBox.textContent = "That isn't a valid Minecraft username.";
+      errorBox.hidden = false;
+      return;
+    }
+    const button = form.querySelector("button");
+    button.disabled = true;
+    button.textContent = "Checking…";
+    try {
+      setMe(await request("POST", "/me/claim/hypixel", { name }));
+      accountPage();
+    } catch (err) {
+      errorBox.innerHTML = hypixelError(err, name);
+      errorBox.hidden = false;
+      button.disabled = false;
+      button.textContent = "Check";
+    }
+  });
+}
+
+function hypixelError(err, name) {
+  switch (err.message) {
+    case "not_found": return `There's no Minecraft player called ${esc(name)}.`;
+    case "discord_mismatch": {
+      const found = err.body?.hypixelDiscord;
+      return found
+        ? `${esc(name)}'s Hypixel profile says <code>${esc(found)}</code>, not <code>${esc(me.discord.name)}</code>.`
+        : `${esc(name)} hasn't set a Discord on Hypixel yet. It can take a minute to show up after you set it.`;
+    }
+    case "already_claimed": return `${esc(name)} is already linked to another Better Battle account.`;
+    case "already_linked": return "Your account is already linked to a Minecraft account.";
+    case "hypixel_unavailable": return "Hypixel didn't answer. Try again in a minute.";
+    case "rate_limited": return "Too many tries. Wait a minute and try again.";
+    default: return "Couldn't check that right now. Try again in a minute.";
+  }
+}
+
+async function getLinkCode() {
+  const box = document.getElementById("code-box");
+  let link;
+  try {
+    link = await request("POST", "/me/link-code");
+  } catch {
+    box.insertAdjacentHTML("beforeend", `<p class="form-error">Couldn't get a code. Try again.</p>`);
+    return;
+  }
+  const command = `/bb link ${link.code}`;
+  box.innerHTML = `
+    <div class="code">
+      <code>${esc(command)}</code>
+      <button class="btn small" id="copy-code">Copy</button>
+    </div>
+    <p class="muted waiting"><span class="dot pulse"></span>Waiting for you in game… The code works for 10 minutes.</p>`;
+
+  document.getElementById("copy-code").addEventListener("click", async (e) => {
+    await navigator.clipboard.writeText(command).catch(() => {});
+    e.target.textContent = "Copied";
+  });
+
+  const expires = new Date(link.expiresAt).getTime();
+  clearInterval(linkPoll);
+  linkPoll = setInterval(async () => {
+    if (location.pathname !== "/account") return clearInterval(linkPoll);
+    if (Date.now() > expires) {
+      clearInterval(linkPoll);
+      box.innerHTML = `<p class="muted">That code expired.</p><button class="btn primary" id="get-code">Get a new code</button>`;
+      document.getElementById("get-code").addEventListener("click", getLinkCode);
+      return;
+    }
+    const fresh = await get("/me").catch(() => null);
+    if (fresh?.minecraft) {
+      clearInterval(linkPoll);
+      setMe(fresh);
+      accountPage();
+    }
+  }, 3000);
+}
+
+function setUpBio() {
+  const form = document.getElementById("bio-form");
+  const input = document.getElementById("bio");
+  const count = document.getElementById("bio-count");
+  const status = document.getElementById("bio-status");
+  const update = () => (count.textContent = `${num(input.value.length)} / 1,000`);
+  update();
+  input.addEventListener("input", () => {
+    update();
+    status.textContent = "";
+  });
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      setMe(await request("PUT", "/me", { bio: input.value }));
+      status.textContent = "Saved";
+    } catch {
+      status.textContent = "Couldn't save. Try again.";
+    }
+  });
+}
+
+function pinRow(m, actions) {
+  return `
+    <div class="row-item">
+      <div class="badge" style="background:${GRADE_COLORS[m.grade] ?? "#b5aac1"}">${esc(m.grade ?? "–")}</div>
+      <div class="row-text">
+        <b>${esc(m.theme ?? "Untitled")}</b>
+        <span>${esc(MODES[m.mode] ?? m.mode)} · ${m.placement ? ordinal(m.placement) : "–"} of ${num(m.players)} · ${timeAgo(m.played_at)}</span>
+      </div>
+      <span class="num">${num(m.score)}</span>
+      <div class="row-actions">${actions}</div>
+    </div>`;
+}
+
+async function setUpPins() {
+  const card = document.getElementById("pins-card");
+  if (!me.minecraft) {
+    card.innerHTML = `
+      <h2>Pinned builds</h2>
+      <p class="muted">Link your Minecraft account first. Then you can pin up to 10 of your games to the top of your profile.</p>`;
+    return;
+  }
+
+  card.innerHTML = `
+    <div class="card-head">
+      <div>
+        <h2>Pinned builds</h2>
+        <p class="sub">Up to 10 games, shown in this order on your profile</p>
+      </div>
+      <div class="form-row">
+        <span class="muted saved" id="pins-status" role="status"></span>
+        <button class="btn primary" id="save-pins" disabled>Save pins</button>
+      </div>
+    </div>
+    <div class="list" id="pinned"><div class="loading" style="height:64px"></div></div>
+    <div class="card-head">
+      <h2 class="minor">Your recent games</h2>
+      <span class="muted counter" id="pin-count"></span>
+    </div>
+    <div class="list" id="recent"><div class="loading" style="height:180px"></div></div>
+    <button class="btn more" id="more-games" hidden>Show older games</button>`;
+
+  let [pins, games] = await Promise.all([get("/me/pins").catch(() => []), get("/me/matches").catch(() => [])]);
+  let saved = JSON.stringify(pins.map((m) => m.id));
+
+  const status = document.getElementById("pins-status");
+  const saveButton = document.getElementById("save-pins");
+  const moreButton = document.getElementById("more-games");
+  const icon = (d) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+
+  const draw = () => {
+    const ids = new Set(pins.map((m) => m.id));
+    const full = pins.length >= 10;
+    document.getElementById("pin-count").textContent = `${pins.length} of 10 pinned`;
+    document.getElementById("pinned").innerHTML = pins.length
+      ? pins.map((m, i) => pinRow(m, `
+          <button class="icon-btn" data-up="${i}" aria-label="Move up"${i === 0 ? " disabled" : ""}>${icon("m6 15 6-6 6 6")}</button>
+          <button class="icon-btn" data-down="${i}" aria-label="Move down"${i === pins.length - 1 ? " disabled" : ""}>${icon("m6 9 6 6 6-6")}</button>
+          <button class="icon-btn" data-unpin="${i}" aria-label="Unpin">${icon("M6 6l12 12M18 6 6 18")}</button>`)).join("")
+      : `<p class="muted">Nothing pinned yet. Pick games from the list below.</p>`;
+    document.getElementById("recent").innerHTML = games.length
+      ? games.map((m, i) => pinRow(m, ids.has(m.id)
+          ? `<span class="chip">Pinned</span>`
+          : `<button class="btn small" data-pin="${i}"${full ? " disabled" : ""}>Pin</button>`)).join("")
+      : `<p class="muted">No games yet. Play a round with the mod and it shows up here.</p>`;
+    const changed = JSON.stringify(pins.map((m) => m.id)) !== saved;
+    saveButton.disabled = !changed;
+    if (changed) status.textContent = "Unsaved changes";
+  };
+
+  card.addEventListener("click", async (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.disabled) return;
+    if (b.dataset.pin) pins.push(games[Number(b.dataset.pin)]);
+    else if (b.dataset.unpin) pins.splice(Number(b.dataset.unpin), 1);
+    else if (b.dataset.up || b.dataset.down) {
+      const i = Number(b.dataset.up ?? b.dataset.down);
+      const j = b.dataset.up ? i - 1 : i + 1;
+      [pins[i], pins[j]] = [pins[j], pins[i]];
+    } else return;
+    draw();
+  });
+
+  saveButton.addEventListener("click", async () => {
+    saveButton.disabled = true;
+    try {
+      pins = await request("PUT", "/me/pins", { matchIds: pins.map((m) => m.id) });
+      saved = JSON.stringify(pins.map((m) => m.id));
+      draw();
+      status.textContent = "Saved";
+    } catch {
+      status.textContent = "Couldn't save. Try again.";
+      saveButton.disabled = false;
+    }
+  });
+
+  moreButton.hidden = games.length < 25;
+  moreButton.addEventListener("click", async () => {
+    const older = await get("/me/matches?before=" + encodeURIComponent(games[games.length - 1].played_at)).catch(() => []);
+    games = games.concat(older);
+    moreButton.hidden = older.length < 25;
+    draw();
+  });
+
+  draw();
+  status.textContent = "";
+}
+
+const meReady = loadMe();
 render();

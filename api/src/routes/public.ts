@@ -101,38 +101,45 @@ export function publicRoutes(app: Router) {
     const hyp = p.hypixel_bb ?? {};
 
     const u = await pool.query(
-      `SELECT u.id, u.bio, u.created_at, p.xp, p.ap, p.level, p.best_win_streak
+      `SELECT u.id, u.bio, u.created_at, u.claimed, p.user_id IS NOT NULL AS has_progress,
+              p.xp, p.ap, p.level, p.best_win_streak
        FROM users u LEFT JOIN user_progress p ON p.user_id = u.id WHERE u.mc_uuid = $1`, [p.mc_uuid]);
     let betterBattle = null;
+    let bio: string | null = null;
+    let claimed = false;
     if (u.rowCount) {
       const row = u.rows[0];
-      const xp = Number(row.xp ?? 0);
-      const level = levelForXp(xp);
-      const metrics = await pool.query(
-        `SELECT count(*)::int AS games,
-                avg(crowd_score) AS crowd_score,
-                count(DISTINCT lower(theme))::int AS themes,
-                count(*) FILTER (WHERE grade = 'SS')::int AS ss,
-                count(*) FILTER (WHERE grade = 'S')::int AS s,
-                count(*) FILTER (WHERE grade = 'A')::int AS a,
-                coalesce(sum(duration_sec), 0)::int AS playtime
-         FROM matches WHERE user_id = $1`, [row.id]);
-      const m = metrics.rows[0];
-      betterBattle = {
-        memberSince: row.created_at,
-        bio: row.bio,
-        level,
-        xp,
-        xpIntoLevel: xp - totalXpForLevel(level),
-        xpForNext: totalXpForLevel(level + 1) - totalXpForLevel(level),
-        ap: row.ap ?? 0,
-        bestWinStreak: row.best_win_streak ?? 0,
-        games: m.games,
-        crowdScore: m.crowd_score === null ? null : Number(m.crowd_score),
-        themesBuilt: m.themes,
-        grades: { SS: m.ss, S: m.s, A: m.a },
-        playtimeSec: m.playtime,
-      };
+      bio = row.bio;
+      claimed = row.claimed;
+      if (row.has_progress) {
+        const xp = Number(row.xp ?? 0);
+        const level = levelForXp(xp);
+        const metrics = await pool.query(
+          `SELECT count(*)::int AS games,
+                  avg(crowd_score) AS crowd_score,
+                  count(DISTINCT lower(theme))::int AS themes,
+                  count(*) FILTER (WHERE grade = 'SS')::int AS ss,
+                  count(*) FILTER (WHERE grade = 'S')::int AS s,
+                  count(*) FILTER (WHERE grade = 'A')::int AS a,
+                  coalesce(sum(duration_sec), 0)::int AS playtime
+           FROM matches WHERE user_id = $1`, [row.id]);
+        const m = metrics.rows[0];
+        betterBattle = {
+          memberSince: row.created_at,
+          bio: row.bio,
+          level,
+          xp,
+          xpIntoLevel: xp - totalXpForLevel(level),
+          xpForNext: totalXpForLevel(level + 1) - totalXpForLevel(level),
+          ap: row.ap ?? 0,
+          bestWinStreak: row.best_win_streak ?? 0,
+          games: m.games,
+          crowdScore: m.crowd_score === null ? null : Number(m.crowd_score),
+          themesBuilt: m.themes,
+          grades: { SS: m.ss, S: m.s, A: m.a },
+          playtimeSec: m.playtime,
+        };
+      }
     }
 
     return {
@@ -142,6 +149,8 @@ export function publicRoutes(app: Router) {
       title: titleProgress(score),
       rank, rankedPlayers: of,
       lastChecked: p.last_checked,
+      bio,
+      claimed,
       hypixel: {
         wins: hyp.wins ?? p.bb_wins ?? 0,
         gamesPlayed: hyp.games_played ?? p.bb_games ?? 0,

@@ -11,6 +11,8 @@ export interface Req {
   params: Record<string, string>;
   query: Record<string, string>;
   headers: http.IncomingHttpHeaders;
+  cookies: Record<string, string>;
+  reply: { headers: Record<string, string | string[]> };
   body: unknown;
   ip: string;
   user: { id: number; mcUuid: string | null };
@@ -18,6 +20,9 @@ export interface Req {
 
 export class HttpError extends Error {
   constructor(public status: number, public body: Record<string, unknown>) { super(String(body.error ?? status)); }
+}
+export class Redirect {
+  constructor(public location: string) {}
 }
 /** Throw from a handler or hook to send an error response. */
 export const fail = (status: number, error: string, extra: Record<string, unknown> = {}): never => {
@@ -62,10 +67,23 @@ const TYPES: Record<string, string> = {
   ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json",
 };
 
-function send(res: http.ServerResponse, status: number, body: unknown) {
+function send(res: http.ServerResponse, status: number, body: unknown, headers: Record<string, string | string[]> = {}) {
   const text = JSON.stringify(body ?? null);
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers });
   res.end(text);
+}
+
+function parseCookies(header: string | undefined) {
+  const cookies: Record<string, string> = {};
+  for (const part of (header ?? "").split(";")) {
+    const i = part.indexOf("=");
+    if (i < 0) continue;
+    const key = part.slice(0, i).trim();
+    if (!key) continue;
+    const value = part.slice(i + 1).trim();
+    try { cookies[key] = decodeURIComponent(value); } catch { cookies[key] = value; }
+  }
+  return cookies;
 }
 
 async function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<unknown> {
@@ -88,6 +106,7 @@ export function createServer(routers: Router[], opts: { staticDir?: string; apiP
     const started = Date.now();
     const url = new URL(req.url ?? "/", "http://localhost");
     const method = req.method ?? "GET";
+    let replyHeaders: Record<string, string | string[]> = {};
     try {
       for (const r of routers) {
         const hit = r.match(method, url.pathname);
@@ -96,13 +115,20 @@ export function createServer(routers: Router[], opts: { staticDir?: string; apiP
           method, path: url.pathname, params: hit.params,
           query: Object.fromEntries(url.searchParams),
           headers: req.headers,
+          cookies: parseCookies(req.headers.cookie),
+          reply: { headers: replyHeaders },
           body: method === "GET" ? undefined : await readBody(req),
           ip: (req.headers["cf-connecting-ip"] as string) ?? (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.socket.remoteAddress ?? "",
           user: null as any,
         };
         for (const h of hit.route.hooks) await h(request);
         const out = await hit.route.handler(request);
-        send(res, 200, out);
+        if (out instanceof Redirect) {
+          send(res, 302, null, { ...replyHeaders, location: out.location });
+          log(`${method} ${url.pathname} 302 ${Date.now() - started}ms`);
+          return;
+        }
+        send(res, 200, out, replyHeaders);
         log(`${method} ${url.pathname} 200 ${Date.now() - started}ms`);
         return;
       }
@@ -126,10 +152,10 @@ export function createServer(routers: Router[], opts: { staticDir?: string; apiP
       }
       send(res, 404, { error: "not_found" });
     } catch (e) {
-      if (e instanceof HttpError) { send(res, e.status, e.body); log(`${method} ${url.pathname} ${e.status}`); return; }
-      if (e instanceof ZodError) { send(res, 400, { error: "bad_request", issues: e.issues }); return; }
+      if (e instanceof HttpError) { send(res, e.status, e.body, replyHeaders); log(`${method} ${url.pathname} ${e.status}`); return; }
+      if (e instanceof ZodError) { send(res, 400, { error: "bad_request", issues: e.issues }, replyHeaders); return; }
       console.error(`${method} ${url.pathname} failed`, e);
-      if (!res.headersSent) send(res, 500, { error: "server_error" });
+      if (!res.headersSent) send(res, 500, { error: "server_error" }, replyHeaders);
     }
   });
 }

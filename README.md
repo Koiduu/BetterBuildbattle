@@ -35,7 +35,8 @@ mod/
 - The API's TypeScript has not been compiled or run yet. Its SQL was tested against PostgreSQL 16,
   and the website was tested in Chrome against `tools/preview.mjs`. Expect a few small fixes on first `docker compose up`.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
-- Accounts on the website (sign up, Discord login, pinning, bio) are not built yet. Profiles are public and read-only.
+- Website accounts work (email or Discord login, bio, up to 10 pins), but the mod has no `/bb link <code>` command yet.
+  It should call `POST /bb/v1/mod/link {"code"}` with the mod token. Until then, players can claim through the Discord link on their Hypixel profile.
 - The two loader adapters and UI screens (toasts, `/bb` menu, local profile, credits screen).
 
 ## Build metrics (instead of a vague "accuracy")
