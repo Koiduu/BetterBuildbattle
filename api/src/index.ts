@@ -4,6 +4,7 @@ import { pool } from "./db/pool";
 import { Router, createServer } from "./http";
 import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
+import { adminRoutes } from "./routes/admin";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
 import { daily, snapshotRanks, rebuildLeaderboard } from "./jobs/daily";
@@ -14,6 +15,7 @@ const PREFIX = "/bb/v1";
 const api = new Router(PREFIX);
 modRoutes(api);
 publicRoutes(api);
+adminRoutes(api);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
   return { ok: true };

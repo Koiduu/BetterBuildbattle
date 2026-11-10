@@ -20,6 +20,10 @@ public final class Config {
     public boolean chatMessages = true;
     /** Track games on any server, not just Hypixel (for testing). */
     public boolean anyServer = false;
+    /** Save the votes you cast, for your end-of-year Build Battle Wrapped. */
+    public boolean shareVotes = true;
+    /** Set once the player has been told about vote saving. */
+    public boolean votesNoticeShown = false;
     /** Write chat and scoreboard lines to debug.log while in a game. */
     public boolean debug = false;
 

@@ -31,6 +31,7 @@ public final class ChatParser {
         @SerializedName("scoreboard_modes") Map<String, String> scoreboardModes;
         Map<String, String> chat;
         String sidebar_theme;
+        String sidebar_builder;
     }
 
     private static final class Rule {
@@ -40,6 +41,7 @@ public final class ChatParser {
 
     private final int version;
     private Pattern sidebarTheme;
+    private Pattern sidebarBuilder;
     private final List<Rule> rules = new ArrayList<Rule>();
     private final List<Map.Entry<Pattern, String>> modes = new ArrayList<Map.Entry<Pattern, String>>();
 
@@ -47,6 +49,7 @@ public final class ChatParser {
         Spec s = new Gson().fromJson(json, Spec.class);
         version = s.version;
         if (s.sidebar_theme != null) sidebarTheme = Pattern.compile(s.sidebar_theme);
+        if (s.sidebar_builder != null) sidebarBuilder = Pattern.compile(s.sidebar_builder);
         for (Map.Entry<String, String> e : s.scoreboardModes.entrySet()) {
             modes.add(new java.util.AbstractMap.SimpleEntry<Pattern, String>(
                     Pattern.compile(e.getKey(), Pattern.CASE_INSENSITIVE), e.getValue()));
@@ -62,6 +65,14 @@ public final class ChatParser {
         if (sidebarTheme == null) return null;
         Matcher m = sidebarTheme.matcher(line);
         return m.find() ? m.group(1).trim() : null;
+    }
+
+    public String builderFromSidebar(String line) {
+        if (sidebarBuilder == null) return null;
+        Matcher m = sidebarBuilder.matcher(line);
+        if (!m.find()) return null;
+        String name = m.group(1).trim();
+        return name.matches("[A-Za-z0-9_]{1,16}") ? name : null;
     }
 
     public String modeFromScoreboard(String title) {

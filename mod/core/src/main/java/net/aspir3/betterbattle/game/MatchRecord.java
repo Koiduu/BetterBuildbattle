@@ -2,7 +2,9 @@ package net.aspir3.betterbattle.game;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,6 +32,17 @@ public final class MatchRecord {
     public String floor;                     // floor block at the end of the build
     public int floorChanges;
     public int backdropChanges;
+    /** One vote this player cast while voting on other builds. */
+    public static final class Vote {
+        public int round;
+        public String vote;       // super_poop, poop, meh, ok, good, epic, legendary
+        public String builder;    // null if Hypixel didn't show who built it
+        public long at;
+    }
+
+    /** The player's own votes, last vote per round. */
+    public final List<Vote> votes = new ArrayList<Vote>();
+
     /** Creative tab of each placed block ("building", "colored", "natural", "functional", "redstone"). */
     public final Map<String, String> blockTabs = new LinkedHashMap<String, String>();
 
@@ -66,6 +79,11 @@ public final class MatchRecord {
         return Math.min(1.0, score / max);
     }
 
+    public String votesJson() {
+        if (votes.isEmpty()) return null;
+        return new com.google.gson.Gson().toJson(votes);
+    }
+
     public String paletteJson() {
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
@@ -91,6 +109,11 @@ public final class MatchRecord {
         m.blocksPlaced = r.getInt("blocks_placed");
         m.blocksBroken = r.getInt("blocks_broken");
         m.spbRoundsJson = r.getString("spb_rounds");
+        String votes = r.getString("votes");
+        if (votes != null) {
+            MatchRecord.Vote[] parsed = new com.google.gson.Gson().fromJson(votes, MatchRecord.Vote[].class);
+            if (parsed != null) m.votes.addAll(java.util.Arrays.asList(parsed));
+        }
         // palette stays as JSON text on the way out; SyncService sends it raw
         return m;
     }

@@ -24,6 +24,15 @@ const MatchIn = z.object({
   blocksPlaced: z.number().int().min(0).max(20000),
   blocksBroken: z.number().int().min(0).max(20000).default(0),
   palette: z.record(z.number().int().min(0)).optional(),
+  votes: z
+    .array(z.object({
+      round: z.number().int().min(0).max(100),
+      vote: z.enum(["super_poop", "poop", "meh", "ok", "good", "epic", "legendary"]),
+      builder: z.string().regex(/^[A-Za-z0-9_]{1,16}$/).nullable(),
+      at: z.string().datetime(),
+    }))
+    .max(64)
+    .default([]),
   spbRounds: z
     .array(z.object({ build: z.string(), timeMs: z.number().int().positive(), accuracy: z.number().min(0).max(1) }))
     .optional(),
@@ -136,6 +145,12 @@ export function modRoutes(app: Router) {
           accepted.push(m.nonce); // duplicates count as accepted: the mod can mark them synced
           if (ins.rowCount === 0) continue;
           xpGained += xp;
+          for (const v of m.votes) {
+            await client.query(
+              `INSERT INTO match_votes (user_id, match_nonce, played_at, round, vote, builder, voted_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
+              [userId, m.nonce, m.playedAt, v.round, v.vote, v.builder, v.at]);
+          }
           if (m.mode !== "gtb" || m.placement !== null) {
             streak = m.placement === 1 ? streak + 1 : 0;
             best = Math.max(best, streak);

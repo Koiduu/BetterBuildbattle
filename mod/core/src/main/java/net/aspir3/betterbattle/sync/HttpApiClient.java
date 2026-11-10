@@ -77,6 +77,18 @@ public final class HttpApiClient implements ApiClient {
         o.put("blocksPlaced", Math.min(20000, m.blocksPlaced));
         o.put("blocksBroken", Math.min(20000, m.blocksBroken));
         if (!m.palette.isEmpty()) o.put("palette", m.palette);
+        if (!m.votes.isEmpty()) {
+            List<Map<String, Object>> votes = new ArrayList<Map<String, Object>>();
+            for (MatchRecord.Vote v : m.votes) {
+                Map<String, Object> vo = new LinkedHashMap<String, Object>();
+                vo.put("round", v.round);
+                vo.put("vote", v.vote);
+                vo.put("builder", v.builder);
+                vo.put("at", iso.format(new Date(v.at)));
+                votes.add(vo);
+            }
+            o.put("votes", votes);
+        }
         return o;
     }
 

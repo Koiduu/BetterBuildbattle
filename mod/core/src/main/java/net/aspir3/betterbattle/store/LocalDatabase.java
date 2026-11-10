@@ -59,7 +59,10 @@ public final class LocalDatabase implements AutoCloseable {
                 s.execute("CREATE INDEX events_at_idx ON events (at)");
                 setMeta("schema_version", "1");
             }
-            // future: if (v < 2) { ... ALTER TABLE ... ; setMeta("schema_version","2"); }
+            if (v < 2) {
+                s.execute("ALTER TABLE matches ADD COLUMN votes TEXT");
+                setMeta("schema_version", "2");
+            }
         }
     }
 
@@ -70,7 +73,7 @@ public final class LocalDatabase implements AutoCloseable {
         conn.setAutoCommit(false);
         try (PreparedStatement p = conn.prepareStatement(
                 "INSERT OR IGNORE INTO matches (nonce, played_at, mode, theme, placement, players, score, grade," +
-                " duration_sec, blocks_placed, blocks_broken, max_score, palette, spb_rounds) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
+                " duration_sec, blocks_placed, blocks_broken, max_score, palette, spb_rounds, votes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             p.setString(1, m.nonce);
             p.setLong(2, m.playedAt);
             p.setString(3, m.mode);
@@ -86,6 +89,7 @@ public final class LocalDatabase implements AutoCloseable {
             if (max == null) p.setNull(12, Types.REAL); else p.setDouble(12, max);
             p.setString(13, m.paletteJson());
             p.setString(14, m.spbRoundsJson);
+            p.setString(15, m.votesJson());
             boolean inserted = p.executeUpdate() == 1;
             if (inserted && m.placement != null && m.placement == 1) {
                 try (PreparedStatement e = conn.prepareStatement("INSERT INTO events (at, kind, mode) VALUES (?, 'win', ?)")) {

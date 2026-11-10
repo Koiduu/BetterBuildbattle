@@ -16,5 +16,6 @@
     "SCORE": "^\\s*Your score: ([\\d.]+)",
     "GAME_END": "^\\s*Reward Summary|^\\s*Thanks for playing"
   },
-  "sidebar_theme": "^Theme: (.+)$"
+  "sidebar_theme": "^Theme: (.+)$",
+  "sidebar_builder": "^Builder: (.+)$"
 }

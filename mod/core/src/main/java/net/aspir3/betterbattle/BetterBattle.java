@@ -193,8 +193,17 @@ public final class BetterBattle {
         }
 
         public void onMatchFinished(MatchRecord m) {
+            debug("votes: " + m.votes.size());
             debug("finished: mode=" + m.mode + " theme=" + m.theme + " place=" + m.placement + "/" + m.players
                 + " score=" + m.score + " blocks=" + m.blocksPlaced + " floor=" + m.floor);
+            if (!config.shareVotes) m.votes.clear();
+            if (!m.votes.isEmpty() && !config.votesNoticeShown) {
+                config.votesNoticeShown = true;
+                config.save();
+                platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a77Your votes are saved for your end-of-year "
+                    + "\u00a7dBuild Battle Wrapped\u00a77. Don't want that? Set \u00a7fshareVotes \u00a77to \u00a7ffalse \u00a77in "
+                    + "config/betterbattle/config.json.");
+            }
             try {
                 if (!db.insertMatch(m)) return;
                 // Count XP locally so the level bar moves even while offline; the server's number replaces it on sync.

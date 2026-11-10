@@ -60,6 +60,14 @@ public final class GameStateMachine {
     /** One sidebar line (colour codes stripped). Hypixel shows the theme there while building. */
     public void onSidebarLine(String line) {
         if (current == null) return;
+        String builder = parser.builderFromSidebar(line);
+        if (builder != null && state == State.VOTING) {
+            roundBuilder = builder;
+            if (!current.votes.isEmpty()) {
+                MatchRecord.Vote last = current.votes.get(current.votes.size() - 1);
+                if (last.round == voteRound && last.builder == null) last.builder = builder;
+            }
+        }
         String theme = parser.themeFromSidebar(line);
         if (theme == null) return;
         if (current.theme == null) current.theme = theme;
@@ -154,6 +162,51 @@ public final class GameStateMachine {
         }
     }
 
+    // Hypixel's vote items, longest name first so "Super Poop" isn't read as "Poop"
+    private static final String[][] VOTES = {
+        {"SUPER POOP", "super_poop"}, {"LEGENDARY", "legendary"}, {"POOP", "poop"}, {"EPIC", "epic"},
+        {"GOOD", "good"}, {"MEH", "meh"}, {"OK", "ok"},
+    };
+    private int voteRound;
+    private String roundBuilder;
+
+    /** The player got teleported to the next build while voting. */
+    public void onTeleport() {
+        if (state == State.VOTING || state == State.BUILDING) {
+            voteRound++;
+            roundBuilder = null;
+        }
+    }
+
+    /** The player clicked a hotbar item. If it's a vote item during voting, remember the vote. */
+    public void onItemUsed(String itemName) {
+        if (current == null || itemName == null) return;
+        String name = itemName.toUpperCase();
+        String vote = null;
+        for (String[] v : VOTES) {
+            if (name.contains(v[0])) {
+                vote = v[1];
+                break;
+            }
+        }
+        if (vote == null) return;
+        if (state == State.BUILDING) setState(State.VOTING);   // vote items only show up once voting starts
+        if (state != State.VOTING) return;
+        MatchRecord.Vote last = current.votes.isEmpty() ? null : current.votes.get(current.votes.size() - 1);
+        if (last != null && last.round == voteRound) {
+            last.vote = vote;   // changed their mind on the same build
+            last.at = System.currentTimeMillis();
+            if (roundBuilder != null) last.builder = roundBuilder;
+            return;
+        }
+        MatchRecord.Vote v = new MatchRecord.Vote();
+        v.round = voteRound;
+        v.vote = vote;
+        v.builder = roundBuilder;
+        v.at = System.currentTimeMillis();
+        current.votes.add(v);
+    }
+
     /** Player's own block break (Speed Builders precision). */
     public void onOwnBlockBroken() {
         if (state == State.BUILDING && current != null) current.blocksBroken++;
@@ -178,6 +231,8 @@ public final class GameStateMachine {
 
     private void reset() {
         current = null;
+        voteRound = 0;
+        roundBuilder = null;
         plot = null;
         setState(State.IDLE);
     }
