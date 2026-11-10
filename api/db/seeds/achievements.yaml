@@ -7,7 +7,7 @@
 # one_offs: unlocked by a rule class in mod/core/.../achieve (rule: <ClassName>).
 # secret: hidden in the menu until unlocked.
 
-catalog_version: 1
+catalog_version: 2
 
 tracks:
   # ---------------- Build Battle, from Hypixel totals (retroactive) ----------------
@@ -127,13 +127,13 @@ one_offs:
     rule: OneBlockType
   - id: rainbow
     name: "Taste the Rainbow"
-    description: "Use all 16 wool colours in a single winning build"
+    description: "Win a build that uses every colour of the rainbow: red, orange, yellow, green, blue and purple"
     category: challenge
     points: 20
     rule: Rainbow
-  - id: no_glass
+  - id: stone_age
     name: "Stone Age"
-    description: "Win using only stone-family blocks (stone, cobble, bricks, deepslate, andesite, diorite, granite)"
+    description: "Win using only stone-related blocks (stone, cobblestone, stone bricks, deepslate, andesite, diorite, granite, blackstone, tuff)"
     category: challenge
     points: 20
     rule: StoneOnly
@@ -143,6 +143,102 @@ one_offs:
     category: challenge
     points: 25
     rule: NetherOnly
+
+  - id: hotbar_hero
+    name: "Hotbar Hero"
+    description: "Win using only a hotbar's worth of blocks (9 block types or fewer)"
+    category: challenge
+    points: 20
+    rule: HotbarOnly
+  - id: block_hoarder
+    name: "Block Hoarder"
+    description: "Place 100 different types of blocks in one match"
+    category: challenge
+    points: 25
+    rule: HundredBlockTypes
+  - id: old_school
+    name: "Old School"
+    description: "Win using only blocks that existed in 1.8.9 (on a 26.3 client)"
+    category: challenge
+    points: 25
+    rule: LegacyBlocksOnly
+  - id: fresh_off_the_press
+    name: "Fresh Off the Press"
+    description: "Win using only blocks added in the latest Minecraft release"
+    category: challenge
+    points: 40
+    rule: LatestReleaseOnly
+  - id: steam_engine
+    name: "Steam Engine"
+    description: "Win a build that uses both water and lava"
+    category: challenge
+    points: 15
+    rule: WaterAndLava
+
+  # ---------------- Creative tab challenges (one per tab) ----------------
+  - id: tab_building
+    name: "By the Book"
+    description: "Win using only blocks from the Building Blocks tab"
+    category: challenge
+    points: 15
+    rule: CreativeTabOnly
+  - id: tab_colored
+    name: "Colour Theory"
+    description: "Win using only blocks from the Colored Blocks tab"
+    category: challenge
+    points: 15
+    rule: CreativeTabOnly
+  - id: tab_natural
+    name: "Back to Nature"
+    description: "Win using only blocks from the Natural Blocks tab"
+    category: challenge
+    points: 15
+    rule: CreativeTabOnly
+  - id: tab_functional
+    name: "Form Follows Function"
+    description: "Win using only blocks from the Functional Blocks tab"
+    category: challenge
+    points: 25
+    rule: CreativeTabOnly
+  - id: tab_redstone
+    name: "Redstone Engineer"
+    description: "Win using only blocks from the Redstone Blocks tab"
+    category: challenge
+    points: 25
+    rule: CreativeTabOnly
+
+  # ---------------- Plot and movement challenges ----------------
+  - id: sky_high
+    name: "Sky's the Limit"
+    description: "Win a build that reaches the plot's height limit"
+    category: challenge
+    points: 15
+    rule: HeightLimit
+  - id: grounded
+    name: "Grounded"
+    description: "Win a build without flying"
+    category: challenge
+    points: 25
+    rule: NoFlying
+  - id: floor_is_lava
+    name: "The Floor Is Lava"
+    description: "Win a game with your floor set to lava"
+    category: challenge
+    points: 15
+    rule: LavaFloor
+  - id: factory_settings
+    name: "Factory Settings"
+    description: "Win a game without changing your floor or background"
+    category: challenge
+    points: 10
+    rule: DefaultPlot
+  - id: indecisive
+    name: "Indecisive"
+    description: "Switch your background 5 times in one match"
+    category: challenge
+    points: 10
+    secret: true
+    rule: BackgroundSwitches
 
   # ---------------- Time and streak challenges ----------------
   - id: mode_marathon

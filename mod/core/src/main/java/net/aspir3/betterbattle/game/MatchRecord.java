@@ -23,6 +23,16 @@ public final class MatchRecord {
     public final Map<String, Integer> palette = new LinkedHashMap<String, Integer>();
     public String spbRoundsJson;   // set by SpbTracker
 
+    // Filled in by the loader adapter while the build is going on
+    public String mcVersion;                 // "26.3" or "1.8.9"
+    public boolean flew;                     // player flew at any point while building
+    public boolean reachedHeightLimit;       // placed a block at the plot's ceiling
+    public String floor;                     // floor block chosen in the plot options, null = default
+    public int floorChanges;
+    public int backgroundChanges;
+    /** Creative tab of each placed block ("building", "colored", "natural", "functional", "redstone"). */
+    public final Map<String, String> blockTabs = new LinkedHashMap<String, String>();
+
     public boolean won() { return placement != null && placement == 1; }
 
     public void countBlock(String blockId) {

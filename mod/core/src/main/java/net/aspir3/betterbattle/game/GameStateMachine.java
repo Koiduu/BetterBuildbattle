@@ -21,9 +21,12 @@ public final class GameStateMachine {
     private MatchRecord current;
     private long startedAt;
 
-    public GameStateMachine(ChatParser parser, Listener listener) {
+    private final String mcVersion;
+
+    public GameStateMachine(ChatParser parser, Listener listener, String mcVersion) {
         this.parser = parser;
         this.listener = listener;
+        this.mcVersion = mcVersion;
     }
 
     public State state() { return state; }
@@ -38,6 +41,7 @@ public final class GameStateMachine {
         if (state == State.IDLE) {
             current = new MatchRecord();
             current.mode = mode;
+            current.mcVersion = mcVersion;
             state = State.LOBBY;
         }
     }
@@ -73,9 +77,40 @@ public final class GameStateMachine {
         }
     }
 
-    /** Player's own placement only. Used for All-Wood and SPB timing. */
-    public void onOwnBlockPlaced(String blockId) {
-        if (state == State.BUILDING && current != null) current.countBlock(blockId);
+    private boolean building() {
+        return state == State.BUILDING && current != null;
+    }
+
+    /**
+     * Player's own placement only. Bucket placements count too: the adapter reports them
+     * as "minecraft:water" / "minecraft:lava". creativeTab may be null if unknown.
+     */
+    public void onOwnBlockPlaced(String blockId, String creativeTab) {
+        if (!building()) return;
+        current.countBlock(blockId);
+        if (creativeTab != null) current.blockTabs.put(blockId, creativeTab);
+    }
+
+    /** Called every tick the player is flying. */
+    public void onFlying() {
+        if (building()) current.flew = true;
+    }
+
+    /** Placement landed on the plot's top layer, or the server refused one for being too high. */
+    public void onHeightLimitReached() {
+        if (building()) current.reachedHeightLimit = true;
+    }
+
+    /** Floor picked in the plot options menu. */
+    public void onFloorChanged(String blockId) {
+        if (!building()) return;
+        current.floor = blockId;
+        current.floorChanges++;
+    }
+
+    /** Background picked in the plot options menu. */
+    public void onBackgroundChanged() {
+        if (building()) current.backgroundChanges++;
     }
 
     private final java.util.Set<java.util.UUID> seenPlayers = new java.util.HashSet<java.util.UUID>();

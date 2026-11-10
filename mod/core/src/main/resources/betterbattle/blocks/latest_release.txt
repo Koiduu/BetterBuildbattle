@@ -1,0 +1,3 @@
+# Blocks added in the latest Minecraft release, one id per line (e.g. minecraft:some_new_block).
+# Used by the "Fresh Off the Press" challenge, which stays locked while this list is empty.
+# Fill it from the release notes on the Minecraft Wiki whenever a new version comes out.
