@@ -109,7 +109,7 @@ public final class MenuScreen extends Screen {
 
     private void openProfile() {
         String name = minecraft.getGameProfile().name();
-        ConfirmLinkScreen.confirmLinkNow(this, BetterBattle.get().config().website + "/p/" + name);
+        ConfirmLinkScreen.confirmLinkNow(this, java.net.URI.create(BetterBattle.get().config().website + "/p/" + name));
     }
 
     @Override

@@ -1,0 +1,13 @@
+[
+  {
+    "modid": "betterbattle",
+    "name": "Better Battle",
+    "description": "Stats, achievements, levels and Speed Builders tools for Hypixel Build Battle.",
+    "version": "${version}",
+    "mcversion": "1.8.9",
+    "url": "https://battle.aspir3.net",
+    "authorList": ["Koidu"],
+    "credits": "Created by Koidu for the Aspiring guild",
+    "logoFile": "assets/betterbattle/icon.png"
+  }
+]

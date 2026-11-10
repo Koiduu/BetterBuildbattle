@@ -20,6 +20,20 @@ jobs:
           java-version: 25
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew && ./gradlew build --stacktrace
+      - name: Dump Minecraft API on failure
+        if: failure()
+        run: |
+          JAR=$(find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources | head -1)
+          echo "jar: $JAR"
+          for c in net.minecraft.world.item.Items net.minecraft.world.level.block.Blocks net.minecraft.client.Minecraft \
+                   net.minecraft.client.gui.Gui net.minecraft.network.Connection \
+                   net.minecraft.client.gui.components.AbstractSelectionList 'net.minecraft.client.gui.components.AbstractSelectionList$Entry' \
+                   net.minecraft.client.gui.components.ObjectSelectionList 'net.minecraft.client.gui.components.ObjectSelectionList$Entry' \
+                   net.minecraft.client.gui.screens.ConfirmLinkScreen net.minecraft.client.gui.components.toasts.Toast \
+                   net.minecraft.client.gui.components.toasts.ToastManager net.minecraft.client.gui.components.ChatComponent; do
+            echo "===== $c"; javap -cp "$JAR" "$c" 2>&1 | grep -iE "wool|terracotta|bed\b|_bed|toast|chat|channel|getContent|extract|confirm|class |Entry|render|public .*(int|void) get" | head -60
+          done
+          echo "===== Items with WOOL/TERRACOTTA/BED"; javap -cp "$JAR" net.minecraft.world.item.Items | grep -E "WOOL|TERRACOTTA| BED|_BED" | head
       - uses: actions/upload-artifact@v4
         with:
           name: betterbattle-fabric-26.3
