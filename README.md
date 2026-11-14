@@ -41,8 +41,7 @@ mod/
   that kind of build help could break Hypixel's allowed-mods rules.
 - Block breaks come from left clicks on a block. Check on 1.8.9 that Forge fires `LEFT_CLICK_BLOCK` on the client in
   Speed Builders; if not, Measure Twice and precision will be too generous there.
-- Every one-off challenge has a detector; `spb_no_break` is off until the adapters report block breaks, `spb_sweep`, `spb_wr_close` and `spb_wr` await a tracker filling `spbRoundsJson` and `wr_ghosts`, and the Guess the Build chat pattern is a guess to check with `/bb debug`.
-- The site loads Pixelify Sans from Google Fonts. Bundle the font file in `web/` if you'd rather not depend on that.
+- Every one-off challenge has a detector. The Guess the Build chat pattern is a guess to check with `/bb debug`.
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
 
