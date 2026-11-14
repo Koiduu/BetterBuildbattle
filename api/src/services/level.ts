@@ -13,13 +13,13 @@ export function levelForXp(xp: number): number {
 export function xpForMatch(m: {
   placement: number | null;
   grade?: string | null;
-  spbRounds?: { accuracy: number }[];
+  spbRounds?: { accuracy: number | null; perfect?: boolean }[];
 }, firstWinToday = false): number {
   let xp = 10;                                   // game played
   if (m.placement === 1) xp += 50;               // win
   if (m.grade === "SS") xp += 40;
   else if (m.grade === "S") xp += 20;
-  xp += (m.spbRounds ?? []).filter((r) => r.accuracy >= 1).length * 15; // perfect builds
+  xp += (m.spbRounds ?? []).filter((r) => r.perfect ?? (r.accuracy ?? 0) >= 1).length * 15; // perfect builds
   if (m.placement === 1 && firstWinToday) xp += 100;
   return xp;
 }

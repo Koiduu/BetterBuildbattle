@@ -67,6 +67,20 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(post("/mod/sync", gson.toJson(body)), SyncResult.class);
     }
 
+    public Latest latest() throws Exception {
+        String loader = "1.8.9".equals(mcVersion) ? "forge" : "fabric";
+        try {
+            return gson.fromJson(request("GET", "/mod/latest?loader=" + loader + "&mc=" + mcVersion, null), Latest.class);
+        } catch (Exception e) {
+            if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) return null;   // older server, or no release yet
+            throw e;
+        }
+    }
+
+    public Bootstrap bootstrap() throws Exception {
+        return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
+    }
+
     private Map<String, Object> toJson(MatchRecord m) {
         Map<String, Object> o = new LinkedHashMap<String, Object>();
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
@@ -83,6 +97,24 @@ public final class HttpApiClient implements ApiClient {
         o.put("blocksPlaced", Math.min(20000, m.blocksPlaced));
         o.put("blocksBroken", Math.min(20000, m.blocksBroken));
         if (!m.palette.isEmpty()) o.put("palette", m.palette);
+        if (!m.tags.isEmpty()) o.put("tags", m.tags);
+        if ("gtb".equals(m.mode)) o.put("gtbCorrect", m.gtbCorrect);
+        if (!m.spbRounds.isEmpty()) {
+            List<Map<String, Object>> rounds = new ArrayList<Map<String, Object>>();
+            for (net.aspir3.betterbattle.game.SpbTracker.Round r : m.spbRounds) {
+                Map<String, Object> ro = new LinkedHashMap<String, Object>();
+                ro.put("build", r.build);
+                ro.put("name", r.name);
+                ro.put("timeMs", r.timeMs);
+                ro.put("accuracy", r.accuracy);
+                ro.put("precision", r.precision);
+                ro.put("perfect", r.perfect);
+                ro.put("placed", r.placed);
+                ro.put("broken", r.broken);
+                rounds.add(ro);
+            }
+            o.put("spbRounds", rounds);
+        }
         if (!m.votes.isEmpty()) {
             List<Map<String, Object>> votes = new ArrayList<Map<String, Object>>();
             for (MatchRecord.Vote v : m.votes) {
@@ -99,19 +131,25 @@ public final class HttpApiClient implements ApiClient {
     }
 
     private String post(String path, String json) throws Exception {
+        return request("POST", path, json);
+    }
+
+    private String request(String method, String path, String json) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(base + path).openConnection();
-        c.setRequestMethod("POST");
+        c.setRequestMethod(method);
         c.setConnectTimeout(8000);
         c.setReadTimeout(15000);
-        c.setDoOutput(true);
-        c.setRequestProperty("Content-Type", "application/json");
         c.setRequestProperty("User-Agent", "BetterBattle/" + modVersion + " (Minecraft " + mcVersion + ")");
         if (token != null) c.setRequestProperty("Authorization", "Bearer " + token);
-        OutputStream os = c.getOutputStream();
-        try {
-            os.write(json.getBytes(StandardCharsets.UTF_8));
-        } finally {
-            os.close();
+        if (json != null) {
+            c.setDoOutput(true);
+            c.setRequestProperty("Content-Type", "application/json");
+            OutputStream os = c.getOutputStream();
+            try {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            } finally {
+                os.close();
+            }
         }
         int status = c.getResponseCode();
         if (status == 401) throw new Unauthorized();

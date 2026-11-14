@@ -28,10 +28,14 @@ jobs:
           for c in net.minecraft.world.level.block.ColorCollection net.minecraft.client.multiplayer.chat.ChatListener \
                    net.minecraft.client.gui.Hud net.minecraft.client.player.LocalPlayer net.minecraft.world.item.DyeColor \
                    net.minecraft.client.gui.components.AbstractSelectionList net.minecraft.client.gui.components.ObjectSelectionList \
-                   net.minecraft.client.gui.components.AbstractScrollArea net.minecraft.client.gui.Gui net.minecraft.client.Minecraft; do
+                   net.minecraft.client.gui.components.AbstractScrollArea net.minecraft.client.gui.Gui net.minecraft.client.Minecraft \
+                   net.minecraft.client.gui.components.toasts.Toast net.minecraft.client.gui.components.Tooltip \
+                   net.minecraft.client.gui.GuiGraphicsExtractor net.minecraft.client.gui.components.Button\$Builder; do
             echo "===== $c"; javap -p -cp "$JAR" "$c" 2>&1 | grep -vE "lambda|synthetic|static \{\}" | head -80
           done
           echo "===== Connection fields"; javap -p -cp "$JAR" net.minecraft.network.Connection | grep -iE "channel" | head
+          FAPI=$(find ~/.gradle -name 'fabric-events-interaction-v0*.jar' 2>/dev/null | grep -v sources | head -1)
+          echo "===== AttackBlockCallback ($FAPI)"; javap -cp "$FAPI" net.fabricmc.fabric.api.event.player.AttackBlockCallback 2>&1 | head -20
       - uses: actions/upload-artifact@v4
         with:
           name: betterbattle-fabric-26.3
@@ -78,7 +82,8 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           ls -la jars
+          (cd jars && sha256sum *.jar > SHA256SUMS)
           gh release delete dev --repo "$REPO" --yes --cleanup-tag || true
-          gh release create dev jars/*.jar --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
+          gh release create dev jars/*.jar jars/SHA256SUMS --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
             --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jar: Minecraft 26.3 with Fabric API. Forge jar: Minecraft 1.8.9."

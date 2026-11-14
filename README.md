@@ -31,14 +31,28 @@ mod/
 
 ## What's not finished
 
-- `patterns.json` matches a real Solo game (Nov 2026). Teams, Pro, Guess the Build and Speed Builders still need a
+- `patterns.json` matches real Solo and Speed Builders games (Nov 2026). Teams, Pro and Guess the Build still need a
   `/bb debug` log each to confirm their wording.
 - The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
-- Speed Builders ghosts, world records and tips are designed (see the plan) but not built.
-- Most one-off challenges have a detector; the streak, Speed Builders and Guess the Build ones don't yet.
+- Speed Builders tracking is checked against a real game (Nov 2026): rounds, builds and the clock come from the
+  sidebar, perfect builds and accuracy from chat. `mod/core/src/test/Replay.java` replays a `debug.log` through it.
+  Ghost replays (showing where the record holder placed blocks) are left out on purpose: that kind of build help
+  could break Hypixel's allowed-mods rules.
+- Block breaks come from left clicks on a block. Check on 1.8.9 that Forge fires `LEFT_CLICK_BLOCK` on the client in
+  Speed Builders; if not, Measure Twice and precision will be too generous there.
+- Every one-off challenge has a detector. The Guess the Build chat pattern is a guess to check with `/bb debug`.
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
+
+## Plans, payments and the Discord bot
+
+Three plans: Builder (free), Architect and Master Builder. Nothing inside a game is paid; plans add profile style and
+deeper stats on the website and in Discord. `api/src/lib/plans.ts` decides every gate. Payments go through Stripe
+Checkout; setup is in [`docs/plans-setup.md`](docs/plans-setup.md), and until it is done the Plans page says "Coming soon".
+
+Bot commands: `/stats`, `/leaderboards`, `/top`, `/compare`, `/records`, `/weekly`, `/recent`, `/plans`, `/help`,
+`/verify`, `/download`, `/feed`, plus the moderation and ticket commands.
 
 ## Build metrics (instead of a vague "accuracy")
 
@@ -125,13 +139,30 @@ Commands: `/setup staff-role log-channel`, `/download`, `/verify name`, `/unveri
 
 ## Testing the mod
 
-Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
+Latest jars are served from [the install page](https://battle.aspir3.net/install) and include SHA-256 checksums.
 
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
 
-In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb sync`, `/bb palette [3-12]`,
-`/bb debug`, `/bb credits`.
+In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb recap` (last game), `/bb weekly`,
+`/bb news` (What's New), `/bb settings`, `/bb sync`, `/bb palette [3-12]`, `/bb debug`, `/bb credits`.
+
+The first B press after an update opens What's New. Patch notes live in `web/updates.json`; run
+`python3 tools/gen-catalog.py` to copy them into the mod.
+
+Every feature can be switched off in game under **Settings** (B menu), or in `config.json`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `spbTimer` | `true` | Speed Builders stopwatch with your best time |
+| `spbShowRecord` | `true` | Also show the Better Battle world record on it |
+| `recap` | `true` | Short summary in chat after each game |
+| `whatsNew` | `true` | Open What's New once after the mod updates |
+| `weeklyAlerts` | `true` | Chat message when you finish a weekly challenge |
+| `updateNotices` | `true` | Chat message when a newer version is out (it never downloads anything) |
+
+The mod asks `GET /mod/latest?loader=fabric|forge&mc=<version>` for `{ "version", "sha256"?, "notes"? }` when you join
+and every 6 hours. A 404 means no notice. The link it shows is always `<website>/install`, never one from the response.
 
 Settings live in `config/betterbattle/config.json`:
 
@@ -155,7 +186,7 @@ votes and who they vote for. Only votes cast by people running the mod are known
 ## Design docs
 ## Testing the mod
 
-Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
+Latest jars are served from [the install page](https://battle.aspir3.net/install) and include SHA-256 checksums.
 
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.

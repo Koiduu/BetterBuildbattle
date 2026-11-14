@@ -23,11 +23,19 @@ public final class MatchRecord {
     public int blocksBroken;
     public static final int LEGENDARY_VOTE = 18;   // highest vote one player can give
     public final Map<String, Integer> palette = new LinkedHashMap<String, Integer>();
-    public String spbRoundsJson;   // set by SpbTracker
+    public String spbRoundsJson;   // set from SpbTracker when the game ends
+    /** Speed Builders rounds (live games only; a game read back from the database has just the JSON). */
+    public final transient List<SpbTracker.Round> spbRounds = new ArrayList<SpbTracker.Round>();
+    /** One-off challenges this game met, even ones already unlocked. Weekly challenges count from these. */
+    public final transient List<String> tags = new ArrayList<String>();
+    public transient int gtbRounds;
+    public transient int gtbCorrect;
+    public transient Integer gtbFastestGuessMs;
 
     // Filled in by the loader adapter while the build is going on
     public String mcVersion;                 // "26.3" or "1.8.9"
     public boolean flew;                     // player flew at any point while building
+    public boolean couldFly;                 // the server allowed flight at some point (so not flying was a choice)
     public boolean reachedHeightLimit;       // placed a block on the plot's top layer
     public String floor;                     // floor block at the end of the build
     public int floorChanges;
@@ -112,6 +120,10 @@ public final class MatchRecord {
         m.blocksPlaced = r.getInt("blocks_placed");
         m.blocksBroken = r.getInt("blocks_broken");
         m.spbRoundsJson = r.getString("spb_rounds");
+        m.spbRounds.addAll(SpbTracker.fromJson(m.spbRoundsJson));
+        String tags = r.getString("tags");
+        if (tags != null && !tags.isEmpty()) m.tags.addAll(java.util.Arrays.asList(tags.split(",")));
+        m.gtbCorrect = r.getInt("gtb_correct");
         String votes = r.getString("votes");
         if (votes != null) {
             MatchRecord.Vote[] parsed = new com.google.gson.Gson().fromJson(votes, MatchRecord.Vote[].class);

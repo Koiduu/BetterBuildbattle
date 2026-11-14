@@ -15,6 +15,7 @@ import { pool } from "../db/pool";
 import { redis } from "../db/redis";
 import { titleFor } from "../lib/titles";
 import { HYPIXEL_API, dashUuid } from "../lib/upstream";
+import { updateHypixelBoards } from "../services/boards";
 
 const KEY = process.env.HYPIXEL_API_KEY!;
 const REQUESTS_PER_5_MIN = Number(process.env.HYPIXEL_RATE ?? 280); // stay under the key's limit
@@ -82,6 +83,7 @@ export async function refreshOne(uuid: string) {
     [uuid, numericOnly(bb), score, titleFor(score).name, player.displayname],
   );
   await redis.zadd("lb:bb_score", score, uuid);   // global ranking keyed by UUID
+  await updateHypixelBoards(uuid, bb);            // and every other Build Battle board
 
 }
 

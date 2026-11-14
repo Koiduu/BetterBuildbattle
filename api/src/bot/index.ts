@@ -12,6 +12,7 @@ import { commands } from "./commands";
 import { handleFeatureCommand } from "./features";
 import { handleModerationCommand } from "./moderation";
 import { handleTicketButton, handleTicketCommand, handleTicketModal } from "./tickets";
+import { handleAutocomplete, handleStatsButton, handleStatsCommand, startStatsBackground } from "./stats";
 
 const oneLine = (error: unknown) => String(error instanceof Error ? error.message : error).replace(/\s+/g, " ").slice(0, 240);
 
@@ -39,6 +40,7 @@ export async function startDiscordBot(token: string, guildId: string) {
     PermissionFlagsBits.BanMembers,
     PermissionFlagsBits.ModerateMembers,
     PermissionFlagsBits.ManageGuild,
+    PermissionFlagsBits.ManageRoles,   // supporter roles for Architect and Master Builder
     PermissionFlagsBits.CreatePrivateThreads,
     PermissionFlagsBits.SendMessagesInThreads,
     PermissionFlagsBits.ManageThreads,
@@ -61,6 +63,7 @@ export async function startDiscordBot(token: string, guildId: string) {
   client.once(Events.ClientReady, (ready) => {
     const invite = `https://discord.com/oauth2/authorize?client_id=${ready.user.id}&scope=bot+applications.commands&permissions=${permissions}`;
     console.log(`Discord bot ready as ${ready.user.tag}. Invite it: ${invite}`);
+    startStatsBackground(client, guildId);
     if (client.guilds.cache.has(guildId)) {
       void registerCommands(client);
     } else {
@@ -73,10 +76,14 @@ export async function startDiscordBot(token: string, guildId: string) {
   client.on(Events.InteractionCreate, (interaction) => {
     void (async () => {
       if (interaction.isChatInputCommand()) {
+        if (await handleStatsCommand(interaction) !== false) return;
         if (await handleFeatureCommand(interaction) !== false) return;
         if (await handleTicketCommand(interaction) !== false) return;
         await handleModerationCommand(interaction);
+      } else if (interaction.isAutocomplete()) {
+        await handleAutocomplete(interaction);
       } else if (interaction.isButton()) {
+        if (await handleStatsButton(interaction) !== false) return;
         await handleTicketButton(interaction);
       } else if (interaction.isModalSubmit()) {
         await handleTicketModal(interaction);

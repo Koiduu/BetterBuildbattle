@@ -6,6 +6,9 @@ import net.aspir3.betterbattle.Platform;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.forge.ui.AchievementToasts;
 import net.aspir3.betterbattle.forge.ui.MenuScreen;
+import net.aspir3.betterbattle.forge.ui.SpbTimerOverlay;
+import net.aspir3.betterbattle.forge.ui.TextPageScreen;
+import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
 import net.aspir3.betterbattle.legacy.LegacyIds;
 import net.minecraft.block.Block;
@@ -50,7 +53,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Mod(modid = BetterBattle.MOD_ID, name = "Better Battle", version = BetterBattleForge.VERSION,
     clientSideOnly = true, acceptedMinecraftVersions = "[1.8.9]")
 public class BetterBattleForge implements Platform {
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.2.0";
     public static final String MC_VERSION = "1.8.9";
     static final String PREFIX = "§d§lBetter Battle §8» §7";
 
@@ -82,10 +85,17 @@ public class BetterBattleForge implements Platform {
         ClientCommandHandler.instance.registerCommand(new BbCommand(this));
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
+        MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
     }
 
     BetterBattle core() {
         return core;
+    }
+
+    /** The B menu, or What's New on the first press after an update (Back goes to the menu). */
+    GuiScreen menu() {
+        MenuScreen menu = new MenuScreen(null);
+        return core.takeWhatsNew() ? new TextPageScreen(menu, BetterBattle.get().whatsNewPage()) : menu;
     }
 
     /** Opens on the next tick, after the chat box has closed. */
@@ -123,6 +133,11 @@ public class BetterBattleForge implements Platform {
         if (!event.world.isRemote || !core.active()) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (event.entityPlayer != mc.thePlayer) return;
+        if (event.action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK) {
+            // Left-clicking a block breaks it. Measure Twice and Speed Builders precision count these.
+            if (!event.world.isAirBlock(event.pos)) core.game().onOwnBlockBroken();
+            return;
+        }
         ItemStack held = mc.thePlayer.getHeldItem();
         if (held == null || event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) return;
 
@@ -148,7 +163,7 @@ public class BetterBattleForge implements Platform {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
 
-        while (menuKey.isPressed()) pendingScreen = new MenuScreen(null);
+        while (menuKey.isPressed()) pendingScreen = menu();
         if (pendingScreen != null) {
             mc.displayGuiScreen(pendingScreen);
             pendingScreen = null;
@@ -176,6 +191,7 @@ public class BetterBattleForge implements Platform {
         if (ticks % 100 == 0) readTabList(mc);
 
         if (game.state() == GameStateMachine.State.BUILDING) {
+            if (mc.thePlayer.capabilities.allowFlying) game.onCanFly();
             if (mc.thePlayer.capabilities.isFlying) game.onFlying();
             if (!plotFound && plotTries++ < 200 && ticks % 5 == 0) findPlot(mc);
         } else {
@@ -262,6 +278,11 @@ public class BetterBattleForge implements Platform {
     @Override
     public void showAchievement(Catalog.Entry achievement) {
         AchievementToasts.add(achievement);
+    }
+
+    @Override
+    public void openPage(Pages.Page page) {
+        pendingScreen = new TextPageScreen(null, page);
     }
 
     @Override

@@ -1,6 +1,26 @@
 // Read-only routes the website uses. Works for ANY tracked Build Battle player;
 // Better Battle extras (level, games, achievements) appear when the player uses the mod.
-import { Router, fail } from "../http";
+import { Router, Raw, fail, type Req } from "../http";
+import { profileCard } from "../services/card";
+import { siteOrigin } from "../lib/site";
+import { BOARDS, boardById, boardPage, positions } from "../services/boards";
+import { FEATURES, can, limit, planOf, type Plan } from "../lib/plans";
+import { publicStyle } from "../lib/style";
+import { readWebSession } from "../plugins/auth";
+
+/** The plan of whoever is looking (free if logged out). */
+async function viewerPlan(req: Req): Promise<Plan> {
+  const viewer = await readWebSession(req);
+  if (!viewer) return "free";
+  const r = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [viewer.id]);
+  return planOf(r.rows[0]);
+}
+
+/** "architect" | "master" for a supporter's badge, else null. */
+const supporterOf = (row: any) => {
+  const plan = planOf(row);
+  return can(plan, "badge") ? plan : null;
+};
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
@@ -9,6 +29,11 @@ import { titleProgress } from "../lib/titles";
 import { levelForXp, totalXpForLevel } from "../services/level";
 import { rateLimit } from "../plugins/auth";
 import { MOJANG_API, dashUuid } from "../lib/upstream";
+import { weeklyProgress, currentWeek } from "../services/weekly";
+import { worldRecords, buildLeaderboard, playerBests } from "../services/speedBuilders";
+
+// Rarity changes slowly; one count for everybody every 10 minutes is plenty.
+let rarityCache: { at: number; body: unknown } | null = null;
 
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
 
@@ -51,8 +76,52 @@ export function publicRoutes(app: Router) {
     return { rankedPlayers: tracked, modUsers: users.rows[0].n };
   });
 
+  /** The list of leaderboards, for the board picker. */
+  app.get("/boards", async () => BOARDS.map((b) => ({ id: b.id, name: b.name, short: b.short, group: b.group })));
+
+  /** Any board other than score. (Score keeps its own handler below, with wins and level columns.) */
+  const otherBoard = async (id: string, page: number) => {
+    const board = boardById(id);
+    if (!board) return fail(400, "unknown_board");
+    const { total, rows } = await boardPage(id, page);
+    return {
+      page, total, board: { id: board.id, name: board.name, short: board.short },
+      rows: rows.map((r) => ({
+        rank: r.rank, uuid: r.uuid, name: r.info?.mc_name ?? null, value: r.value,
+        score: r.info?.bb_score ?? null, title: titleProgress(r.info?.bb_score ?? 0).current,
+        usesMod: !!r.info?.uses_mod, supporter: supporterOf(r.info),
+      })),
+    };
+  };
+
+  /**
+   * Where a player stands on every Build Battle leaderboard. Everyone sees the score board;
+   * the full list is a paid perk (FEATURES.leaderboardPositions), for the viewer's own plan.
+   */
+  app.get("/players/:name/leaderboards", [rateLimit(60, 60_000)], async (req) => {
+    if (!NAME.test(req.params.name)) fail(400, "bad_name");
+    const p = await pool.query(
+      `SELECT mc_uuid, mc_name FROM tracked_players
+       WHERE mc_name = $1 AND last_checked IS NOT NULL AND NOT no_bb_stats
+       ORDER BY last_checked DESC LIMIT 1`, [req.params.name]);
+    if (!p.rowCount) return fail(404, "not_found");
+    const all = await positions(p.rows[0].mc_uuid);
+    const unlocked = can(await viewerPlan(req), "leaderboardPositions");
+    return {
+      name: p.rows[0].mc_name,
+      locked: !unlocked,
+      requires: FEATURES.leaderboardPositions,
+      boards: unlocked ? all : all.filter((b) => b.id === "score"),
+      lockedBoards: unlocked ? [] : all.filter((b) => b.id !== "score").map((b) => ({ id: b.id, name: b.name, group: b.group })),
+    };
+  });
+
   app.get("/leaderboard", async (req) => {
-    const { page } = z.object({ page: z.coerce.number().int().min(1).max(2000).default(1) }).parse(req.query);
+    const { page, board } = z.object({
+      page: z.coerce.number().int().min(1).max(2000).default(1),
+      board: z.string().regex(/^[a-z]{1,16}$/).default("score"),
+    }).parse(req.query);
+    if (board !== "score") return otherBoard(board, page);
     const per = 50;
     const raw = await redis.zrevrange("lb:bb_score", (page - 1) * per, page * per - 1, "WITHSCORES");
     const uuids: string[] = [];
@@ -60,7 +129,8 @@ export function publicRoutes(app: Router) {
     for (let i = 0; i < raw.length; i += 2) { uuids.push(raw[i]); scores.set(raw[i], Number(raw[i + 1])); }
     const info = uuids.length
       ? await pool.query(
-          `SELECT t.mc_uuid, t.mc_name, t.bb_wins, t.title, (u.id IS NOT NULL) AS uses_mod, p.level
+          `SELECT t.mc_uuid, t.mc_name, t.bb_wins, t.title, (u.id IS NOT NULL) AS uses_mod, p.level,
+                  u.plan, u.plan_until, u.plan_comped
            FROM tracked_players t
            LEFT JOIN users u ON u.mc_uuid = t.mc_uuid
            LEFT JOIN user_progress p ON p.user_id = u.id
@@ -76,6 +146,7 @@ export function publicRoutes(app: Router) {
         return {
           rank: (page - 1) * per + i + 1, uuid: u, name: r.mc_name ?? null, score,
           title: titleProgress(score).current, wins: r.bb_wins ?? null, usesMod: !!r.uses_mod, level: r.level ?? null,
+          value: score, supporter: supporterOf(r),
         };
       }),
     };
@@ -104,6 +175,7 @@ export function publicRoutes(app: Router) {
 
     const u = await pool.query(
       `SELECT u.id, u.bio, u.created_at, u.claimed, p.user_id IS NOT NULL AS has_progress,
+              u.plan, u.plan_until, u.plan_comped, u.accent, u.banner, u.card_theme, u.featured_achievement, u.vanity,
               p.xp, p.ap, p.level, p.best_win_streak
        FROM users u LEFT JOIN user_progress p ON p.user_id = u.id WHERE u.mc_uuid = $1`, [p.mc_uuid]);
     let betterBattle = null;
@@ -153,6 +225,7 @@ export function publicRoutes(app: Router) {
       lastChecked: p.last_checked,
       bio,
       claimed,
+      style: publicStyle(u.rows[0]),
       hypixel: {
         wins: hyp.wins ?? p.bb_wins ?? 0,
         gamesPlayed: hyp.games_played ?? p.bb_games ?? 0,
@@ -197,11 +270,14 @@ export function publicRoutes(app: Router) {
     }).parse(req.query);
     const id = await userIdFor(name);
     if (!id) return [];
+    // The latest games for everyone; the complete history shows when the profile's owner is a Master Builder.
+    const owner = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [id]);
+    const cap = limit(planOf(owner.rows[0]), "historyGames");
     const r = await pool.query(
       `SELECT id, played_at, mode, theme, placement, players, score, grade, crowd_score, xp_earned
-       FROM matches WHERE user_id = $1 AND ($2::bb_mode IS NULL OR mode = $2)
-         AND ($3::timestamptz IS NULL OR played_at < $3)
-       ORDER BY played_at DESC LIMIT 25`, [id, q.mode ?? null, q.before ?? null]);
+       FROM (SELECT * FROM matches WHERE user_id = $1 ORDER BY played_at DESC LIMIT $4) recent
+       WHERE ($2::bb_mode IS NULL OR mode = $2) AND ($3::timestamptz IS NULL OR played_at < $3)
+       ORDER BY played_at DESC LIMIT 25`, [id, q.mode ?? null, q.before ?? null, Number.isFinite(cap) ? cap : null]);
     return r.rows;
   });
 
@@ -245,5 +321,55 @@ export function publicRoutes(app: Router) {
       `SELECT id, text, xp FROM weekly_challenges
        WHERE week_start = date_trunc('week', now())::date ORDER BY id`);
     return r.rows;
+  });
+
+  /** This week's challenges with the player's progress, and when the week ends. */
+  app.get("/players/:name/weekly", async (req) => {
+    const id = await userIdFor(req.params.name);
+    if (!id) {
+      const { endsAt } = await currentWeek(pool);
+      const r = await pool.query(
+        "SELECT id, text, xp FROM weekly_challenges WHERE week_start = date_trunc('week', now())::date ORDER BY id");
+      return { weekEndsAt: endsAt, challenges: r.rows.map((c: any) => ({ ...c, progress: 0, target: null, done: false })) };
+    }
+    const w = await weeklyProgress(pool, id);
+    return { weekEndsAt: w.weekEndsAt, challenges: w.weekly };
+  });
+
+  /** The profile card as a PNG: the link-preview image for /p/:name. */
+  app.get("/players/:name/card.png", [rateLimit(30, 60_000)], async (req) => {
+    if (!NAME.test(req.params.name)) fail(400, "bad_name");
+    const png = await profileCard(req.params.name, siteOrigin());
+    if (!png) return fail(404, "not_found");
+    return new Raw(png, "image/png", { "cache-control": "public, max-age=600" });
+  });
+
+  /** How many Better Battle players have each achievement. */
+  app.get("/achievements/rarity", async () => {
+    if (rarityCache && Date.now() - rarityCache.at < 10 * 60_000) return rarityCache.body;
+    const [players, counts] = await Promise.all([
+      pool.query("SELECT count(*)::int AS n FROM user_progress"),
+      pool.query("SELECT achievement_id AS id, count(*)::int AS n FROM user_achievements GROUP BY achievement_id"),
+    ]);
+    const body = {
+      players: players.rows[0].n,
+      counts: Object.fromEntries(counts.rows.map((r: any) => [r.id, r.n])),
+    };
+    rarityCache = { at: Date.now(), body };
+    return body;
+  });
+
+  // ---- Speed Builders
+  app.get("/spb/builds", async () => worldRecords());
+
+  app.get("/spb/builds/:id", async (req) => {
+    if (!/^[a-z0-9_]{1,48}$/.test(req.params.id)) fail(400, "bad_build");
+    const board = await buildLeaderboard(req.params.id);
+    return board ?? fail(404, "not_found");
+  });
+
+  app.get("/players/:name/spb-bests", async (req) => {
+    const id = await userIdFor(req.params.name);
+    return id ? playerBests(id) : [];
   });
 }

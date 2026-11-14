@@ -1,3 +1,12 @@
+import {
+  updatesPage, speedBuildersPage, speedBuildPage, comparePage, installPage, updateBanner,
+  loadWeekly, renderAchievements, spbBestsSection, loadSpbBests, openShareCard,
+} from "./features.js";
+import {
+  plansPage, insightsPage, wrappedPage, groupsPage, groupPage, resolveVanity, renderPlanCard, supporterChip,
+  supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
+} from "./plans.js";
+
 const API = "/bb/v1";
 const app = document.getElementById("app");
 const SUPPORT = { email: null, discord: "https://discord.gg/zgQcwWpkrq" };
@@ -78,6 +87,16 @@ const routes = [
   { path: /^\/login\/?$/, page: () => authPage("login") },
   { path: /^\/signup\/?$/, page: () => authPage("signup") },
   { path: /^\/account\/?$/, page: accountPage },
+  { path: /^\/updates\/?$/, page: updatesPage, nav: "updates" },
+  { path: /^\/install\/?$/, page: installPage },
+  { path: /^\/plans\/?$/, page: plansPage, nav: "plans" },
+  { path: /^\/insights\/?$/, page: insightsPage },
+  { path: /^\/wrapped\/?$/, page: wrappedPage },
+  { path: /^\/groups\/?$/, page: groupsPage },
+  { path: /^\/groups\/([a-z0-9]{6,20})\/?$/, page: groupPage },
+  { path: /^\/speed-builders\/?$/, page: speedBuildersPage, nav: "spb" },
+  { path: /^\/speed-builders\/([a-z0-9_]{1,48})\/?$/, page: speedBuildPage, nav: "spb" },
+  { path: /^\/compare(?:\/([A-Za-z0-9_]{1,16}))?(?:\/([A-Za-z0-9_]{1,16}))?(?:\/([A-Za-z0-9_]{1,16}))?(?:\/([A-Za-z0-9_]{1,16}))?\/?$/, page: comparePage },
   { path: /^\/privacy\/?$/, page: privacyPage },
   { path: /^\/terms\/?$/, page: termsPage },
   { path: /^\/cookies\/?$/, page: cookiesPage },
@@ -98,7 +117,12 @@ async function render() {
   window.scrollTo(0, 0);
   clearInterval(linkPoll);
 
+  app.onclick = null;   // pages that listen on the whole page set this; it must not outlive them
+
   if (!route) {
+    // A supporter's own link, e.g. /koidu
+    const name = await resolveVanity(location.pathname);
+    if (name) return profilePage(name);
     app.innerHTML = `<div class="card empty">Page not found. <a href="/" data-link>Back to home</a></div>`;
     return;
   }
@@ -152,12 +176,14 @@ function privacyPage() {
     <section><h2>Mod data</h2>
       <p>When you log in with the mod, the server verifies your Minecraft name with Mojang's session server. The mod never sees or sends your Microsoft password.</p>
       <p>Each sync sends your finished games: time, mode, theme, placement, player count, score, grade, duration, blocks placed and broken, palette, and your votes with the builder name. Votes are visible only to Better Battle admins and are used to check results. Syncs also send local achievement claims, mod and Minecraft version, and the names and UUIDs of players seen in your lobbies.</p>
+      <p>For Speed Builders, each round adds the build's name, your time if you got a Perfect Build, accuracy, precision, and blocks placed and broken. Games also carry the names of any one-off challenges they met (used for weekly challenges), and Guess the Build games carry your number of correct guesses. You can stop saving votes, and turn off the timer, recap and other extras, in the mod's Settings screen.</p>
       <p>The mod also saves this information on your PC in a SQLite file. A <code>/bb debug</code> log stays on your PC unless you share it.</p></section>
     <section><h2>Other players and public profiles</h2>
       <p>Better Battle fetches public Build Battle stats from the official Hypixel API by UUID for leaderboard players, players seen in lobbies, and players someone searches for. Players who have never signed up can appear in the global ranking. We keep only their name, UUID and public Hypixel Build Battle stats while they are in the ranking, and do not record who saw them or in which lobby. They can ask us on Discord to be removed.</p>
-      <p>Profiles are public. They can show a name, Hypixel stats, rank, bio, pins, Better Battle matches, achievements and heatmap. Email, Discord ID and votes are never public.</p></section>
+      <p>Profiles are public. They can show a name, Hypixel stats, rank, bio, pins, Better Battle matches, achievements, weekly challenge progress, Speed Builders best times and heatmap. Your best time on each Speed Builders build also appears with your name on that build's public leaderboard, and anyone can compare two profiles side by side. Email, Discord ID and votes are never public.</p></section>
     <section><h2>Services involved</h2>
-      <p>Cloudflare carries all traffic and sees IP addresses. Player heads load from mc-heads.net, which sees the visitor's IP. Discord avatars load from cdn.discordapp.com. The server contacts Hypixel and Mojang, and contacts Discord only if you use Discord login.</p>
+      <p>Cloudflare carries all traffic and sees IP addresses. Player heads load from mc-heads.net, which sees the visitor's IP. Discord avatars load from cdn.discordapp.com. The server contacts Hypixel and Mojang, fetches player heads from mc-heads.net to draw profile card images, and contacts Discord only if you use Discord login.</p>
+      <p>If you buy a plan, payment is handled by Stripe, who receive your payment details and email. We store only your Stripe customer and subscription IDs, your plan and when it ends. We never receive your card number.</p>
       <p>IP addresses are used only in memory for rate limiting and are never written to the database.</p></section>
     <section><h2>How long data stays</h2>
       <p>Your Better Battle account data stays until you delete your account. Deleting removes your Better Battle data immediately. Public Hypixel stats in the global ranking stay unless you ask support to remove them. Login sessions expire after 30 days.</p></section>
@@ -179,6 +205,12 @@ function termsPage() {
       <p>Bios must not be hateful, sexual or harassing, and must not contain personal information about other people. Bios that break this rule can be removed.</p></section>
     <section><h2>Using the mod</h2>
       <p>Using the mod on Hypixel is at your own risk under Hypixel's rules. The mod reads chat and the scoreboard; it never plays for you.</p></section>
+    <section><h2>Paid plans</h2>
+      <p>The mod, achievements and rankings are free. Architect and Master Builder are optional monthly subscriptions that add cosmetic and statistics features on this website and in Discord. They never change anything inside a game and give no advantage in Build Battle.</p>
+      <p>Payments are taken by Stripe. Better Battle never sees or stores your card details. A subscription renews every month until you cancel it, which you can do at any time from your Account page; you keep the plan until the end of the period you have paid for.</p>
+      <p>If you are under 18, you need a parent's or guardian's permission to buy a plan. If you bought one by mistake, contact us on Discord within 14 days and we will refund it. Where the law gives you a right to cancel within 14 days, that right applies.</p>
+      <p>Features can change over time. If a paid feature you rely on is removed, you can cancel and ask for a refund of the current period. If the service shuts down, subscriptions are cancelled and the unused part of the current period is refunded.</p>
+      <p>Deleting your account cancels your subscription immediately. Accounts that break these terms can lose their plan without a refund.</p></section>
     <section><h2>Changes</h2>
       <p>These terms can change. The date at the top shows the latest version.</p></section>`);
 }
@@ -196,7 +228,7 @@ function cookiesPage() {
 function supportPage() {
   legalPage("Support", `
     <section><h2>Installing the mod</h2>
-      <p>Put the Fabric 26.3 or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder.</p></section>
+      <p>Put the Fabric 26.3 or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
     <section><h2>Linking your account</h2>
       <p>Get a code from the Account page, then run <code>/bb link &lt;code&gt;</code> in game.</p></section>
     <section><h2>The stats server cannot be reached</h2>
@@ -256,6 +288,7 @@ async function homePage() {
   flashNotice = null;
   app.innerHTML = `
     ${notice ? `<p class="status-notice" role="status">${esc(notice)}</p>` : ""}
+    <div id="home-banner"></div>
     <section class="intro">
       <h1>Every Build Battle player, ranked.</h1>
       <p>Look up anyone who has played Build Battle on Hypixel. Install the Better Battle mod to add your games, levels and achievements to your profile.</p>
@@ -273,6 +306,8 @@ async function homePage() {
       </div>
       <div id="home-top"><div class="loading" style="height:300px"></div></div>
     </section>`;
+
+  updateBanner(document.getElementById("home-banner"));
 
   document.getElementById("home-search").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -301,7 +336,7 @@ function leaderboardTable(rows) {
         <a class="player" href="/p/${esc(r.name)}" data-link>
           <img src="${avatar(r.uuid, 32)}" alt="" width="28" height="28" loading="lazy">
           ${esc(r.name ?? "Unknown")}
-          ${r.usesMod ? `<span class="bb-tag" title="Uses Better Battle">BB</span>` : ""}
+          ${r.usesMod ? `<span class="bb-tag" title="Uses Better Battle">BB</span>` : ""}${supporterMark(r.supporter)}
         </a>
       </td>
       <td>${title(r.title)}</td>
@@ -322,7 +357,10 @@ function leaderboardTable(rows) {
 }
 
 async function leaderboardPage() {
-  const page = Math.max(1, Number(new URLSearchParams(location.search).get("page")) || 1);
+  const query = new URLSearchParams(location.search);
+  const page = Math.max(1, Number(query.get("page")) || 1);
+  const boardId = /^[a-z]{1,16}$/.test(query.get("board") ?? "") ? query.get("board") : "score";
+  const link = (n) => `/leaderboard?${boardId === "score" ? "" : `board=${boardId}&`}page=${n}`;
   document.title = "Leaderboard · Better Battle";
   app.innerHTML = `
     <section class="card">
@@ -331,20 +369,32 @@ async function leaderboardPage() {
           <h2>Leaderboard</h2>
           <p class="sub" id="lb-sub">Ranked by Build Battle score</p>
         </div>
-        <div class="pager" id="lb-pager"></div>
+        <div class="lb-tools"><span id="lb-pick"></span><div class="pager" id="lb-pager"></div></div>
       </div>
       <div id="lb-body"><div class="loading" style="height:560px"></div></div>
     </section>`;
 
-  const board = await get("/leaderboard?page=" + page);
+  const [board, picker] = await Promise.all([
+    get(`/leaderboard?page=${page}${boardId === "score" ? "" : "&board=" + boardId}`).catch(() => null),
+    boardPicker(boardId),
+  ]);
+  if (!board) {
+    document.getElementById("lb-body").innerHTML = `<div class="empty">That leaderboard doesn't exist. <a href="/leaderboard" data-link>Back to score</a></div>`;
+    return;
+  }
   const pages = Math.max(1, Math.ceil(board.total / 50));
 
-  document.getElementById("lb-sub").textContent = `Ranked by Build Battle score, ${num(board.total)} players`;
-  document.getElementById("lb-body").innerHTML = leaderboardTable(board.rows);
+  document.getElementById("lb-pick").innerHTML = picker;
+  document.getElementById("board-pick")?.addEventListener("change", (e) => {
+    go(e.target.value === "score" ? "/leaderboard" : "/leaderboard?board=" + e.target.value);
+  });
+  document.getElementById("lb-sub").textContent =
+    `Ranked by ${board.board ? board.board.name : "Build Battle score"}, ${num(board.total)} players`;
+  document.getElementById("lb-body").innerHTML = board.board ? boardTable(board) : leaderboardTable(board.rows);
   document.getElementById("lb-pager").innerHTML = `
-    ${page > 1 ? `<a class="btn" href="/leaderboard?page=${page - 1}" data-link>Previous</a>` : ""}
+    ${page > 1 ? `<a class="btn" href="${link(page - 1)}" data-link>Previous</a>` : ""}
     <span class="muted">Page ${num(page)} of ${num(pages)}</span>
-    ${page < pages ? `<a class="btn" href="/leaderboard?page=${page + 1}" data-link>Next</a>` : ""}`;
+    ${page < pages ? `<a class="btn" href="${link(page + 1)}" data-link>Next</a>` : ""}`;
 }
 
 // Profile
@@ -418,6 +468,7 @@ async function profilePage(name) {
           <div class="tags">
             <span class="chip">${title(t.current)}</span>
             ${bb ? `<span class="chip pink">Better Battle</span>` : ""}
+            ${supporterChip(p.style?.supporter)}
           </div>
           <h1>${esc(p.name)}</h1>
           ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}
@@ -446,6 +497,8 @@ async function profilePage(name) {
         </div>
       </div>
       ${profileAction(p)}
+      <a class="btn" href="/compare/${esc(p.name)}" data-link>Compare</a>
+      <button class="btn" id="share-card">Share card</button>
       <button class="btn primary" id="share">Share profile</button>
     </section>
 
@@ -477,7 +530,14 @@ async function profilePage(name) {
       </section>
     </div>
 
+    ${positionsSection()}
+
     ${bb ? modSections(bb) : getModCard()}`;
+
+  decorateProfile(p);
+  loadPositions(p.name);
+
+  document.getElementById("share-card").addEventListener("click", () => openShareCard(p));
 
   document.getElementById("share").addEventListener("click", async (e) => {
     const url = `${location.origin}/p/${p.name}`;
@@ -507,7 +567,7 @@ async function profilePage(name) {
   });
 
   showRange(90);
-  if (bb) loadModData(p.name);
+  if (bb) loadModData(p.name, p.style);
 }
 
 function profileAction(p) {
@@ -521,9 +581,9 @@ function getModCard() {
     <section class="card get-mod">
       <div>
         <h2>See the rest of this profile with the mod</h2>
-        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders tips. Fabric 26.3 and Forge 1.8.9.</p>
+        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3 and Forge 1.8.9.</p>
       </div>
-      <a class="btn primary" href="https://github.com/Koiduu/BetterBuildbattle" target="_blank" rel="noopener">Get the mod</a>
+      <a class="btn primary" href="/install" data-link>Get the mod</a>
     </section>`;
 }
 
@@ -565,7 +625,7 @@ function modSections(bb) {
       <section class="card">
         <div class="card-head">
           <h2>This week</h2>
-          <span class="muted" style="font-size:12px">resets Monday</span>
+          <span class="muted" style="font-size:12px" id="weekly-reset">resets Monday</span>
         </div>
         <div class="list" id="weekly"></div>
       </section>
@@ -575,6 +635,8 @@ function modSections(bb) {
       <h2>Pinned builds</h2>
       <div class="pin-grid" id="pins"></div>
     </section>
+
+    ${spbBestsSection()}
 
     <section class="card">
       <div class="card-head">
@@ -588,32 +650,19 @@ function modSections(bb) {
     </section>`;
 }
 
-async function loadModData(name) {
+async function loadModData(name, style) {
   const n = encodeURIComponent(name);
-  const [heat, achievements, pins, weekly] = await Promise.all([
+  const [heat, achievements, pins] = await Promise.all([
     get(`/players/${n}/heatmap`).catch(() => []),
     get(`/players/${n}/achievements`).catch(() => ({ unlocked: [], total: 0 })),
     get(`/players/${n}/pins`).catch(() => []),
-    get("/challenges/weekly").catch(() => []),
   ]);
 
   drawHeatmap(heat);
-
-  document.getElementById("ach-count").textContent = `${num(achievements.unlocked.length)} of ${num(achievements.total)}`;
-  document.getElementById("achievements").innerHTML = achievements.unlocked.length
-    ? achievements.unlocked.slice(0, 6).map((a) => `
-        <div class="row-item">
-          <div class="badge">+${num(a.points)}</div>
-          <div class="row-text"><b>${esc(a.name)}</b><span>${esc(a.description)}</span></div>
-        </div>`).join("")
-    : `<p class="muted">None yet.</p>`;
-
-  document.getElementById("weekly").innerHTML = weekly.length
-    ? weekly.map((w) => `
-        <div class="row-item">
-          <div class="row-text"><b>${esc(w.text)}</b><span>${num(w.xp)} XP</span></div>
-        </div>`).join("")
-    : `<p class="muted">No challenges yet this week.</p>`;
+  await renderAchievements(achievements);
+  document.getElementById("achievements")?.insertAdjacentHTML("beforebegin", featuredAchievement(style, achievements));
+  loadWeekly(name);
+  loadSpbBests(name);
 
   document.getElementById("pins").innerHTML = pins.length
     ? pins.map((m) => `
@@ -891,6 +940,8 @@ async function accountPage() {
 
     <section class="card" id="mc-card"></section>
 
+    <section class="card" id="plan-card"></section>
+
     <div class="cols even">
       <section class="card">
         <div class="card-head">
@@ -964,6 +1015,7 @@ async function accountPage() {
   });
 
   renderMinecraftCard(providers);
+  renderPlanCard(document.getElementById("plan-card"));
   setUpBio();
   setUpPins();
   setUpAccountDeletion();
@@ -1180,7 +1232,7 @@ async function setUpPins() {
     <div class="card-head">
       <div>
         <h2>Pinned builds</h2>
-        <p class="sub">Up to 10 games, shown in this order on your profile</p>
+        <p class="sub">Up to ${me.plan?.limits?.pins ?? 10} games, shown in this order on your profile${(me.plan?.limits?.pins ?? 10) < 20 ? ` (20 with <a href="/plans" data-link>Architect</a>)` : ""}</p>
       </div>
       <div class="form-row">
         <span class="muted saved" id="pins-status" role="status"></span>
@@ -1205,8 +1257,9 @@ async function setUpPins() {
 
   const draw = () => {
     const ids = new Set(pins.map((m) => m.id));
-    const full = pins.length >= 10;
-    document.getElementById("pin-count").textContent = `${pins.length} of 10 pinned`;
+    const maxPins = me.plan?.limits?.pins ?? 10;
+    const full = pins.length >= maxPins;
+    document.getElementById("pin-count").textContent = `${pins.length} of ${maxPins} pinned`;
     document.getElementById("pinned").innerHTML = pins.length
       ? pins.map((m, i) => pinRow(m, `
           <button class="icon-btn" data-up="${i}" aria-label="Move up"${i === 0 ? " disabled" : ""}>${icon("m6 15 6-6 6 6")}</button>
@@ -1294,3 +1347,6 @@ function setupCookieNotice() {
 setupCookieNotice();
 const meReady = loadMe();
 render();
+
+// For features.js
+export { app, esc, num, percent, ordinal, timeAgo, avatar, title, get, go, request, me, meReady, loadMe, API, MODES, NAME_RE };

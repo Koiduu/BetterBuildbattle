@@ -1,6 +1,6 @@
 {
-  "_note": "Taken from a real Solo game on Hypixel (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Other modes may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
-  "version": 2,
+  "_note": "Solo and Speed Builders lines are taken from real Hypixel games (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Teams, Pro and Guess the Build may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
+  "version": 4,
   "title": "BUILD BATTLE",
   "modes": {
     "solo": "solo",
@@ -12,7 +12,13 @@
   "sidebar": {
     "MODE": "^Mode: (.+)$",
     "PLAYERS": "^Players: (\\d+)$",
-    "TIME": "^Time: \\d+:\\d+$"
+    "TIME": "^Time: \\d+:\\d+$",
+    "SPB_ROUND": "^Round: (\\d+)$",
+    "SPB_THEME": "^Theme: (.+)$",
+    "SPB_DIFFICULTY": "^Difficulty: (.+)$",
+    "SPB_TIME_LEFT": "^Time Left: (\\d+):(\\d+)$",
+    "SPB_PLAYERS_LEFT": "^Players Left: (\\d+)$",
+    "SPB_GAME_OVER": "^Game Over!"
   },
   "chat": {
     "THEME": "^Build something relevant to the theme: (.+)$",
@@ -21,6 +27,16 @@
     "VOTE": "^Confirmed vote: (.+)$",
     "SCORE": "^Your Score: ([\\d.]+)$",
     "PLACEMENT": "^\\((\\d+)(?:st|nd|rd|th) Place\\)$",
-    "GAME_END": "^Reward Summary$"
-  }
+    "GAME_END": "^Reward Summary$",
+    "GTB_CORRECT_GUESS": "^\\s*\\+\\d+ .*\\(Correct Guess\\)|^\\s*You (?:correctly )?guessed the (?:theme|build)",
+    "SPB_PERFECT": "^([A-Za-z0-9_]{1,16}) got a perfect build in ([\\d.]+)s!$",
+    "SPB_ACCURACY": "^Your build was (\\d{1,3})% accurate!$",
+    "SPB_ELIMINATED": "^You were eliminated",
+    "TOKENS_PLACEMENT": "^\\+[\\d,]+ tokens! \\((\\d+)(?:st|nd|rd|th) Place\\)$",
+    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - [\\d,.]+$"
+  },
+  "titles": [
+    "BUILD BATTLE",
+    "SPEED BUILDERS"
+  ]
 }

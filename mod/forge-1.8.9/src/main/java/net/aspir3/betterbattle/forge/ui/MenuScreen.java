@@ -2,6 +2,7 @@ package net.aspir3.betterbattle.forge.ui;
 
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.achieve.Catalog;
+import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.store.LocalDatabase;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
@@ -16,7 +17,8 @@ import java.util.Map;
 
 /** The main Better Battle screen, built from 1.8.9's own widgets and textures. */
 public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
-    private static final int ACHIEVEMENTS = 0, PROFILE = 1, SYNC = 2, CREDITS = 3, DONE = 4;
+    private static final int ACHIEVEMENTS = 0, PROFILE = 1, SYNC = 2, CREDITS = 3, DONE = 4,
+        WHATS_NEW = 5, LAST_GAME = 6, WEEKLY = 7, SETTINGS = 8;
 
     private final GuiScreen parent;
     private boolean tracking;
@@ -33,15 +35,19 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
     public void initGui() {
         loadStats();
         int cx = width / 2;
-        int y = height - 52;
+        int y = height - 76;
         buttonList.clear();
         buttonList.add(new GuiButton(ACHIEVEMENTS, cx - 154, y, 100, 20, "Achievements"));
         buttonList.add(new GuiButton(PROFILE, cx - 50, y, 100, 20, "View Profile"));
         GuiButton sync = new GuiButton(SYNC, cx + 54, y, 100, 20, "Sync Now");
         sync.enabled = tracking;
         buttonList.add(sync);
-        buttonList.add(new GuiButton(CREDITS, cx - 154, y + 24, 100, 20, "Credits"));
-        buttonList.add(new GuiButton(DONE, cx - 50, y + 24, 204, 20, "Done"));
+        buttonList.add(new GuiButton(WHATS_NEW, cx - 154, y + 24, 100, 20, "What's New"));
+        buttonList.add(new GuiButton(LAST_GAME, cx - 50, y + 24, 100, 20, "Last Game"));
+        buttonList.add(new GuiButton(WEEKLY, cx + 54, y + 24, 100, 20, "Weekly"));
+        buttonList.add(new GuiButton(SETTINGS, cx - 154, y + 48, 100, 20, "Settings"));
+        buttonList.add(new GuiButton(CREDITS, cx - 50, y + 48, 100, 20, "Credits"));
+        buttonList.add(new GuiButton(DONE, cx + 54, y + 48, 100, 20, "Done"));
     }
 
     private void loadStats() {
@@ -103,6 +109,18 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
             case CREDITS:
                 mc.displayGuiScreen(new CreditsScreen(this));
                 break;
+            case WHATS_NEW:
+                mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().whatsNewPage()));
+                break;
+            case LAST_GAME:
+                mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().lastGamePage()));
+                break;
+            case WEEKLY:
+                mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().weeklyPage()));
+                break;
+            case SETTINGS:
+                mc.displayGuiScreen(new SettingsScreen(this));
+                break;
             default:
                 mc.displayGuiScreen(parent);
         }
@@ -125,7 +143,7 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         drawDefaultBackground();
         int cx = width / 2;
         drawCenteredString(fontRendererObj, "Better Battle", cx, 15, 0xFFFFFF);
-        int y = Math.max(40, height / 2 - 70);
+        int y = Math.max(32, height / 2 - 92);
 
         if (!tracking) {
             drawCenteredString(fontRendererObj, "Join Hypixel to start tracking your games.", cx, y + 30, 0xAAAAAA);

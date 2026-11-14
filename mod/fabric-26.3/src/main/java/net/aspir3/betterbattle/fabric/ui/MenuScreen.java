@@ -2,6 +2,7 @@ package net.aspir3.betterbattle.fabric.ui;
 
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.achieve.Catalog;
+import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.store.LocalDatabase;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -24,7 +25,7 @@ public final class MenuScreen extends Screen {
     private static final Identifier XP_PROGRESS = Identifier.withDefaultNamespace("hud/experience_bar_progress");
 
     private final Screen parent;
-    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 58);
+    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 82);
 
     private boolean tracking;
     private long level, xpInto, xpNeeded;
@@ -53,9 +54,16 @@ public final class MenuScreen extends Screen {
         }).width(100).build());
         sync.active = tracking;
 
+        BetterBattle core = BetterBattle.get();
+        LinearLayout middle = rows.addChild(LinearLayout.horizontal().spacing(8));
+        middle.addChild(Button.builder(Component.literal("What's New"), b -> minecraft.gui.setScreen(new TextPageScreen(this, BetterBattle.get().whatsNewPage()))).width(100).build());
+        middle.addChild(Button.builder(Component.literal("Last Game"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.lastGamePage()))).width(100).build());
+        middle.addChild(Button.builder(Component.literal("Weekly"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.weeklyPage()))).width(100).build());
+
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
+        bottom.addChild(Button.builder(Component.literal("Settings"), b -> minecraft.gui.setScreen(new SettingsScreen(this))).width(100).build());
         bottom.addChild(Button.builder(Component.literal("Credits"), b -> minecraft.gui.setScreen(new CreditsScreen(this))).width(100).build());
-        bottom.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(208).build());
+        bottom.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(100).build());
 
         layout.visitWidgets(this::addRenderableWidget);
         repositionElements();

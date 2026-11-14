@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { Router, fail, type Req } from "../http";
 import { pool } from "../db/pool";
+import { announcePlanChange } from "../services/stripe";
 
 const VOTES = ["super_poop", "poop", "meh", "ok", "good", "epic", "legendary"] as const;
 
@@ -15,6 +16,20 @@ function requireAdmin(req: Req) {
 }
 
 export function adminRoutes(app: Router) {
+  // Give (or take back) a plan without Stripe: for testers, friends and prizes.
+  app.post("/admin/plan", [requireAdmin], async (req) => {
+    const { name, plan } = z.object({
+      name: z.string().regex(/^[A-Za-z0-9_]{1,16}$/),
+      plan: z.enum(["free", "architect", "master"]),
+    }).parse(req.body);
+    const r = await pool.query(
+      `UPDATE users SET plan = $2, plan_comped = ($2 <> 'free'), plan_until = NULL
+       WHERE mc_name = $1 AND stripe_subscription_id IS NULL RETURNING id, mc_name, plan`, [name, plan]);
+    if (!r.rowCount) fail(404, "no_such_user_or_has_subscription");
+    announcePlanChange(r.rows[0].id);
+    return r.rows[0];
+  });
+
   // Every mod user with how they vote: counts per vote and an average on the 1-7 scale.
   app.get("/admin/votes", [requireAdmin], async (req) => {
     const { days } = z.object({ days: z.coerce.number().int().min(1).max(3650).default(3650) }).parse(req.query);
