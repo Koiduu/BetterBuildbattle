@@ -10,6 +10,7 @@ import { MOJANG_SESSION, dashUuid } from "../lib/upstream";
 import { queuePlayers, globalRank, refreshOne } from "../jobs/crawler";
 import { weeklyProgress } from "../services/weekly";
 import { worldRecords } from "../services/speedBuilders";
+import { updateProgressBoards } from "../services/boards";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -209,6 +210,8 @@ export function modRoutes(app: Router) {
         // Global rank = Hypixel Build Battle score among ALL tracked players (crawler keeps it fresh).
         const uuid = (await pool.query("SELECT mc_uuid FROM users WHERE id = $1", [userId])).rows[0].mc_uuid;
         const { rank, of } = await globalRank(uuid);
+        const totals = await pool.query("SELECT xp, ap FROM user_progress WHERE user_id = $1", [userId]);
+        await updateProgressBoards(uuid, Number(totals.rows[0]?.xp ?? 0), Number(totals.rows[0]?.ap ?? 0)).catch(() => {});
         return { accepted, rejected, confirmed, revoked, level, xp: Number(prog.rows[0].xp),
                  globalRank: rank, rankedPlayers: of,
                  weekly: weekly.weekly, weekEndsAt: weekly.weekEndsAt, weeklyCompleted: weekly.completedNow };

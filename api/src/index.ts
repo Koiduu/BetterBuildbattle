@@ -8,6 +8,7 @@ import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
 import { adminRoutes } from "./routes/admin";
 import { billingRoutes } from "./routes/billing";
+import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
 import { daily, snapshotRanks, rebuildLeaderboard } from "./jobs/daily";
@@ -67,6 +68,7 @@ await waitForDatabase();
 await migrate();
 await seedCatalog();
 await pickWeekly();
+await ensureBoards().catch((e) => console.error("Couldn't build the leaderboards", e));
 
 const server = createServer([api], {
   apiPrefix: PREFIX,

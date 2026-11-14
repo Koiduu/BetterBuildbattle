@@ -1,8 +1,25 @@
 // Read-only routes the website uses. Works for ANY tracked Build Battle player;
 // Better Battle extras (level, games, achievements) appear when the player uses the mod.
-import { Router, Raw, fail } from "../http";
+import { Router, Raw, fail, type Req } from "../http";
 import { profileCard } from "../services/card";
 import { siteOrigin } from "../lib/site";
+import { BOARDS, boardById, boardPage, positions } from "../services/boards";
+import { FEATURES, can, planOf, type Plan } from "../lib/plans";
+import { readWebSession } from "../plugins/auth";
+
+/** The plan of whoever is looking (free if logged out). */
+async function viewerPlan(req: Req): Promise<Plan> {
+  const viewer = await readWebSession(req);
+  if (!viewer) return "free";
+  const r = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [viewer.id]);
+  return planOf(r.rows[0]);
+}
+
+/** "architect" | "master" for a supporter's badge, else null. */
+const supporterOf = (row: any) => {
+  const plan = planOf(row);
+  return can(plan, "badge") ? plan : null;
+};
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
@@ -56,8 +73,52 @@ export function publicRoutes(app: Router) {
     return { rankedPlayers: tracked, modUsers: users.rows[0].n };
   });
 
+  /** The list of leaderboards, for the board picker. */
+  app.get("/boards", async () => BOARDS.map((b) => ({ id: b.id, name: b.name, short: b.short, group: b.group })));
+
+  /** Any board other than score. (Score keeps its own handler below, with wins and level columns.) */
+  const otherBoard = async (id: string, page: number) => {
+    const board = boardById(id);
+    if (!board) return fail(400, "unknown_board");
+    const { total, rows } = await boardPage(id, page);
+    return {
+      page, total, board: { id: board.id, name: board.name, short: board.short },
+      rows: rows.map((r) => ({
+        rank: r.rank, uuid: r.uuid, name: r.info?.mc_name ?? null, value: r.value,
+        score: r.info?.bb_score ?? null, title: titleProgress(r.info?.bb_score ?? 0).current,
+        usesMod: !!r.info?.uses_mod, supporter: supporterOf(r.info),
+      })),
+    };
+  };
+
+  /**
+   * Where a player stands on every Build Battle leaderboard. Everyone sees the score board;
+   * the full list is a paid perk (FEATURES.leaderboardPositions), for the viewer's own plan.
+   */
+  app.get("/players/:name/leaderboards", [rateLimit(60, 60_000)], async (req) => {
+    if (!NAME.test(req.params.name)) fail(400, "bad_name");
+    const p = await pool.query(
+      `SELECT mc_uuid, mc_name FROM tracked_players
+       WHERE mc_name = $1 AND last_checked IS NOT NULL AND NOT no_bb_stats
+       ORDER BY last_checked DESC LIMIT 1`, [req.params.name]);
+    if (!p.rowCount) return fail(404, "not_found");
+    const all = await positions(p.rows[0].mc_uuid);
+    const unlocked = can(await viewerPlan(req), "leaderboardPositions");
+    return {
+      name: p.rows[0].mc_name,
+      locked: !unlocked,
+      requires: FEATURES.leaderboardPositions,
+      boards: unlocked ? all : all.filter((b) => b.id === "score"),
+      lockedBoards: unlocked ? [] : all.filter((b) => b.id !== "score").map((b) => ({ id: b.id, name: b.name, group: b.group })),
+    };
+  });
+
   app.get("/leaderboard", async (req) => {
-    const { page } = z.object({ page: z.coerce.number().int().min(1).max(2000).default(1) }).parse(req.query);
+    const { page, board } = z.object({
+      page: z.coerce.number().int().min(1).max(2000).default(1),
+      board: z.string().regex(/^[a-z]{1,16}$/).default("score"),
+    }).parse(req.query);
+    if (board !== "score") return otherBoard(board, page);
     const per = 50;
     const raw = await redis.zrevrange("lb:bb_score", (page - 1) * per, page * per - 1, "WITHSCORES");
     const uuids: string[] = [];
@@ -65,7 +126,8 @@ export function publicRoutes(app: Router) {
     for (let i = 0; i < raw.length; i += 2) { uuids.push(raw[i]); scores.set(raw[i], Number(raw[i + 1])); }
     const info = uuids.length
       ? await pool.query(
-          `SELECT t.mc_uuid, t.mc_name, t.bb_wins, t.title, (u.id IS NOT NULL) AS uses_mod, p.level
+          `SELECT t.mc_uuid, t.mc_name, t.bb_wins, t.title, (u.id IS NOT NULL) AS uses_mod, p.level,
+                  u.plan, u.plan_until, u.plan_comped
            FROM tracked_players t
            LEFT JOIN users u ON u.mc_uuid = t.mc_uuid
            LEFT JOIN user_progress p ON p.user_id = u.id
@@ -81,6 +143,7 @@ export function publicRoutes(app: Router) {
         return {
           rank: (page - 1) * per + i + 1, uuid: u, name: r.mc_name ?? null, score,
           title: titleProgress(score).current, wins: r.bb_wins ?? null, usesMod: !!r.uses_mod, level: r.level ?? null,
+          value: score, supporter: supporterOf(r),
         };
       }),
     };

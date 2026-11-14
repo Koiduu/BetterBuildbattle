@@ -1,5 +1,6 @@
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
+import { rebuildBoards } from "../services/boards";
 
 /** Daily: record every tracked player's global rank (powers the rank graph). */
 export async function snapshotRanks() {
@@ -23,6 +24,7 @@ export async function rebuildLeaderboard() {
     if (args.length) await redis.zadd(tmp, ...args);
   }
   if (r.rows.length) await redis.rename(tmp, "lb:bb_score");
+  await rebuildBoards();
 }
 
 /** Run `fn` every day at hh:mm UTC. */
