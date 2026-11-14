@@ -85,6 +85,10 @@ read_backup_copy_dir() {
     value="${line#*=}"
     value="${value#"${value%%[![:space:]]*}"}"
     value="${value%"${value##*[![:space:]]}"}"
+    if [[ "${value:0:1}" != '"' && "${value:0:1}" != "'" ]]; then
+      value="${value%%[[:space:]]#*}"
+      value="${value%"${value##*[![:space:]]}"}"
+    fi
     if (( ${#value} >= 2 )); then
       first="${value:0:1}"
       last="${value: -1}"

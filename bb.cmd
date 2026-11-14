@@ -80,15 +80,32 @@ if /i not "!IN_GIT_WORKTREE!"=="true" (
   echo Warning: this folder is not a Git checkout; code was not updated.
   goto :update_rebuild
 )
-git pull --ff-only
-if errorlevel 1 (
-  echo Couldn't get the latest code: git pull --ff-only failed. Nothing was rebuilt.
-  goto :fail
-)
-git log -1 --format="%%h %%s"
-if errorlevel 1 (
-  echo Couldn't read the current commit. Nothing was rebuilt.
-  goto :fail
+rem Parse the whole block before pulling, since the pull can replace this file.
+(
+  git pull --ff-only
+  if errorlevel 1 (
+    echo Couldn't get the latest code: git pull --ff-only failed. Nothing was rebuilt.
+    echo.
+    if "%~1"=="" pause
+    exit /b 1
+  )
+  git log -1 --format="%%h %%s"
+  if errorlevel 1 (
+    echo Couldn't read the current commit. Nothing was rebuilt.
+    echo.
+    if "%~1"=="" pause
+    exit /b 1
+  )
+  docker compose up -d --build
+  if errorlevel 1 (
+    set "RC=!errorlevel!"
+    echo.
+    if "%~1"=="" pause
+    exit /b !RC!
+  )
+  echo.
+  if "%~1"=="" pause
+  exit /b 0
 )
 :update_rebuild
 docker compose up -d --build
@@ -172,7 +189,7 @@ set "BACKUP_COPY_DIR="
 for /f "usebackq tokens=1,* delims==" %%A in (".env") do for /f "tokens=1" %%K in ("%%A") do if /i "%%K"=="BACKUP_COPY_DIR" set "BACKUP_COPY_DIR=%%B"
 if not defined BACKUP_COPY_DIR goto :offsite_copy_done
 set "BB_BACKUP_COPY_VALUE=%BACKUP_COPY_DIR%"
-for /f "delims=" %%V in ('powershell -NoProfile -Command "$v = $env:BB_BACKUP_COPY_VALUE.Trim(); $v = $v.Trim([char]34).Trim([char]39).Trim(); [Console]::Write($v)"') do set "BACKUP_COPY_DIR=%%V"
+for /f "delims=" %%V in ('powershell -NoProfile -Command "$v = $env:BB_BACKUP_COPY_VALUE.Trim(); if (-not $v.StartsWith([string][char]34) -and -not $v.StartsWith([string][char]39)) { $v = ($v -replace '\s+#.*$','') }; $v = $v.Trim().Trim([char]34).Trim([char]39).Trim(); [Console]::Write($v)"') do set "BACKUP_COPY_DIR=%%V"
 set "BB_BACKUP_COPY_VALUE="
 if not defined BACKUP_COPY_DIR goto :offsite_copy_done
 if not exist "%BACKUP_COPY_DIR%" (
