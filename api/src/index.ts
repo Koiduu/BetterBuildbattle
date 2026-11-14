@@ -73,7 +73,17 @@ const server = createServer([api], {
   page: async (html, pathname) => withMeta(html, await metaFor(pathname), siteOrigin()),
 });
 const port = Number(process.env.PORT ?? 4000);
-server.listen(port, process.env.HOST ?? "0.0.0.0", () => console.log(`Better Battle listening on :${port}`));
+server.listen(port, process.env.HOST ?? "0.0.0.0", () => {
+  console.log(`Better Battle listening on :${port}`);
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return;
+  void import("./bot/index")
+    .then(({ startDiscordBot }) => startDiscordBot(token, process.env.DISCORD_GUILD_ID ?? ""))
+    .catch((error) => {
+      const reason = String(error instanceof Error ? error.message : error).replace(/\s+/g, " ").slice(0, 240);
+      console.error(`Discord bot failed to start: ${reason}`);
+    });
+});
 
 const ac = new AbortController();
 const shutdown = () => { ac.abort(); server.close(); pool.end().finally(() => process.exit(0)); };

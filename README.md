@@ -106,6 +106,19 @@ and writes `.env` for you, starts everything, and opens http://localhost:4000.
 Run commands from a terminal in the project folder (`.\bb seed` in PowerShell, `bb seed` in Command Prompt).
 To go public, point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.net`.
 
+## Discord bot
+
+The bot starts inside the API when `DISCORD_BOT_TOKEN` is set. Never share the bot token.
+
+1. In the Discord Developer Portal, open the existing app used for website login, go to **Bot**, choose **Reset Token**, and copy the token into `DISCORD_BOT_TOKEN` in `.env`.
+2. In Discord, open **User Settings → Advanced** and enable **Developer Mode**. Right-click the server, choose **Copy Server ID**, and paste it into `DISCORD_GUILD_ID` in `.env`.
+3. Run `bb update`, then `bb logs`. Open the invite link printed by the API.
+4. In the server, run `/setup`, then run `/ticket-panel` in the support channel.
+
+Commands: `/setup staff-role log-channel`, `/download`, `/verify name`, `/unverify`, `/stats [player]`, `/ticket-panel`,
+`/warn user reason`, `/warnings user`, `/clearwarn id`, `/timeout user duration reason`, `/untimeout user`,
+`/kick user reason`, `/ban user reason delete_messages`, `/unban user_id reason`, and `/purge amount [user]`.
+
 ## Testing the mod
 
 Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
