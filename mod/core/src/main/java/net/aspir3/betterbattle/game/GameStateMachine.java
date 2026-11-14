@@ -296,6 +296,11 @@ public final class GameStateMachine {
         if (spb != null) spb.onBreak();
     }
 
+    /** Called every tick the server allows the player to fly, whether or not they do. */
+    public void onCanFly() {
+        if (building()) current.couldFly = true;
+    }
+
     /** Called every tick the player is flying. */
     public void onFlying() {
         if (building()) current.flew = true;

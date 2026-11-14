@@ -35,6 +35,7 @@ public final class MatchRecord {
     // Filled in by the loader adapter while the build is going on
     public String mcVersion;                 // "26.3" or "1.8.9"
     public boolean flew;                     // player flew at any point while building
+    public boolean couldFly;                 // the server allowed flight at some point (so not flying was a choice)
     public boolean reachedHeightLimit;       // placed a block on the plot's top layer
     public String floor;                     // floor block at the end of the build
     public int floorChanges;

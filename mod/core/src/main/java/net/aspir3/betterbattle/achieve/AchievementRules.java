@@ -432,12 +432,12 @@ public final class AchievementRules {
         }
     }
 
-    /** Win a Speed Builders game without flying. */
+    /** Win a Speed Builders game without flying, in a game where the server would have let you. */
     public static final class SpbGrounded implements Rule {
         public String id() { return "spb_grounded"; }
 
         public boolean onMatch(MatchRecord m, LocalDatabase db) {
-            return spbWin(m) && !m.flew && m.blocksPlaced > 0;
+            return spbWin(m) && m.couldFly && !m.flew && m.blocksPlaced > 0;
         }
     }
 
