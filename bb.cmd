@@ -110,20 +110,21 @@ if not defined STAMP (
   exit /b 1
 )
 set "DUMP=backups\betterbattle-!STAMP!.dump"
-docker compose exec -T db pg_dump -U bb -d betterbattle -Fc -f /tmp/bb.dump
+set "TEMP_DUMP=/tmp/bb-!STAMP!-!RANDOM!.dump"
+docker compose exec -T db pg_dump -U bb -d betterbattle -Fc -f "!TEMP_DUMP!"
 if errorlevel 1 (
-  docker compose exec -T db rm -f /tmp/bb.dump >nul 2>&1
+  docker compose exec -T db rm -f "!TEMP_DUMP!" >nul 2>&1
   echo  Database backup failed.
   exit /b 1
 )
-docker compose cp db:/tmp/bb.dump "!DUMP!"
+docker compose cp "db:!TEMP_DUMP!" "!DUMP!"
 if errorlevel 1 (
-  docker compose exec -T db rm -f /tmp/bb.dump >nul 2>&1
+  docker compose exec -T db rm -f "!TEMP_DUMP!" >nul 2>&1
   echo  Could not copy the database dump to !DUMP!.
   exit /b 1
 )
-docker compose exec -T db rm -f /tmp/bb.dump
-if errorlevel 1 echo  Warning: backup was copied, but /tmp/bb.dump could not be removed.
+docker compose exec -T db rm -f "!TEMP_DUMP!"
+if errorlevel 1 echo  Warning: backup was copied, but !TEMP_DUMP! could not be removed.
 set /a COUNT=0
 for /f "delims=" %%F in ('dir /b /a-d /o-d "backups\*.dump" 2^>nul') do (
   set /a COUNT+=1
@@ -151,11 +152,18 @@ echo.
 echo  WARNING: This replaces all current database data.
 set /p "ANS=  Type RESTORE to continue: "
 if not "!ANS!"=="RESTORE" ( echo  Cancelled. & goto :done )
+set "RESTORE_STAMP="
+for /f %%t in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "RESTORE_STAMP=%%t"
+if not defined RESTORE_STAMP (
+  echo  Could not create a restore timestamp.
+  goto :fail
+)
+set "RESTORE_DUMP=/tmp/restore-!RESTORE_STAMP!-!RANDOM!.dump"
 docker compose stop app
 if errorlevel 1 goto :fail
-docker compose cp "%BACKUP_FILE%" db:/tmp/restore.dump
+docker compose cp "%BACKUP_FILE%" "db:!RESTORE_DUMP!"
 if errorlevel 1 goto :restore_error
-docker compose exec -T db pg_restore -l /tmp/restore.dump >nul
+docker compose exec -T db pg_restore -l "!RESTORE_DUMP!" >nul
 if errorlevel 1 (
   echo  The backup file is invalid; the current database was not changed.
   goto :restore_error
@@ -171,14 +179,14 @@ if errorlevel 1 goto :restore_error
 docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS timescaledb" -c "SELECT timescaledb_pre_restore()"
 if errorlevel 1 goto :restore_error
 set "PG_RESTORE_WARN="
-docker compose exec -T db pg_restore -U bb -d betterbattle --no-owner /tmp/restore.dump
+docker compose exec -T db pg_restore -U bb -d betterbattle --no-owner "!RESTORE_DUMP!"
 if errorlevel 1 (
   set "PG_RESTORE_WARN=1"
   echo  pg_restore reported errors; continuing to timescaledb_post_restore. Review its output above.
 )
 docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 -c "SELECT timescaledb_post_restore()"
 if errorlevel 1 goto :restore_error
-docker compose exec -T db rm -f /tmp/restore.dump
+docker compose exec -T db rm -f "!RESTORE_DUMP!"
 if errorlevel 1 goto :restore_error
 docker compose start app
 if errorlevel 1 (
@@ -194,7 +202,7 @@ goto :done
 
 :restore_error
 echo  Restore failed. Cleaning up and attempting to restart the app.
-docker compose exec -T db rm -f /tmp/restore.dump >nul 2>&1
+docker compose exec -T db rm -f "!RESTORE_DUMP!" >nul 2>&1
 docker compose start app
 goto :fail
 

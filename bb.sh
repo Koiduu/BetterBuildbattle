@@ -79,21 +79,22 @@ rotate_backups() {
 backup_database() {
   check_database || return 1
   mkdir -p backups
-  local stamp destination size
+  local stamp destination size temp_dump
   stamp="$(date +%Y%m%d-%H%M%S)"
   destination="backups/betterbattle-${stamp}.dump"
-  if ! docker compose exec -T db pg_dump -U bb -d betterbattle -Fc -f /tmp/bb.dump; then
-    docker compose exec -T db rm -f /tmp/bb.dump >/dev/null 2>&1 || true
+  temp_dump="/tmp/bb-${stamp}-$$.dump"
+  if ! docker compose exec -T db pg_dump -U bb -d betterbattle -Fc -f "$temp_dump"; then
+    docker compose exec -T db rm -f "$temp_dump" >/dev/null 2>&1 || true
     echo "Database backup failed." >&2
     return 1
   fi
-  if ! docker compose cp db:/tmp/bb.dump "$destination"; then
-    docker compose exec -T db rm -f /tmp/bb.dump >/dev/null 2>&1 || true
+  if ! docker compose cp "db:$temp_dump" "$destination"; then
+    docker compose exec -T db rm -f "$temp_dump" >/dev/null 2>&1 || true
     echo "Could not copy the database dump to $destination." >&2
     return 1
   fi
-  if ! docker compose exec -T db rm -f /tmp/bb.dump; then
-    echo "Warning: backup was copied, but /tmp/bb.dump could not be removed from the database container." >&2
+  if ! docker compose exec -T db rm -f "$temp_dump"; then
+    echo "Warning: backup was copied, but $temp_dump could not be removed from the database container." >&2
   fi
   rotate_backups
   size="$(wc -c < "$destination" | tr -d '[:space:]')"
@@ -102,15 +103,18 @@ backup_database() {
 }
 
 restore_failure() {
-  echo "$1" >&2
-  docker compose exec -T db rm -f /tmp/restore.dump >/dev/null 2>&1 || true
+  local message="$1" dump_path="${2:-}"
+  echo "$message" >&2
+  if [[ -n "$dump_path" ]]; then
+    docker compose exec -T db rm -f "$dump_path" >/dev/null 2>&1 || true
+  fi
   if ! docker compose start app; then
     echo "The app could not be restarted; run bb start." >&2
   fi
 }
 
 restore_database() {
-  local source="${1:-}" safety_backup
+  local source="${1:-}" safety_backup restore_dump restore_stamp
   if [[ -z "$source" ]]; then
     echo "Usage: bb restore <file>" >&2
     return 1
@@ -125,36 +129,38 @@ restore_database() {
     echo "Cancelled."
     return 0
   fi
+  restore_stamp="$(date +%Y%m%d-%H%M%S)"
+  restore_dump="/tmp/restore-${restore_stamp}-$$.dump"
   if ! docker compose stop app; then
     echo "Could not stop the app; restore cancelled." >&2
     return 1
   fi
-  if ! docker compose cp "$source" db:/tmp/restore.dump; then
-    restore_failure "Could not copy the backup into the database container."
+  if ! docker compose cp "$source" "db:$restore_dump"; then
+    restore_failure "Could not copy the backup into the database container." "$restore_dump"
     return 1
   fi
-  if ! docker compose exec -T db pg_restore -l /tmp/restore.dump >/dev/null; then
-    restore_failure "The backup file is invalid; the current database was not changed."
+  if ! docker compose exec -T db pg_restore -l "$restore_dump" >/dev/null; then
+    restore_failure "The backup file is invalid; the current database was not changed." "$restore_dump"
     return 1
   fi
   if ! backup_database; then
-    restore_failure "Could not create a safety backup; the current database was not changed."
+    restore_failure "Could not create a safety backup; the current database was not changed." "$restore_dump"
     return 1
   fi
   safety_backup="$BACKUP_PATH"
   printf 'Safety backup of the current data: %s\n' "$safety_backup"
   if ! docker compose exec -T db psql -U bb -d postgres -v ON_ERROR_STOP=1 \
     -c "DROP DATABASE betterbattle WITH (FORCE)" -c "CREATE DATABASE betterbattle"; then
-    restore_failure "Could not recreate the betterbattle database."
+    restore_failure "Could not recreate the betterbattle database." "$restore_dump"
     return 1
   fi
   if ! docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 \
     -c "CREATE EXTENSION IF NOT EXISTS timescaledb" -c "SELECT timescaledb_pre_restore()"; then
-    restore_failure "TimescaleDB pre-restore setup failed."
+    restore_failure "TimescaleDB pre-restore setup failed." "$restore_dump"
     return 1
   fi
   local pg_restore_status=0
-  if docker compose exec -T db pg_restore -U bb -d betterbattle --no-owner /tmp/restore.dump; then
+  if docker compose exec -T db pg_restore -U bb -d betterbattle --no-owner "$restore_dump"; then
     :
   else
     pg_restore_status=$?
@@ -162,11 +168,11 @@ restore_database() {
   fi
   if ! docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 \
     -c "SELECT timescaledb_post_restore()"; then
-    restore_failure "TimescaleDB post-restore setup failed."
+    restore_failure "TimescaleDB post-restore setup failed." "$restore_dump"
     return 1
   fi
-  if ! docker compose exec -T db rm -f /tmp/restore.dump; then
-    restore_failure "Could not remove /tmp/restore.dump from the database container."
+  if ! docker compose exec -T db rm -f "$restore_dump"; then
+    restore_failure "Could not remove $restore_dump from the database container." "$restore_dump"
     return 1
   fi
   if ! docker compose start app; then
