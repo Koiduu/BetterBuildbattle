@@ -37,7 +37,6 @@ mod/
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
 - Speed Builders ghosts, world records and tips are designed (see the plan) but not built.
 - Most one-off challenges have a detector; the streak, Speed Builders and Guess the Build ones don't yet.
-- The site loads Pixelify Sans from Google Fonts. Bundle the font file in `web/` if you'd rather not depend on that.
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
 

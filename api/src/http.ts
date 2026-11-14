@@ -48,6 +48,7 @@ export class Router {
   get(p: string, a: Hook[] | Handler, b?: Handler) { this.add("GET", p, a, b); }
   post(p: string, a: Hook[] | Handler, b?: Handler) { this.add("POST", p, a, b); }
   put(p: string, a: Hook[] | Handler, b?: Handler) { this.add("PUT", p, a, b); }
+  delete(p: string, a: Hook[] | Handler, b?: Handler) { this.add("DELETE", p, a, b); }
 
   match(method: string, pathname: string) {
     for (const r of this.routes) {
@@ -64,7 +65,7 @@ export class Router {
 
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-  ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json",
+  ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json", ".ttf": "font/ttf",
 };
 
 function send(res: http.ServerResponse, status: number, body: unknown, headers: Record<string, string | string[]> = {}) {
