@@ -24,6 +24,9 @@ public final class MatchRecord {
     public static final int LEGENDARY_VOTE = 18;   // highest vote one player can give
     public final Map<String, Integer> palette = new LinkedHashMap<String, Integer>();
     public String spbRoundsJson;   // set by SpbTracker
+    public transient int gtbRounds;
+    public transient int gtbCorrect;
+    public transient Integer gtbFastestGuessMs;
 
     // Filled in by the loader adapter while the build is going on
     public String mcVersion;                 // "26.3" or "1.8.9"

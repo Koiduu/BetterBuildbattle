@@ -176,6 +176,24 @@ public final class LocalDatabase implements AutoCloseable {
         return out;
     }
 
+    public synchronized int countMatchesSince(long sinceMillis) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement("SELECT count(*) FROM matches WHERE played_at >= ?")) {
+            p.setLong(1, sinceMillis);
+            try (ResultSet r = p.executeQuery()) { return r.next() ? r.getInt(1) : 0; }
+        }
+    }
+
+    public synchronized Long worldRecordMs(String buildId) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement("SELECT time_ms FROM wr_ghosts WHERE build_id = ?")) {
+            p.setString(1, buildId);
+            try (ResultSet r = p.executeQuery()) {
+                if (!r.next()) return null;
+                long timeMs = r.getLong(1);
+                return r.wasNull() ? null : Long.valueOf(timeMs);
+            }
+        }
+    }
+
     // ---------------- achievements ----------------
 
     public synchronized boolean unlockLocal(String id, long at) throws SQLException {

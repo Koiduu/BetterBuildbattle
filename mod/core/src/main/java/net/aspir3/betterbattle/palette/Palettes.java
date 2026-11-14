@@ -10,11 +10,17 @@ import java.util.Random;
 public final class Palettes {
     private Palettes() {}
 
+    private static volatile Palette lastRoll;
+    private static volatile long lastRollAt;
+
     public static final class Palette {
         public final String name;
         public final List<String> blocks;
         Palette(String name, List<String> blocks) { this.name = name; this.blocks = blocks; }
     }
+
+    public static synchronized Palette lastRoll() { return lastRoll; }
+    public static synchronized long lastRollAt() { return lastRollAt; }
 
     // Blocks before "|" exist on both 26.3 and 1.8.9; the ones after are modern only.
     private static final String[][] THEMES = {
@@ -39,6 +45,11 @@ public final class Palettes {
         if (!legacy && parts.length > 1) pool.addAll(Arrays.asList(parts[1].trim().split("\\s+")));
         Collections.shuffle(pool, random);
         int n = Math.max(3, Math.min(size, pool.size()));
-        return new Palette(theme[0], new ArrayList<String>(pool.subList(0, n)));
+        Palette result = new Palette(theme[0], new ArrayList<String>(pool.subList(0, n)));
+        synchronized (Palettes.class) {
+            lastRollAt = System.currentTimeMillis();
+            lastRoll = result;
+        }
+        return result;
     }
 }

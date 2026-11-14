@@ -1,10 +1,15 @@
 package net.aspir3.betterbattle.achieve;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import net.aspir3.betterbattle.game.MatchRecord;
+import net.aspir3.betterbattle.palette.Palettes;
 import net.aspir3.betterbattle.store.LocalDatabase;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,8 +26,13 @@ public final class AchievementRules {
     /** All rules the mod checks after each game. */
     public static List<Rule> all() {
         List<Rule> rules = new ArrayList<Rule>(Arrays.<Rule>asList(
-            new AllWood(), new StoneOnly(), new Rainbow(), new HotbarOnly(), new HundredBlockTypes(),
+            new AllWood(), new Monochrome(), new Minimalist(), new OneBlockType(), new NetherOnly(),
+            new StoneOnly(), new Rainbow(), new HotbarOnly(), new HundredBlockTypes(),
             new LegacyBlocksOnly(), new WaterAndLava(), new ModeMarathon(),
+            new WinStreak(3, "hat_trick"), new WinStreak(10, "unstoppable"), new SsStreak5(),
+            new Comeback(), new NightOwl(), new HundredInADay(), new PerfectCrowd(), new FullLobbyWin(),
+            new SpbNoBreak(), new SpbSweep(), new WithinHalfSecondOfWr(), new SetWr(),
+            new GtbFastGuess(), new GtbAllRounds(), new PaletteRollWin(), new OfflineGames(),
             new HeightLimit(), new NoFlying(), new LavaFloor(), new DefaultPlot(), new BackgroundSwitches()));
         for (String tab : new String[] {"building", "colored", "natural", "functional", "redstone"}) {
             rules.add(new CreativeTabOnly(tab));
@@ -48,6 +58,73 @@ public final class AchievementRules {
     }
 
     // ---- Palette challenges
+
+    public static final class Monochrome implements Rule {
+        private static final String[] COLOURS = {
+            "white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "light_gray",
+            "cyan", "purple", "blue", "brown", "green", "red", "black", "gray"
+        };
+        private static final Set<String> TYPES = new HashSet<String>(Arrays.asList(
+            "wool", "carpet", "concrete", "concrete_powder", "terracotta", "glazed_terracotta",
+            "stained_glass", "stained_glass_pane"));
+
+        public String id() { return "monochrome"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!m.won() || m.palette.isEmpty()) return false;
+            String colour = null;
+            for (String id : m.palette.keySet()) {
+                String block = bare(id);
+                String blockColour = null;
+                for (String candidate : COLOURS) {
+                    if (block.startsWith(candidate + "_")) {
+                        blockColour = candidate;
+                        break;
+                    }
+                }
+                if (blockColour == null || !TYPES.contains(block.substring(blockColour.length() + 1))) return false;
+                if (colour == null) colour = blockColour;
+                else if (!colour.equals(blockColour)) return false;
+            }
+            return true;
+        }
+    }
+
+    public static final class Minimalist implements Rule {
+        public String id() { return "minimalist"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return "solo".equals(m.mode) && m.won() && m.blocksPlaced > 0 && m.blocksPlaced < 100;
+        }
+    }
+
+    public static final class OneBlockType implements Rule {
+        public String id() { return "one_block_wonder"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return m.won() && m.palette.size() == 1;
+        }
+    }
+
+    public static final class NetherOnly extends OnlyBlocks {
+        private static final Set<String> BLOCKS = new HashSet<String>(Arrays.asList(
+            "netherrack", "soul_sand", "soul_soil", "glowstone", "magma_block", "nether_quartz_ore",
+            "nether_gold_ore", "ancient_debris", "basalt", "polished_basalt", "blackstone",
+            "gilded_blackstone", "chiseled_polished_blackstone", "crying_obsidian", "obsidian", "shroomlight",
+            "nether_wart_block", "warped_wart_block", "crimson_nylium", "warped_nylium", "bone_block",
+            "gold_block", "chain", "soul_lantern", "soul_torch", "lava",
+            "nether_bricks", "cracked_nether_bricks", "chiseled_nether_bricks", "nether_brick_fence",
+            "nether_brick_stairs", "nether_brick_slab", "nether_brick_wall", "red_nether_bricks",
+            "red_nether_brick_stairs", "red_nether_brick_slab", "red_nether_brick_wall",
+            "weeping_vines", "twisting_vines", "nether_sprouts", "nether_wart"));
+
+        public String id() { return "nether_native"; }
+
+        boolean allowed(String b) {
+            return BLOCKS.contains(b) || b.startsWith("polished_blackstone")
+                || b.startsWith("crimson_") || b.startsWith("warped_");
+        }
+    }
 
     public static final class AllWood extends OnlyBlocks {
         private static final String[] SUFFIXES = {
@@ -216,6 +293,203 @@ public final class AchievementRules {
         public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
             if (!m.won()) return false;
             return db.modesWonSince(m.playedAt - 60L * 60L * 1000L).containsAll(REQUIRED);
+        }
+    }
+
+    public static final class WinStreak implements Rule {
+        private final int n;
+        private final String id;
+
+        public WinStreak(int n, String id) {
+            this.n = n;
+            this.id = id;
+        }
+
+        public String id() { return id; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            if (!m.won()) return false;
+            List<MatchRecord> recent = db.recentMatches(n);
+            if (recent.size() != n) return false;
+            for (MatchRecord match : recent) if (!match.won()) return false;
+            return true;
+        }
+    }
+
+    public static final class SsStreak5 implements Rule {
+        public String id() { return "ss_streak"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            List<MatchRecord> recent = db.recentMatches(5);
+            if (recent.size() != 5) return false;
+            for (MatchRecord match : recent) if (!"SS".equals(match.grade)) return false;
+            return true;
+        }
+    }
+
+    public static final class Comeback implements Rule {
+        public String id() { return "comeback"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            if (!m.won()) return false;
+            List<MatchRecord> recent = db.recentMatches(2);
+            if (recent.size() != 2) return false;
+            MatchRecord previous = recent.get(1);
+            return previous.placement != null && previous.players != null
+                && previous.placement.equals(previous.players);
+        }
+    }
+
+    public static final class NightOwl implements Rule {
+        public String id() { return "night_owl"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!m.won()) return false;
+            Calendar time = Calendar.getInstance();
+            time.setTimeInMillis(m.playedAt);
+            int hour = time.get(Calendar.HOUR_OF_DAY);
+            return hour == 2 || hour == 3 || hour == 4;
+        }
+    }
+
+    public static final class HundredInADay implements Rule {
+        public String id() { return "century_day"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            Calendar midnight = Calendar.getInstance();
+            midnight.setTimeInMillis(m.playedAt);
+            midnight.set(Calendar.HOUR_OF_DAY, 0);
+            midnight.set(Calendar.MINUTE, 0);
+            midnight.set(Calendar.SECOND, 0);
+            midnight.set(Calendar.MILLISECOND, 0);
+            return db.countMatchesSince(midnight.getTimeInMillis()) >= 100;
+        }
+    }
+
+    public static final class PerfectCrowd implements Rule {
+        public String id() { return "perfect_crowd"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            Double crowdScore = m.crowdScore();
+            return crowdScore != null && crowdScore >= 1.0;
+        }
+    }
+
+    public static final class FullLobbyWin implements Rule {
+        public String id() { return "underdog"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return "solo".equals(m.mode) && m.won() && m.players != null && m.players >= 16;
+        }
+    }
+
+    public static final class SpbNoBreak implements Rule {
+        public String id() { return "spb_no_break"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return "speed_builders".equals(m.mode) && m.won() && m.blocksPlaced > 0 && m.blocksBroken == 0;
+        }
+    }
+
+    private static final class SpbRound {
+        String build;
+        Integer timeMs;
+        Double accuracy;
+    }
+
+    private static List<SpbRound> spbRounds(MatchRecord m) {
+        if (m.spbRoundsJson == null || m.spbRoundsJson.trim().isEmpty()) return Collections.emptyList();
+        try {
+            List<SpbRound> rounds = new Gson().fromJson(m.spbRoundsJson, new TypeToken<List<SpbRound>>() {}.getType());
+            if (rounds == null) return Collections.emptyList();
+            for (SpbRound round : rounds) {
+                if (round == null || round.build == null || round.build.trim().isEmpty()
+                    || round.timeMs == null || round.timeMs < 0 || round.accuracy == null
+                    || round.accuracy < 0.0 || round.accuracy > 1.0 || Double.isNaN(round.accuracy)) {
+                    return Collections.emptyList();
+                }
+            }
+            return rounds;
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    public static final class SpbSweep implements Rule {
+        public String id() { return "spb_sweep"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!"speed_builders".equals(m.mode) || !m.won()) return false;
+            List<SpbRound> rounds = spbRounds(m);
+            if (rounds.isEmpty()) return false;
+            for (SpbRound round : rounds) if (round.accuracy < 1.0) return false;
+            return true;
+        }
+    }
+
+    public static final class WithinHalfSecondOfWr implements Rule {
+        public String id() { return "spb_wr_close"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            if (!"speed_builders".equals(m.mode)) return false;
+            for (SpbRound round : spbRounds(m)) {
+                Long wr = db.worldRecordMs(round.build);
+                if (wr != null && round.timeMs.longValue() - wr.longValue() <= 500L) return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class SetWr implements Rule {
+        public String id() { return "spb_wr"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            if (!"speed_builders".equals(m.mode)) return false;
+            for (SpbRound round : spbRounds(m)) {
+                Long wr = db.worldRecordMs(round.build);
+                if (wr != null && round.timeMs.longValue() < wr.longValue()) return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class GtbFastGuess implements Rule {
+        public String id() { return "gtb_first_guess"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return "gtb".equals(m.mode) && m.gtbFastestGuessMs != null && m.gtbFastestGuessMs <= 3000;
+        }
+    }
+
+    public static final class GtbAllRounds implements Rule {
+        public String id() { return "gtb_all_rounds"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return "gtb".equals(m.mode) && m.gtbRounds >= 2 && m.gtbCorrect >= m.gtbRounds - 1;
+        }
+    }
+
+    public static final class PaletteRollWin implements Rule {
+        private static final long ROLL_WINDOW_MS = 2L * 60L * 60L * 1000L;
+
+        public String id() { return "random_palette_win"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            Palettes.Palette roll = Palettes.lastRoll();
+            long rolledAt = Palettes.lastRollAt();
+            long age = m.playedAt - rolledAt;
+            if (!m.won() || m.palette.isEmpty() || roll == null || rolledAt == 0
+                || age < 0 || age > ROLL_WINDOW_MS) return false;
+            for (String block : m.palette.keySet()) if (!roll.blocks.contains(bare(block))) return false;
+            return true;
+        }
+    }
+
+    public static final class OfflineGames implements Rule {
+        public String id() { return "offline_saver"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            return Long.parseLong(db.getMeta("offline_games", "0")) >= 10;
         }
     }
 

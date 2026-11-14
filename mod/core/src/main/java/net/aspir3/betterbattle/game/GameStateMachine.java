@@ -31,6 +31,9 @@ public final class GameStateMachine {
     private long startedAt;
 
     private final String mcVersion;
+    private String gtbLastBuilder;
+    private long gtbRoundStartedAt;
+    private boolean gtbCorrectInRound;
 
     public GameStateMachine(ChatParser parser, Listener listener, String mcVersion) {
         this.parser = parser;
@@ -61,6 +64,13 @@ public final class GameStateMachine {
     public void onSidebarLine(String line) {
         if (current == null) return;
         String builder = parser.builderFromSidebar(line);
+        if ("gtb".equals(current.mode) && (state == State.BUILDING || state == State.VOTING)
+            && builder != null && !builder.equals(gtbLastBuilder)) {
+            gtbLastBuilder = builder;
+            gtbRoundStartedAt = System.currentTimeMillis();
+            gtbCorrectInRound = false;
+            current.gtbRounds++;
+        }
         if (builder != null && state == State.VOTING) {
             roundBuilder = builder;
             if (!current.votes.isEmpty()) {
@@ -103,6 +113,16 @@ public final class GameStateMachine {
                 break;
             case GAME_END:
                 finish();
+                break;
+            case GTB_CORRECT_GUESS:
+                if ("gtb".equals(current.mode) && gtbRoundStartedAt > 0 && !gtbCorrectInRound) {
+                    int guessMs = (int) (System.currentTimeMillis() - gtbRoundStartedAt);
+                    current.gtbCorrect++;
+                    if (current.gtbFastestGuessMs == null || guessMs < current.gtbFastestGuessMs) {
+                        current.gtbFastestGuessMs = guessMs;
+                    }
+                    gtbCorrectInRound = true;
+                }
                 break;
             default:
                 break;
@@ -233,6 +253,9 @@ public final class GameStateMachine {
         current = null;
         voteRound = 0;
         roundBuilder = null;
+        gtbLastBuilder = null;
+        gtbRoundStartedAt = 0;
+        gtbCorrectInRound = false;
         plot = null;
         setState(State.IDLE);
     }

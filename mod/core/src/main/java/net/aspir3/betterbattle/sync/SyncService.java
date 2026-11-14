@@ -106,6 +106,8 @@ public final class SyncService {
         seenPlayers.addAll(uuids);
     }
 
+    public synchronized boolean isOffline() { return offline; }
+
     private void ensureToken() throws Exception {
         String token = db.getMeta("token", null);
         if (token == null) {

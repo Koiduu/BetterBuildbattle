@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * never need a mod release. Gson is available on both 26.3 and 1.8.9.
  */
 public final class ChatParser {
-    public enum Type { GAME_START, THEME, VOTING_START, PLACEMENT, SCORE, GAME_END }
+    public enum Type { GAME_START, THEME, VOTING_START, PLACEMENT, SCORE, GAME_END, GTB_CORRECT_GUESS }
 
     public static final class Event {
         public final Type type;

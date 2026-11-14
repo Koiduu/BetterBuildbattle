@@ -14,7 +14,8 @@
     "VOTING_START": "^\\s*Time's up!|^Voting has started",
     "PLACEMENT": "^\\s*You finished in (\\d+)(?:st|nd|rd|th)",
     "SCORE": "^\\s*Your score: ([\\d.]+)",
-    "GAME_END": "^\\s*Reward Summary|^\\s*Thanks for playing"
+    "GAME_END": "^\\s*Reward Summary|^\\s*Thanks for playing",
+    "GTB_CORRECT_GUESS": "^\\s*\\+\\d+ .*\\(Correct Guess\\)|^\\s*You (?:correctly )?guessed the (?:theme|build)"
   },
   "sidebar_theme": "^Theme: (.+)$",
   "sidebar_builder": "^Builder: (.+)$"

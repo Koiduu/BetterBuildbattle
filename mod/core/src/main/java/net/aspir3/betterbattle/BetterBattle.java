@@ -211,6 +211,10 @@ public final class BetterBattle {
             }
             try {
                 if (!db.insertMatch(m)) return;
+                if (sync != null && sync.isOffline()) {
+                    long offlineGames = Long.parseLong(db.getMeta("offline_games", "0"));
+                    db.setMeta("offline_games", Long.toString(offlineGames + 1));
+                }
                 // Count XP locally so the level bar moves even while offline; the server's number replaces it on sync.
                 long xp = Long.parseLong(db.getMeta("xp", "0"));
                 db.setMeta("xp", String.valueOf(xp + Level.xpForMatch(m.mode, m.won(), m.grade, 0, 0, false)));
