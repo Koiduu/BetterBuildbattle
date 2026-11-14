@@ -177,7 +177,10 @@ async function stats(interaction: ChatInputCommandInteraction) {
   if (!name) return replyEphemeral(interaction, "Run /verify <name> first, or use /stats <name>.");
   await interaction.deferReply();
   const port = Number(process.env.PORT ?? 4000);
-  const response = await fetch(`http://127.0.0.1:${port}/bb/v1/players/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(12_000) });
+  const response = await fetch(`http://127.0.0.1:${port}/bb/v1/players/${encodeURIComponent(name)}`, {
+    headers: { authorization: `discord:${interaction.user.id}` },
+    signal: AbortSignal.timeout(12_000),
+  });
   const data = await response.json() as StatsCardData | { error?: string; name?: string };
   if (!response.ok) {
     const error = "error" in data ? data.error : null;
