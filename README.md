@@ -101,6 +101,14 @@ and writes `.env` for you, starts everything, and opens http://localhost:4000.
 Run commands from a terminal in the project folder (`.\bb seed` in PowerShell, `bb seed` in Command Prompt).
 To go public, point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.net`.
 
+## Database backups
+
+- `bb backup` writes a compressed database dump to `backups/` and keeps the newest 14.
+- `bb restore <file>` replaces the current database after you type `RESTORE`.
+- `bb backup-daily` schedules a daily 04:00 backup on Windows, or prints a crontab line on macOS/Linux. Use `bb backup-daily off` to remove the schedule.
+
+Backups contain emails, password hashes, and Discord IDs. Keep them private and off GitHub. For real protection if the PC is lost, copy them somewhere separate, such as OneDrive.
+
 ## Discord bot
 
 The bot starts inside the API when `DISCORD_BOT_TOKEN` is set. Never share the bot token.

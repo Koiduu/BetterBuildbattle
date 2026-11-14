@@ -11,12 +11,18 @@ rem    bb status           show what's running
 rem    bb seed [guild]     add a guild to the ranking (default: Aspiring)
 rem    bb snapshot         record today's ranks now
 rem    bb update           rebuild after downloading new code
+rem    bb backup           save a compressed database dump (keeps 14)
+rem    bb restore <file>   replace the database from a dump (asks first)
+rem    bb backup-daily     schedule a backup every day at 04:00
+rem    bb backup-daily off remove the daily backup schedule
 rem    bb reset            DELETE all data and start fresh
 rem ==========================================================================
 cd /d "%~dp0"
 set "URL=http://localhost:4000"
 set "CMD=%~1"
 if "%CMD%"=="" set "CMD=start"
+
+if /i "%CMD%"=="backup-daily" goto :backup_daily
 
 call :check_docker || goto :fail
 call :check_env || goto :fail
@@ -30,6 +36,8 @@ if /i "%CMD%"=="status"   ( docker compose ps & goto :done )
 if /i "%CMD%"=="seed"     goto :seed
 if /i "%CMD%"=="snapshot" ( docker compose exec app npm run snapshot & goto :done )
 if /i "%CMD%"=="update"   ( docker compose up -d --build & goto :done )
+if /i "%CMD%"=="backup"   goto :backup
+if /i "%CMD%"=="restore"  goto :restore
 if /i "%CMD%"=="reset"    goto :reset
 echo Unknown command "%CMD%". Open bb.cmd in a text editor to see the list.
 goto :fail
@@ -59,6 +67,120 @@ set "GUILD=%~2"
 if "%GUILD%"=="" set "GUILD=Aspiring"
 docker compose exec app npm run seed-guild -- "%GUILD%"
 goto :done
+
+:backup_daily
+if /i "%~2"=="off" goto :backup_daily_off
+schtasks /create /f /sc daily /st 04:00 /tn "Better Battle backup" /tr "\"%~f0\" backup"
+if errorlevel 1 (
+  echo  Could not create the daily backup task.
+  goto :fail
+)
+echo  Daily backup scheduled for 04:00.
+goto :done
+
+:backup_daily_off
+schtasks /delete /f /tn "Better Battle backup"
+if errorlevel 1 (
+  echo  Could not remove the daily backup task.
+  goto :fail
+)
+echo  Daily backup schedule removed.
+goto :done
+
+:check_db
+docker compose exec -T db pg_isready -U bb -d betterbattle >nul 2>&1 <nul
+if errorlevel 1 (
+  echo  The database container is not running or is not ready. Run bb start first.
+  exit /b 1
+)
+exit /b 0
+
+:backup
+call :check_db || goto :fail
+if not exist "backups" mkdir "backups"
+if errorlevel 1 goto :fail
+for /f %%t in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "STAMP=%%t"
+if not defined STAMP (
+  echo  Could not create a backup timestamp.
+  goto :fail
+)
+set "DUMP=backups\betterbattle-!STAMP!.dump"
+docker compose exec -T db pg_dump -U bb -d betterbattle -Fc -f /tmp/bb.dump
+if errorlevel 1 (
+  docker compose exec -T db rm -f /tmp/bb.dump >nul 2>&1
+  echo  Database backup failed.
+  goto :fail
+)
+docker compose cp db:/tmp/bb.dump "!DUMP!"
+if errorlevel 1 (
+  docker compose exec -T db rm -f /tmp/bb.dump >nul 2>&1
+  echo  Could not copy the database dump to !DUMP!.
+  goto :fail
+)
+docker compose exec -T db rm -f /tmp/bb.dump
+if errorlevel 1 echo  Warning: backup was copied, but /tmp/bb.dump could not be removed.
+set /a COUNT=0
+for /f "delims=" %%F in ('dir /b /a-d /o-d "backups\*.dump" 2^>nul') do (
+  set /a COUNT+=1
+  if !COUNT! GTR 14 del /q "backups\%%F"
+)
+for %%F in ("!DUMP!") do (
+  set "FULL_DUMP=%%~fF"
+  set "SIZE=%%~zF"
+)
+echo  Backup saved to !FULL_DUMP! (!SIZE! bytes).
+goto :done
+
+:restore
+set "BACKUP_FILE=%~2"
+if not defined BACKUP_FILE (
+  echo  Usage: bb restore ^<file^>
+  goto :fail
+)
+if not exist "%BACKUP_FILE%" (
+  echo  Backup file not found: %BACKUP_FILE%
+  goto :fail
+)
+call :check_db || goto :fail
+echo.
+echo  WARNING: This replaces all current database data.
+set /p "ANS=  Type RESTORE to continue: "
+if not "!ANS!"=="RESTORE" ( echo  Cancelled. & goto :done )
+docker compose stop app
+if errorlevel 1 goto :fail
+docker compose cp "%BACKUP_FILE%" db:/tmp/restore.dump
+if errorlevel 1 goto :restore_error
+docker compose exec -T db psql -U bb -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE betterbattle WITH (FORCE)" -c "CREATE DATABASE betterbattle"
+if errorlevel 1 goto :restore_error
+docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS timescaledb" -c "SELECT timescaledb_pre_restore()"
+if errorlevel 1 goto :restore_error
+set "PG_RESTORE_WARN="
+docker compose exec -T db pg_restore -U bb -d betterbattle --no-owner /tmp/restore.dump
+if errorlevel 1 (
+  set "PG_RESTORE_WARN=1"
+  echo  pg_restore reported errors; continuing to timescaledb_post_restore. Review its output above.
+)
+docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 -c "SELECT timescaledb_post_restore()"
+if errorlevel 1 goto :restore_error
+docker compose exec -T db rm -f /tmp/restore.dump
+if errorlevel 1 goto :restore_error
+docker compose start app
+if errorlevel 1 (
+  echo  The database was restored, but the app could not be restarted. Run bb start.
+  goto :fail
+)
+if defined PG_RESTORE_WARN (
+  echo  Restore ran post_restore, but pg_restore reported errors; review the output above.
+  goto :fail
+)
+echo  Database restore completed.
+goto :done
+
+:restore_error
+echo  Restore failed. Cleaning up and attempting to restart the app.
+docker compose exec -T db rm -f /tmp/restore.dump >nul 2>&1
+docker compose start app
+goto :fail
 
 :reset
 echo.
