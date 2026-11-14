@@ -31,7 +31,8 @@ public final class AchievementRules {
             new LegacyBlocksOnly(), new WaterAndLava(), new ModeMarathon(),
             new WinStreak(3, "hat_trick"), new WinStreak(10, "unstoppable"), new SsStreak5(),
             new Comeback(), new NightOwl(), new HundredInADay(), new PerfectCrowd(), new FullLobbyWin(),
-            new SpbNoBreak(), new SpbSweep(), new WithinHalfSecondOfWr(), new SetWr(),
+            // SpbNoBreak waits until the adapters report block breaks (onOwnBlockBroken).
+            new SpbSweep(), new WithinHalfSecondOfWr(), new SetWr(),
             new GtbFastGuess(), new GtbAllRounds(), new PaletteRollWin(), new OfflineGames(),
             new HeightLimit(), new NoFlying(), new LavaFloor(), new DefaultPlot(), new BackgroundSwitches()));
         for (String tab : new String[] {"building", "colored", "natural", "functional", "redstone"}) {

@@ -36,7 +36,7 @@ mod/
 - The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
 - Speed Builders ghosts, world records and tips are designed (see the plan) but not built.
-- Every one-off challenge has a detector; `spb_sweep`, `spb_wr_close` and `spb_wr` await a tracker filling `spbRoundsJson` and `wr_ghosts`, and the Guess the Build chat pattern is a guess to check with `/bb debug`.
+- Every one-off challenge has a detector; `spb_no_break` is off until the adapters report block breaks, `spb_sweep`, `spb_wr_close` and `spb_wr` await a tracker filling `spbRoundsJson` and `wr_ghosts`, and the Guess the Build chat pattern is a guess to check with `/bb debug`.
 - The site loads Pixelify Sans from Google Fonts. Bundle the font file in `web/` if you'd rather not depend on that.
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
