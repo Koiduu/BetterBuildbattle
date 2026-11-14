@@ -1,0 +1,118 @@
+name: API CI
+
+on:
+  pull_request:
+    paths:
+      - api/**
+      - web/**
+      - docker-compose.yml
+      - .github/workflows/api.yml
+  push:
+    branches:
+      - main
+    paths:
+      - api/**
+      - web/**
+      - docker-compose.yml
+      - .github/workflows/api.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        working-directory: api
+        run: npm install
+      - name: Typecheck API
+        working-directory: api
+        run: npx tsc --noEmit
+      - name: Check web JavaScript syntax
+        run: node --check web/app.js
+
+  boot:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_DB: betterbattle
+          POSTGRES_USER: bb
+          POSTGRES_PASSWORD: ci-db-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bb -d betterbattle"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DB_PASSWORD: ci-db-password
+      DATABASE_URL: postgres://bb:ci-db-password@127.0.0.1:5432/betterbattle
+      REDIS_URL: redis://127.0.0.1:6379
+      PORT: "4000"
+      HOST: 127.0.0.1
+      HYPIXEL_API_KEY: ci-dummy-hypixel-key
+      HYPIXEL_RATE: "280"
+      PUBLIC_URL: http://127.0.0.1:4000
+      SESSION_SECRET: ci-session-secret
+      ADMIN_TOKEN: ci-admin-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        working-directory: api
+        run: npm install
+      - name: Start API and wait for health
+        working-directory: api
+        shell: bash
+        run: |
+          npm start > "$RUNNER_TEMP/better-battle-api.log" 2>&1 &
+          api_pid=$!
+          for _ in $(seq 1 60); do
+            if curl --max-time 2 --fail --silent --show-error -o /dev/null http://127.0.0.1:4000/bb/v1/health; then
+              echo "API health endpoint returned 200."
+              exit 0
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/better-battle-api.log"
+          exit 1
+      - name: Check website root
+        shell: bash
+        run: |
+          if ! curl --max-time 5 --fail --silent --show-error -o /dev/null http://127.0.0.1:4000/; then
+            cat "$RUNNER_TEMP/better-battle-api.log"
+            exit 1
+          fi
+          echo "Website root returned 200."
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create non-secret Compose environment
+        run: printf 'DB_PASSWORD=ci-db-password\nHYPIXEL_API_KEY=ci-dummy-hypixel-key\n' > .env
+      - name: Build app image
+        run: docker compose build app
