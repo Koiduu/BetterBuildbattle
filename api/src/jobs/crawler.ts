@@ -64,7 +64,7 @@ export async function refreshOne(uuid: string) {
   if (!bb || !(bb.games_played || bb.score || bb.wins)) {
     await pool.query(
       `UPDATE tracked_players SET mc_name = $2, no_bb_stats = true, last_checked = now(),
-         next_check = 'infinity' WHERE mc_uuid = $1`, [uuid, player?.displayname ?? null]);
+         check_failures = 0, next_check = 'infinity' WHERE mc_uuid = $1`, [uuid, player?.displayname ?? null]);
     return;
   }
   const score: number = bb.score ?? 0;
