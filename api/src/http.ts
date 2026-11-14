@@ -14,6 +14,8 @@ export interface Req {
   cookies: Record<string, string>;
   reply: { headers: Record<string, string | string[]> };
   body: unknown;
+  /** The request body exactly as sent. Webhook signatures are checked against these bytes. */
+  rawBody?: Buffer;
   ip: string;
   user: { id: number; mcUuid: string | null };
 }
@@ -92,7 +94,7 @@ function parseCookies(header: string | undefined) {
   return cookies;
 }
 
-async function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<unknown> {
+async function readRaw(req: http.IncomingMessage, limit = 1_000_000): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const c of req) {
@@ -100,8 +102,12 @@ async function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<u
     if (size > limit) fail(413, "body_too_large");
     chunks.push(c as Buffer);
   }
-  if (!size) return undefined;
-  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { return fail(400, "invalid_json"); }
+  return Buffer.concat(chunks);
+}
+
+function parseBody(raw: Buffer): unknown {
+  if (!raw.length) return undefined;
+  try { return JSON.parse(raw.toString("utf8")); } catch { return fail(400, "invalid_json"); }
 }
 
 export function createServer(routers: Router[], opts: {
@@ -121,13 +127,15 @@ export function createServer(routers: Router[], opts: {
       for (const r of routers) {
         const hit = r.match(method, url.pathname);
         if (!hit) continue;
+        const rawBody = method === "GET" || method === "HEAD" ? undefined : await readRaw(req);
         const request: Req = {
           method, path: url.pathname, params: hit.params,
           query: Object.fromEntries(url.searchParams),
           headers: req.headers,
           cookies: parseCookies(req.headers.cookie),
           reply: { headers: replyHeaders },
-          body: method === "GET" ? undefined : await readBody(req),
+          rawBody,
+          body: rawBody ? parseBody(rawBody) : undefined,
           ip: (req.headers["cf-connecting-ip"] as string) ?? (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.socket.remoteAddress ?? "",
           user: null as any,
         };

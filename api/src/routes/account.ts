@@ -7,6 +7,8 @@ import { DISCORD_API } from "../lib/upstream";
 import { verifyHypixelDiscord } from "../lib/verifyHypixelDiscord";
 import { endWebSession, rateLimit, readWebSession, requireModToken, requireWebSession, startWebSession } from "../plugins/auth";
 import { queuePlayers } from "../jobs/crawler";
+import { PLANS, limit, planOf } from "../lib/plans";
+import { cancelSubscriptionNow, stripeConfigured } from "../services/stripe";
 
 const EMAIL = z.string().trim().email().max(254);
 const PASSWORD = z.string().min(8).max(200);
@@ -26,12 +28,23 @@ type MeRow = {
   mc_name: string | null;
   bio: string | null;
   created_at: Date;
+  plan: string;
+  plan_until: Date | null;
+  plan_cancels: boolean;
+  plan_comped: boolean;
+  stripe_customer_id: string | null;
+  accent: string | null;
+  banner: string | null;
+  card_theme: string | null;
+  featured_achievement: string | null;
+  vanity: string | null;
 };
 
 async function getMe(userId: number) {
   const result = await pool.query<MeRow>(
     `SELECT id, email, password_hash, discord_id, discord_name, avatar_url,
-            mc_uuid, mc_name, bio, created_at
+            mc_uuid, mc_name, bio, created_at, plan, plan_until, plan_cancels, plan_comped,
+            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity
      FROM users WHERE id = $1`, [userId]);
   const row = result.rows[0];
   if (!row) fail(401, "not_logged_in");
@@ -45,6 +58,17 @@ async function getMe(userId: number) {
     minecraft: row.mc_uuid ? { uuid: row.mc_uuid, name: row.mc_name } : null,
     bio: row.bio,
     createdAt: row.created_at,
+    plan: {
+      id: planOf(row),
+      name: PLANS[planOf(row)].name,
+      until: row.plan_until,
+      cancels: row.plan_cancels,
+      comped: row.plan_comped,
+      hasBilling: !!row.stripe_customer_id,
+      limits: { pins: limit(planOf(row), "pins"), comparePlayers: limit(planOf(row), "comparePlayers") },
+    },
+    style: { accent: row.accent, banner: row.banner, cardTheme: row.card_theme,
+             featuredAchievement: row.featured_achievement, vanity: row.vanity },
   };
 }
 
@@ -267,13 +291,25 @@ export function accountRoutes(app: Router) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      const result = await client.query("SELECT password_hash FROM users WHERE id = $1 FOR UPDATE", [req.user.id]);
-      const user = result.rows[0] as { password_hash: string | null } | undefined;
+      const result = await client.query(
+        "SELECT password_hash, stripe_subscription_id FROM users WHERE id = $1 FOR UPDATE", [req.user.id]);
+      const user = result.rows[0] as { password_hash: string | null; stripe_subscription_id: string | null } | undefined;
       if (!user) return fail(401, "not_logged_in");
       if (user.password_hash) {
         if (!password || !await verify(user.password_hash, password)) fail(401, "wrong_password");
       } else if (confirm !== "DELETE") {
         fail(400, "confirm_required");
+      }
+      // End any subscription first. If Stripe can't be reached the account stays, so nobody keeps
+      // paying for an account that no longer exists.
+      if (user.stripe_subscription_id) {
+        if (!stripeConfigured()) fail(503, "billing_unavailable");
+        try {
+          await cancelSubscriptionNow(user.stripe_subscription_id);
+        } catch (error) {
+          console.error("Couldn't cancel subscription before account deletion", error);
+          fail(502, "billing_unavailable");
+        }
       }
       const matches = await client.query<{ min_played_at: Date | null; max_played_at: Date | null }>(
         "SELECT min(played_at) AS min_played_at, max(played_at) AS max_played_at FROM matches WHERE user_id = $1",

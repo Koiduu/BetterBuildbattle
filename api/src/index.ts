@@ -7,6 +7,7 @@ import { accountRoutes } from "./routes/account";
 import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
 import { adminRoutes } from "./routes/admin";
+import { billingRoutes } from "./routes/billing";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
 import { daily, snapshotRanks, rebuildLeaderboard } from "./jobs/daily";
@@ -21,6 +22,7 @@ accountRoutes(api);
 modRoutes(api);
 publicRoutes(api);
 adminRoutes(api);
+billingRoutes(api);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
   return { ok: true };
