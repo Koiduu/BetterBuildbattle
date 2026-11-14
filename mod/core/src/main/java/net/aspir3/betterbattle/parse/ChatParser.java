@@ -1,59 +1,64 @@
 package net.aspir3.betterbattle.parse;
 
 import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
 
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Regex table loaded from patterns.json. The bundled copy ships in the jar;
- * /mod/bootstrap can hand down a newer one so wording changes on Hypixel
- * never need a mod release. Gson is available on both 26.3 and 1.8.9.
+ * Hypixel's wording lives in patterns.json, not in code, so a reworded message
+ * is a one-line fix. Every line is trimmed and colour-stripped before matching.
  */
 public final class ChatParser {
-    public enum Type { GAME_START, THEME, VOTING_START, PLACEMENT, SCORE, GAME_END, GTB_CORRECT_GUESS }
+    public enum Type { THEME, VOTING_START, BUILDER, VOTE, SCORE, PLACEMENT, GAME_END, GTB_CORRECT_GUESS }
 
     public static final class Event {
         public final Type type;
         public final String text;
-        public final Integer intValue;
-        public final Double doubleValue;
-        Event(Type t, String text, Integer i, Double d) { type = t; this.text = text; intValue = i; doubleValue = d; }
+
+        Event(Type type, String text) {
+            this.type = type;
+            this.text = text;
+        }
     }
 
     private static final class Spec {
         int version;
-        @SerializedName("scoreboard_modes") Map<String, String> scoreboardModes;
+        String title;
+        Map<String, String> modes;
+        Map<String, String> sidebar;
         Map<String, String> chat;
-        String sidebar_theme;
-        String sidebar_builder;
     }
 
     private static final class Rule {
-        final Type type; final Pattern pattern;
-        Rule(Type t, Pattern p) { type = t; pattern = p; }
+        final Type type;
+        final Pattern pattern;
+
+        Rule(Type type, Pattern pattern) {
+            this.type = type;
+            this.pattern = pattern;
+        }
     }
 
     private final int version;
-    private Pattern sidebarTheme;
-    private Pattern sidebarBuilder;
+    private final String title;
+    private final Map<String, String> modes;
+    private final Pattern sidebarMode, sidebarPlayers, sidebarTime;
     private final List<Rule> rules = new ArrayList<Rule>();
-    private final List<Map.Entry<Pattern, String>> modes = new ArrayList<Map.Entry<Pattern, String>>();
 
     public ChatParser(Reader json) {
         Spec s = new Gson().fromJson(json, Spec.class);
         version = s.version;
-        if (s.sidebar_theme != null) sidebarTheme = Pattern.compile(s.sidebar_theme);
-        if (s.sidebar_builder != null) sidebarBuilder = Pattern.compile(s.sidebar_builder);
-        for (Map.Entry<String, String> e : s.scoreboardModes.entrySet()) {
-            modes.add(new java.util.AbstractMap.SimpleEntry<Pattern, String>(
-                    Pattern.compile(e.getKey(), Pattern.CASE_INSENSITIVE), e.getValue()));
-        }
+        title = s.title.toUpperCase(Locale.ROOT);
+        modes = s.modes;
+        sidebarMode = Pattern.compile(s.sidebar.get("MODE"));
+        sidebarPlayers = Pattern.compile(s.sidebar.get("PLAYERS"));
+        sidebarTime = Pattern.compile(s.sidebar.get("TIME"));
         for (Map.Entry<String, String> e : s.chat.entrySet()) {
             rules.add(new Rule(Type.valueOf(e.getKey()), Pattern.compile(e.getValue())));
         }
@@ -61,37 +66,35 @@ public final class ChatParser {
 
     public int version() { return version; }
 
-    public String themeFromSidebar(String line) {
-        if (sidebarTheme == null) return null;
-        Matcher m = sidebarTheme.matcher(line);
-        return m.find() ? m.group(1).trim() : null;
+    /** Removes colour codes (including the odd ones Hypixel pads sidebar lines with) and outer spaces. */
+    public static String clean(String s) {
+        return s == null ? "" : s.replaceAll("§.", "").trim();
     }
 
-    public String builderFromSidebar(String line) {
-        if (sidebarBuilder == null) return null;
-        Matcher m = sidebarBuilder.matcher(line);
-        if (!m.find()) return null;
-        String name = m.group(1).trim();
-        return name.matches("[A-Za-z0-9_]{1,16}") ? name : null;
+    public boolean isBuildBattle(String sidebarTitle) {
+        return clean(sidebarTitle).toUpperCase(Locale.ROOT).contains(title);
     }
 
-    public String modeFromScoreboard(String title) {
-        for (Map.Entry<Pattern, String> m : modes) if (m.getKey().matcher(title).find()) return m.getValue();
-        return null;
+    /** "Mode: Solo" → "solo". Null if the line isn't a mode line or the mode is unknown. */
+    public String mode(String line) {
+        Matcher m = sidebarMode.matcher(line);
+        return m.find() ? modes.get(m.group(1).trim().toLowerCase(Locale.ROOT)) : null;
+    }
+
+    public Integer players(String line) {
+        Matcher m = sidebarPlayers.matcher(line);
+        return m.find() ? Integer.valueOf(m.group(1)) : null;
+    }
+
+    /** True for the build countdown line, which only shows while building. */
+    public boolean isBuildTimer(String line) {
+        return sidebarTime.matcher(line).find();
     }
 
     public Event parse(String line) {
         for (Rule r : rules) {
             Matcher m = r.pattern.matcher(line);
-            if (!m.find()) continue;
-            String g = m.groupCount() >= 1 ? m.group(1) : null;
-            switch (r.type) {
-                case THEME: return new Event(r.type, g == null ? null : g.trim(), null, null);
-                case GAME_START:
-                case PLACEMENT: return new Event(r.type, null, g == null ? null : Integer.valueOf(g), null);
-                case SCORE: return new Event(r.type, null, null, g == null ? null : Double.valueOf(g));
-                default: return new Event(r.type, null, null, null);
-            }
+            if (m.find()) return new Event(r.type, m.groupCount() >= 1 ? m.group(1).trim() : null);
         }
         return null;
     }

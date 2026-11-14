@@ -21,7 +21,6 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
@@ -69,7 +68,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     private boolean plotFound;
     private int plotTries;
     private int ticks;
-    private double lastX, lastY, lastZ;
 
     @Override
     public void onInitializeClient() {
@@ -92,19 +90,11 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> core.onLeave());
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) core.onChat(ChatFormatting.stripFormatting(message.getString()));
+            if (!overlay) core.onChat(message.getString());
         });
 
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
-            if (level.isClientSide() && core.active()) {
-                ItemStack stack = player.getItemInHand(hand);
-                core.game().onItemUsed(strip(stack.getHoverName().getString()));
-                onUseBlock(stack, level, hit);
-            }
-            return InteractionResult.PASS;
-        });
-        UseItemCallback.EVENT.register((player, level, hand) -> {
-            if (level.isClientSide() && core.active()) core.game().onItemUsed(strip(player.getItemInHand(hand).getHoverName().getString()));
+            if (level.isClientSide() && core.active()) onUseBlock(player.getItemInHand(hand), level, hit);
             return InteractionResult.PASS;
         });
 
@@ -195,13 +185,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
         if (ticks % 10 == 0) readSidebar(client);
         if (ticks % 100 == 0) readTabList(client);
-
-        // Voting moves everyone from build to build; a big jump means the next one.
-        double dx = client.player.getX() - lastX, dy = client.player.getY() - lastY, dz = client.player.getZ() - lastZ;
-        if (dx * dx + dy * dy + dz * dz > 12 * 12) game.onTeleport();
-        lastX = client.player.getX();
-        lastY = client.player.getY();
-        lastZ = client.player.getZ();
 
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (client.player.getAbilities().flying) game.onFlying();

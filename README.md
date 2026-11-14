@@ -31,8 +31,8 @@ mod/
 
 ## What's not finished
 
-- `patterns.json` holds best guesses at Hypixel's chat wording. Run `/bb debug`, play a game in each mode, and fix the
-  patterns from `config/betterbattle/debug.log`.
+- `patterns.json` matches a real Solo game (Nov 2026). Teams, Pro, Guess the Build and Speed Builders still need a
+  `/bb debug` log each to confirm their wording.
 - The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
 - Speed Builders ghosts, world records and tips are designed (see the plan) but not built.

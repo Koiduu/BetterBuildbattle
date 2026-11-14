@@ -88,7 +88,7 @@ public final class BetterBattle {
             db = new LocalDatabase(dir.getParentFile(), uuid.toString());
             HttpApiClient api = new HttpApiClient(config.apiBase, modVersion, mcVersion);
             sync = new SyncService(db, api, name, new SyncListener());
-            game = new GameStateMachine(parser, new GameListener(), mcVersion);
+            game = new GameStateMachine(parser, new GameListener(), mcVersion, name);
             sync.start();
             if (config.debug) openDebugLog();
             debug("joined " + address + " as " + name);
@@ -99,6 +99,8 @@ public final class BetterBattle {
     }
 
     public void onLeave() {
+        // Hypixel moves you between servers all the time; keep a game that was cut short.
+        if (game != null) game.leave();
         if (sync != null) sync.shutdown();
         if (db != null) {
             try { db.close(); } catch (Exception ignored) { }
@@ -109,29 +111,44 @@ public final class BetterBattle {
         game = null;
         debugLog = null;
         seenThisSession.clear();
+        lastSidebarTitle = "";
+        lastSidebar = new ArrayList<String>();
     }
 
     // ---- game events from the adapter
 
-    public void onChat(String plain) {
-        if (game == null) return;
-        debug("chat: " + plain);
-        game.onChat(plain);
+    /** A chat message as the game shows it. Hypixel sends some as several lines in one message. */
+    public void onChat(String message) {
+        if (game == null || message == null) return;
+        for (String raw : message.split("\n")) {
+            String line = ChatParser.clean(raw);
+            if (line.isEmpty()) continue;
+            debug("chat: " + line);
+            game.onChat(line);
+        }
     }
 
-    /** Sidebar title and lines, top to bottom, colour codes stripped. Call every tick; cheap when unchanged. */
+    /** Sidebar title and lines, top to bottom. Call it often; nothing happens unless something changed. */
     public void onSidebar(String title, List<String> lines) {
         if (game == null) return;
-        if (!title.equals(lastSidebarTitle)) {
-            lastSidebarTitle = title;
-            debug("sidebar title: " + title);
-            game.onScoreboardTitle(title);
+        List<String> cleaned = new ArrayList<String>();
+        for (String line : lines) cleaned.add(ChatParser.clean(line));
+        String cleanTitle = ChatParser.clean(title);
+        if (cleanTitle.equals(lastSidebarTitle) && cleaned.equals(lastSidebar)) return;
+        if (!cleanTitle.equals(lastSidebarTitle)) debug("sidebar title: " + cleanTitle);
+        // The clock line changes every second; leave it out of the log.
+        if (config.debug && !withoutClock(cleaned).equals(withoutClock(lastSidebar))) debug("sidebar: " + String.join(" | ", cleaned));
+        lastSidebarTitle = cleanTitle;
+        lastSidebar = cleaned;
+        game.onSidebar(cleanTitle, cleaned);
+    }
+
+    private static List<String> withoutClock(List<String> lines) {
+        List<String> out = new ArrayList<String>();
+        for (String line : lines) {
+            if (!line.matches("(Time|Vote Time): \\d+:\\d+|Starting in \\d+s?")) out.add(line);
         }
-        if (!lines.equals(lastSidebar)) {
-            lastSidebar = new ArrayList<String>(lines);
-            if (config.debug) debug("sidebar: " + String.join(" | ", lines));
-            for (String line : lines) game.onSidebarLine(line);
-        }
+        return out;
     }
 
     public void onTabList(Collection<UUID> uuids) {
