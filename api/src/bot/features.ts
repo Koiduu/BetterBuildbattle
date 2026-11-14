@@ -15,13 +15,12 @@ import {
 } from "discord.js";
 import { pool } from "../db/pool";
 import { HttpError } from "../http";
+import { siteOrigin } from "../lib/site";
 import { verifyHypixelDiscord } from "../lib/verifyHypixelDiscord";
+import { latestRelease } from "../services/modRelease";
 import { renderStatsCard, type StatsCardData } from "./card";
 import { resolveStatsName, saveDiscordLink } from "./data";
 
-const releasesUrl = "https://github.com/Koiduu/BetterBuildbattle/releases";
-type Release = { html_url?: string; assets?: { name: string; browser_download_url: string }[] };
-let releaseCache: { expires: number; fabric: string; forge: string } | null = null;
 const verifyAttempts = new Map<string, { count: number; start: number }>();
 
 function replyEphemeral(interaction: ChatInputCommandInteraction, content: string) {
@@ -91,46 +90,21 @@ async function setup(interaction: ChatInputCommandInteraction) {
   return replyEphemeral(interaction, `Set staff role to <@&${staff.id}> and logs to <#${logChannel.id}>. AutoMod rules are ready.`);
 }
 
-async function releaseLinks() {
-  if (releaseCache && releaseCache.expires > Date.now()) return releaseCache;
-  let fabric = releasesUrl;
-  let forge = releasesUrl;
-  try {
-    const response = await fetch("https://api.github.com/repos/Koiduu/BetterBuildbattle/releases?per_page=5", {
-      headers: { "user-agent": "BetterBattleDiscordBot", accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-    const releases = await response.json() as Release[];
-    for (const release of releases) {
-      const assets = release.assets ?? [];
-      const fabricAsset = assets.find((asset) => /^betterbattle-fabric-26\.3-.*\.jar$/i.test(asset.name));
-      const forgeAsset = assets.find((asset) => /^betterbattle-forge-1\.8\.9-.*\.jar$/i.test(asset.name));
-      if (fabricAsset && forgeAsset) {
-        fabric = fabricAsset.browser_download_url;
-        forge = forgeAsset.browser_download_url;
-        break;
-      }
-    }
-  } catch {}
-  releaseCache = { expires: Date.now() + 10 * 60_000, fabric, forge };
-  return releaseCache;
-}
-
 async function download(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
-  const links = await releaseLinks();
+  const release = await latestRelease();
+  const origin = siteOrigin();
   const embed = new EmbedBuilder()
     .setColor(0xffaa00)
     .setTitle("Better Battle downloads")
-    .setDescription("Choose the version you play. After installing, press **B** or type **/bb** in game, then link your account at [battle.aspir3.net/account](https://battle.aspir3.net/account).")
+    .setDescription(`Choose the version you play. After installing, press **B** or type **/bb** in game, then link your account at [battle.aspir3.net/account](https://battle.aspir3.net/account).\n\n${release?.version ? `Latest version: **${release.version}**.\n\n` : ""}[Installation guide](${origin}/install)`)
     .addFields(
       { name: "Fabric 26.3", value: "Install Fabric Loader 0.20.1+ for Minecraft 26.3, Fabric API, and Java 25+. Drop the jar into `.minecraft/mods`, then launch the game." },
       { name: "Forge 1.8.9", value: "Install Forge 1.8.9 (11.15.1.2318), drop the jar into `.minecraft/mods`, then launch the game." },
     );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setLabel("Fabric 26.3").setStyle(ButtonStyle.Link).setURL(links.fabric),
-    new ButtonBuilder().setLabel("Forge 1.8.9").setStyle(ButtonStyle.Link).setURL(links.forge),
+    new ButtonBuilder().setLabel("Fabric 26.3").setStyle(ButtonStyle.Link).setURL(`${origin}/download/fabric`),
+    new ButtonBuilder().setLabel("Forge 1.8.9").setStyle(ButtonStyle.Link).setURL(`${origin}/download/forge`),
   );
   return interaction.editReply({ embeds: [embed], components: [row] });
 }

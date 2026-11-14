@@ -82,7 +82,8 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           ls -la jars
+          (cd jars && sha256sum *.jar > SHA256SUMS)
           gh release delete dev --repo "$REPO" --yes --cleanup-tag || true
-          gh release create dev jars/*.jar --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
+          gh release create dev jars/*.jar jars/SHA256SUMS --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
             --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jar: Minecraft 26.3 with Fabric API. Forge jar: Minecraft 1.8.9."

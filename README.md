@@ -138,7 +138,7 @@ Commands: `/setup staff-role log-channel`, `/download`, `/verify name`, `/unveri
 
 ## Testing the mod
 
-Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
+Latest jars are served from [the install page](https://battle.aspir3.net/install) and include SHA-256 checksums.
 
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
@@ -181,7 +181,7 @@ votes and who they vote for. Only votes cast by people running the mod are known
 ## Design docs
 ## Testing the mod
 
-Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebuilt on every push to `main`).
+Latest jars are served from [the install page](https://battle.aspir3.net/install) and include SHA-256 checksums.
 
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.

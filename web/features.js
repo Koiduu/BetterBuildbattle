@@ -6,9 +6,7 @@ import { drawCard, CARD_W, CARD_H } from "./card.js";
 import { CARD_THEMES } from "./style-options.js";
 import { has } from "./plans.js";
 
-// Where the jars are. CI replaces the "dev" pre-release on every push to main; switch this to a
-// versioned release (or Modrinth) once there is one.
-export const DOWNLOAD_URL = "https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev";
+export const downloadUrl = (loader) => `/download/${loader}`;
 
 const secs = (ms) => (ms == null ? "–" : (ms / 1000).toFixed(2) + "s");
 
@@ -77,19 +75,23 @@ export async function installPage() {
       <ol class="steps">
         ${step(1, `Install ${ext("https://fabricmc.net/use/installer/", "Fabric Loader")} 0.20.1 or newer for Minecraft 26.3.`)}
         ${step(2, `Download ${ext("https://modrinth.com/mod/fabric-api", "Fabric API")} for 26.3. Better Battle needs it.`)}
-        ${step(3, `Download <b>betterbattle-fabric-26.3</b> from the ${ext(DOWNLOAD_URL, "downloads page")}.`)}
+        ${step(3, `<a class="btn primary" href="${downloadUrl("fabric")}" download>Download Better Battle for Fabric</a>`)}
         ${step(4, `Put both jars in your <code>mods</code> folder, start Minecraft with the Fabric profile and join Hypixel.`)}
       </ol>
+      <div class="release-info" data-release-info="fabric"></div>
     </section>
 
     <section class="card" data-panel="forge" hidden>
       <h2>Minecraft 1.8.9 with Forge</h2>
       <ol class="steps">
         ${step(1, `Install ${ext("https://files.minecraftforge.net/net/minecraftforge/forge/index_1.8.9.html", "Forge")} 11.15.1.2318 for Minecraft 1.8.9.`)}
-        ${step(2, `Download <b>betterbattle-forge-1.8.9</b> from the ${ext(DOWNLOAD_URL, "downloads page")}.`)}
+        ${step(2, `<a class="btn primary" href="${downloadUrl("forge")}" download>Download Better Battle for Forge</a>`)}
         ${step(3, `Put the jar in your <code>mods</code> folder, start Minecraft with the Forge profile and join Hypixel.`)}
       </ol>
+      <div class="release-info" data-release-info="forge"></div>
     </section>
+
+    <p id="download-status" class="sub" role="status" aria-live="polite"></p>
 
     <p class="sub">Works with the official launcher, Prism, MultiMC and other launchers that load Fabric or Forge mods.
       Clients with their own mod system may not load it.</p>
@@ -120,6 +122,46 @@ export async function installPage() {
     for (const x of app.querySelectorAll("[data-pick]")) x.setAttribute("aria-pressed", String(x === b));
     for (const p of app.querySelectorAll("[data-panel]")) p.hidden = p.dataset.panel !== b.dataset.pick;
   });
+
+  const status = app.querySelector("#download-status");
+  const unavailable = () => {
+    status.innerHTML = `Downloads are temporarily unavailable. Please try again later or visit <a href="/support" data-link>Support</a>.`;
+  };
+  try {
+    const response = await fetch("/bb/v1/mod/latest");
+    if (!response.ok) throw new Error("Release details unavailable");
+    const release = await response.json();
+    let missing = false;
+    for (const loader of ["fabric", "forge"]) {
+      const info = app.querySelector(`[data-release-info="${loader}"]`);
+      const asset = release[loader];
+      if (!asset) {
+        info.innerHTML = `<p class="sub">This download is temporarily unavailable.</p>`;
+        missing = true;
+        continue;
+      }
+      const version = esc(release.version || asset.version);
+      const built = release.builtAt && Number.isFinite(Date.parse(release.builtAt))
+        ? dateLabel(release.builtAt)
+        : "unknown date";
+      info.innerHTML = `<p class="sub">Version ${version} · built ${esc(built)}</p>`;
+      if (!asset.sha256) {
+        info.innerHTML += `<p class="sub">SHA-256 checksum unavailable; this download cannot be verified.</p>`;
+        missing = true;
+        continue;
+      }
+      info.innerHTML += `
+        <details>
+          <summary>Check the file</summary>
+          <p>SHA-256: <code>${esc(asset.sha256)}</code></p>
+          <p>Windows: <code>certutil -hashfile ${esc(asset.file)} SHA256</code></p>
+          <p>macOS/Linux: <code>shasum -a 256 ${esc(asset.file)}</code></p>
+        </details>`;
+    }
+    if (missing) unavailable();
+  } catch {
+    unavailable();
+  }
 }
 
 /** A strip on the home page announcing the latest update. */
@@ -604,4 +646,3 @@ export async function openShareCard(p) {
   dialog.addEventListener("close", () => dialog.remove());
   dialog.showModal();
 }
-
