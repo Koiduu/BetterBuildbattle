@@ -32,6 +32,9 @@ public final class MatchRecord {
     public String floor;                     // floor block at the end of the build
     public int floorChanges;
     public int backdropChanges;
+    public static final List<String> VOTES = java.util.Arrays.asList(
+        "super_poop", "poop", "meh", "ok", "good", "epic", "legendary");
+
     /** One vote this player cast while voting on other builds. */
     public static final class Vote {
         public int round;

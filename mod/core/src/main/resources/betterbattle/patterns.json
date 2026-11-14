@@ -1,21 +1,26 @@
 {
-  "_note": "Best guesses at Hypixel's wording. Turn on debug logging (/bb debug) and play a few games to collect the real lines, then fix these. The server can also hand out a newer copy.",
-  "version": 1,
-  "scoreboard_modes": {
-    "BUILD BATTLE.*PRO": "pro",
-    "BUILD BATTLE.*TEAMS": "teams",
-    "GUESS THE BUILD": "gtb",
-    "SPEED BUILDERS": "speed_builders",
-    "BUILD BATTLE": "solo"
+  "_note": "Taken from a real Solo game on Hypixel (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Other modes may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
+  "version": 2,
+  "title": "BUILD BATTLE",
+  "modes": {
+    "solo": "solo",
+    "teams": "teams",
+    "pro": "pro",
+    "guess the build": "gtb",
+    "speed builders": "speed_builders"
+  },
+  "sidebar": {
+    "MODE": "^Mode: (.+)$",
+    "PLAYERS": "^Players: (\\d+)$",
+    "TIME": "^Time: \\d+:\\d+$"
   },
   "chat": {
-    "GAME_START": "^The game starts in .*|^(\\d+) players? (?:are )?building",
-    "THEME": "^\\s*Theme: (.+)$",
-    "VOTING_START": "^\\s*Time's up!|^Voting has started",
-    "PLACEMENT": "^\\s*You finished in (\\d+)(?:st|nd|rd|th)",
-    "SCORE": "^\\s*Your score: ([\\d.]+)",
-    "GAME_END": "^\\s*Reward Summary|^\\s*Thanks for playing"
-  },
-  "sidebar_theme": "^Theme: (.+)$",
-  "sidebar_builder": "^Builder: (.+)$"
+    "THEME": "^Build something relevant to the theme: (.+)$",
+    "VOTING_START": "^Vote for your competitors' plots!$",
+    "BUILDER": "^Builder: ([A-Za-z0-9_]{1,16})$",
+    "VOTE": "^Confirmed vote: (.+)$",
+    "SCORE": "^Your Score: ([\\d.]+)$",
+    "PLACEMENT": "^\\((\\d+)(?:st|nd|rd|th) Place\\)$",
+    "GAME_END": "^Reward Summary$"
+  }
 }

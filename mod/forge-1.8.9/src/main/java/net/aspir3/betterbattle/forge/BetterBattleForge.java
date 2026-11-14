@@ -63,7 +63,6 @@ public class BetterBattleForge implements Platform {
     private GuiScreen pendingScreen;
     private boolean connected, joined, plotFound;
     private int plotTries, ticks;
-    private double lastX, lastY, lastZ;
 
     public static BetterBattleForge get() {
         return instance;
@@ -116,7 +115,7 @@ public class BetterBattleForge implements Platform {
     @SubscribeEvent
     public void onChat(ClientChatReceivedEvent event) {
         if (event.type == 2) return;   // action bar
-        core.onChat(strip(event.message.getUnformattedText()));
+        core.onChat(event.message.getUnformattedText());
     }
 
     @SubscribeEvent
@@ -125,9 +124,7 @@ public class BetterBattleForge implements Platform {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.entityPlayer != mc.thePlayer) return;
         ItemStack held = mc.thePlayer.getHeldItem();
-        if (held == null || event.action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK) return;
-        core.game().onItemUsed(strip(held.getDisplayName()));
-        if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) return;
+        if (held == null || event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) return;
 
         String id = null;
         String tab = null;
@@ -177,13 +174,6 @@ public class BetterBattleForge implements Platform {
 
         if (ticks % 10 == 0) readSidebar(mc);
         if (ticks % 100 == 0) readTabList(mc);
-
-        // Voting moves everyone from build to build; a big jump means the next one.
-        double dx = mc.thePlayer.posX - lastX, dy = mc.thePlayer.posY - lastY, dz = mc.thePlayer.posZ - lastZ;
-        if (dx * dx + dy * dy + dz * dz > 12 * 12) game.onTeleport();
-        lastX = mc.thePlayer.posX;
-        lastY = mc.thePlayer.posY;
-        lastZ = mc.thePlayer.posZ;
 
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (mc.thePlayer.capabilities.isFlying) game.onFlying();
