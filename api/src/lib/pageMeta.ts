@@ -10,7 +10,7 @@ const DEFAULT = {
   description: "Build Battle rankings, profiles and achievements. Better Battle by Koidu.",
 };
 
-export interface PageMeta { title: string; description: string; image?: string; path: string }
+export interface PageMeta { title: string; description: string; image?: string; path: string; largeImage?: boolean }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const fmt = (n: number | null | undefined) => (n == null ? "–" : Number(n).toLocaleString("en-US"));
@@ -35,7 +35,8 @@ export async function metaFor(pathname: string): Promise<PageMeta | null> {
       return {
         title: `${p.mc_name} · ${SITE}`,
         description: parts.join(" · "),
-        image: `https://mc-heads.net/avatar/${p.mc_uuid}/128`,
+        image: `/bb/v1/players/${p.mc_name}/card.png`,
+        largeImage: true,
         path: `/p/${p.mc_name}`,
       };
     }
@@ -81,8 +82,9 @@ export function withMeta(html: string, meta: PageMeta | null, origin: string) {
     `<meta property="og:title" content="${esc(m.title)}">`,
     `<meta property="og:description" content="${esc(m.description)}">`,
     `<meta property="og:url" content="${esc(origin + m.path)}">`,
-    m.image ? `<meta property="og:image" content="${esc(m.image)}">` : "",
-    `<meta name="twitter:card" content="summary">`,
+    m.image ? `<meta property="og:image" content="${esc(m.image.startsWith("/") ? origin + m.image : m.image)}">` : "",
+    m.largeImage ? `<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">` : "",
+    `<meta name="twitter:card" content="${m.largeImage ? "summary_large_image" : "summary"}">`,
     `<meta name="theme-color" content="#ff66aa">`,
   ].filter(Boolean).join("\n");
   return html

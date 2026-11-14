@@ -2,6 +2,7 @@
 // two players, and the profile's weekly challenges, achievement rarity, best times and share card.
 // Kept apart from app.js so the two can change independently; app.js imports these.
 import { app, esc, num, percent, title, avatar, get, go, NAME_RE } from "./app.js";
+import { drawCard, CARD_W, CARD_H } from "./card.js";
 
 // Where the jars are. CI replaces the "dev" pre-release on every push to main; switch this to a
 // versioned release (or Modrinth) once there is one.
@@ -457,55 +458,29 @@ function loadImage(src) {
   });
 }
 
-/** Draws a 1200×630 profile card, the size Discord and most sites preview. */
-async function drawCard(p, achievementCount) {
-  const W = 1200, H = 630;
+/** The profile card as a canvas, drawn by card.js (the server draws link previews with the same code). */
+async function cardCanvas(p, achievementCount) {
   const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
-  const g = c.getContext("2d");
+  c.width = CARD_W;
+  c.height = CARD_H;
   await document.fonts.load("700 64px 'Pixelify Sans'").catch(() => {});
-  const pixel = (size, weight = 700) => `${weight} ${size}px 'Pixelify Sans', 'Courier New', monospace`;
-
-  // Panel, like the site's cards: dark fill, black outline, light bevel
-  g.fillStyle = "#2a2a30";
-  g.fillRect(0, 0, W, H);
-  g.fillStyle = "#000";
-  g.fillRect(40, 40, W - 80, H - 80);
-  g.fillStyle = "#1f1f24";
-  g.fillRect(46, 46, W - 92, H - 92);
-  g.fillStyle = "#3a3a42";
-  g.fillRect(46, 46, W - 92, 4);
-
-  // Face in a black frame; a plain slot if the avatar can't load
-  const face = await loadImage(avatar(p.uuid, 160));
-  g.fillStyle = "#000";
-  g.fillRect(86, 86, 168, 168);
-  g.fillStyle = "#3a3a42";
-  g.fillRect(90, 90, 160, 160);
-  if (face) {
-    g.imageSmoothingEnabled = false;
-    g.drawImage(face, 90, 90, 160, 160);
-  } else {
-    g.fillStyle = "#9d9da6";
-    g.font = pixel(96);
-    const initial = p.name[0].toUpperCase();
-    g.fillText(initial, 170 - g.measureText(initial).width / 2, 205);
-  }
-
   const bb = p.betterBattle;
-  g.fillStyle = "#f0f0f0";
-  g.font = pixel(72);
-  g.fillText(p.name, 290, 160);
-  g.font = pixel(36, 600);
-  g.fillStyle = p.title.current.hex ?? "#c6c6c6";
-  g.fillText(p.title.current.name, 290, 212);
-  if (bb) {
-    g.fillStyle = "#80ff20";
-    g.fillText(`Level ${bb.level}`, 290 + g.measureText(p.title.current.name).width + 36, 212);
-  }
+  drawCard(c.getContext("2d"), {
+    name: p.name,
+    title: p.title.current,
+    level: bb ? bb.level : null,
+    stats: cardStats(p, achievementCount),
+    url: `${location.host}/p/${p.name}`,
+  }, await loadImage(avatar(p.uuid, 160)), {
+    display: "'Pixelify Sans', 'Courier New', monospace",
+    body: "Verdana, sans-serif",
+  });
+  return c;
+}
 
-  const stats = [
+function cardStats(p, achievementCount) {
+  const bb = p.betterBattle;
+  return [
     ["Global rank", p.rank ? "#" + num(p.rank) : "–"],
     ["Build Battle score", num(p.score)],
     ["Wins", num(p.hypixel.wins)],
@@ -513,34 +488,13 @@ async function drawCard(p, achievementCount) {
     bb ? ["Achievements", num(achievementCount)] : ["Correct guesses", num(p.hypixel.correctGuesses)],
     bb ? ["Aspiring Points", num(bb.ap)] : ["Speed Builders wins", num(p.hypixel.modeWins.speedBuilders)],
   ];
-  const colW = (W - 172) / 3;
-  stats.forEach(([label, value], i) => {
-    const x = 86 + (i % 3) * colW, y = 284 + Math.floor(i / 3) * 112;
-    g.fillStyle = "#141416";
-    g.fillRect(x, y, colW - 20, 96);
-    g.fillStyle = "#9d9da6";
-    g.font = "22px Verdana, sans-serif";
-    g.fillText(label, x + 20, y + 34);
-    g.fillStyle = i === 0 ? "#ffaa00" : "#f0f0f0";
-    g.font = pixel(44);
-    g.fillText(value, x + 20, y + 80);
-  });
-
-  g.fillStyle = "#ff8fc0";
-  g.font = pixel(28);
-  g.fillText("Better Battle", 86, H - 72);
-  g.fillStyle = "#9d9da6";
-  g.font = "20px Verdana, sans-serif";
-  const url = `${location.host}/p/${p.name}`;
-  g.fillText(url, W - 86 - g.measureText(url).width, H - 72);
-  return c;
 }
 
 /** "Share card" button: preview, download, copy. */
 export async function openShareCard(p) {
   const n = encodeURIComponent(p.name);
   const ach = p.betterBattle ? await get(`/players/${n}/achievements`).catch(() => ({ unlocked: [] })) : { unlocked: [] };
-  const canvas = await drawCard(p, ach.unlocked.length);
+  const canvas = await cardCanvas(p, ach.unlocked.length);
   const dialog = document.createElement("dialog");
   dialog.className = "card share-dialog";
   dialog.innerHTML = `

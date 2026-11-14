@@ -1,6 +1,8 @@
 // Read-only routes the website uses. Works for ANY tracked Build Battle player;
 // Better Battle extras (level, games, achievements) appear when the player uses the mod.
-import { Router, fail } from "../http";
+import { Router, Raw, fail } from "../http";
+import { profileCard } from "../services/card";
+import { siteOrigin } from "../lib/site";
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
@@ -261,6 +263,14 @@ export function publicRoutes(app: Router) {
     }
     const w = await weeklyProgress(pool, id);
     return { weekEndsAt: w.weekEndsAt, challenges: w.weekly };
+  });
+
+  /** The profile card as a PNG: the link-preview image for /p/:name. */
+  app.get("/players/:name/card.png", [rateLimit(30, 60_000)], async (req) => {
+    if (!NAME.test(req.params.name)) fail(400, "bad_name");
+    const png = await profileCard(req.params.name, siteOrigin());
+    if (!png) return fail(404, "not_found");
+    return new Raw(png, "image/png", { "cache-control": "public, max-age=600" });
   });
 
   /** How many Better Battle players have each achievement. */

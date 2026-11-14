@@ -21,6 +21,10 @@ export interface Req {
 export class HttpError extends Error {
   constructor(public status: number, public body: Record<string, unknown>) { super(String(body.error ?? status)); }
 }
+/** Return from a handler to send bytes (an image, say) instead of JSON. */
+export class Raw {
+  constructor(public body: Buffer, public type: string, public headers: Record<string, string> = {}) {}
+}
 export class Redirect {
   constructor(public location: string) {}
 }
@@ -52,7 +56,8 @@ export class Router {
 
   match(method: string, pathname: string) {
     for (const r of this.routes) {
-      if (r.method !== method) continue;
+      // HEAD is answered by the GET route (link-preview crawlers often check with HEAD first)
+      if (r.method !== method && !(method === "HEAD" && r.method === "GET")) continue;
       const m = pathname.match(r.re);
       if (!m) continue;
       const params: Record<string, string> = {};
@@ -128,6 +133,12 @@ export function createServer(routers: Router[], opts: {
         };
         for (const h of hit.route.hooks) await h(request);
         const out = await hit.route.handler(request);
+        if (out instanceof Raw) {
+          res.writeHead(200, { ...replyHeaders, ...out.headers, "content-type": out.type, "content-length": String(out.body.length) });
+          res.end(method === "HEAD" ? undefined : out.body);
+          log(`${method} ${url.pathname} 200 ${Date.now() - started}ms`);
+          return;
+        }
         if (out instanceof Redirect) {
           send(res, 302, null, { ...replyHeaders, location: out.location });
           log(`${method} ${url.pathname} 302 ${Date.now() - started}ms`);

@@ -11,9 +11,7 @@ import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
 import { daily, snapshotRanks, rebuildLeaderboard } from "./jobs/daily";
 import { metaFor, withMeta } from "./lib/pageMeta";
-
-// The public address, for link previews. Not taken from the Host header, which anyone can set.
-const SITE_ORIGIN = (process.env.PUBLIC_URL ?? "https://battle.aspir3.net").replace(/\/$/, "");
+import { siteOrigin } from "./lib/site";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PREFIX = "/bb/v1";
@@ -72,7 +70,7 @@ const server = createServer([api], {
   apiPrefix: PREFIX,
   staticDir: process.env.WEB_DIR ?? path.resolve(here, "../../web"),
   log: process.env.LOG_REQUESTS === "1" ? (m) => console.log(m) : () => {},
-  page: async (html, pathname) => withMeta(html, await metaFor(pathname), SITE_ORIGIN),
+  page: async (html, pathname) => withMeta(html, await metaFor(pathname), siteOrigin()),
 });
 const port = Number(process.env.PORT ?? 4000);
 server.listen(port, process.env.HOST ?? "0.0.0.0", () => console.log(`Better Battle listening on :${port}`));
