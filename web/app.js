@@ -1,5 +1,5 @@
 import {
-  updatesPage, speedBuildersPage, speedBuildPage, comparePage,
+  updatesPage, speedBuildersPage, speedBuildPage, comparePage, installPage, updateBanner,
   loadWeekly, renderAchievements, spbBestsSection, loadSpbBests, openShareCard,
 } from "./features.js";
 
@@ -84,6 +84,7 @@ const routes = [
   { path: /^\/signup\/?$/, page: () => authPage("signup") },
   { path: /^\/account\/?$/, page: accountPage },
   { path: /^\/updates\/?$/, page: updatesPage, nav: "updates" },
+  { path: /^\/install\/?$/, page: installPage },
   { path: /^\/speed-builders\/?$/, page: speedBuildersPage, nav: "spb" },
   { path: /^\/speed-builders\/([a-z0-9_]{1,48})\/?$/, page: speedBuildPage, nav: "spb" },
   { path: /^\/compare(?:\/([A-Za-z0-9_]{1,16}))?(?:\/([A-Za-z0-9_]{1,16}))?\/?$/, page: comparePage },
@@ -202,7 +203,7 @@ function cookiesPage() {
 function supportPage() {
   legalPage("Support", `
     <section><h2>Installing the mod</h2>
-      <p>Put the Fabric 26.3 or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder.</p></section>
+      <p>Put the Fabric 26.3 or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
     <section><h2>Linking your account</h2>
       <p>Get a code from the Account page, then run <code>/bb link &lt;code&gt;</code> in game.</p></section>
     <section><h2>The stats server cannot be reached</h2>
@@ -260,6 +261,7 @@ async function homePage() {
   flashNotice = null;
   app.innerHTML = `
     ${notice ? `<p class="status-notice" role="status">${esc(notice)}</p>` : ""}
+    <div id="home-banner"></div>
     <section class="intro">
       <h1>Every Build Battle player, ranked.</h1>
       <p>Look up anyone who has played Build Battle on Hypixel. Install the Better Battle mod to add your games, levels and achievements to your profile.</p>
@@ -277,6 +279,8 @@ async function homePage() {
       </div>
       <div id="home-top"><div class="loading" style="height:300px"></div></div>
     </section>`;
+
+  updateBanner(document.getElementById("home-banner"));
 
   document.getElementById("home-search").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -531,7 +535,7 @@ function getModCard() {
         <h2>See the rest of this profile with the mod</h2>
         <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3 and Forge 1.8.9.</p>
       </div>
-      <a class="btn primary" href="https://github.com/Koiduu/BetterBuildbattle" target="_blank" rel="noopener">Get the mod</a>
+      <a class="btn primary" href="/install" data-link>Get the mod</a>
     </section>`;
 }
 

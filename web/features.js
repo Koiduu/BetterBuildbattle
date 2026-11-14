@@ -3,6 +3,10 @@
 // Kept apart from app.js so the two can change independently; app.js imports these.
 import { app, esc, num, percent, title, avatar, get, go, NAME_RE } from "./app.js";
 
+// Where the jars are. CI replaces the "dev" pre-release on every push to main; switch this to a
+// versioned release (or Modrinth) once there is one.
+export const DOWNLOAD_URL = "https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev";
+
 const secs = (ms) => (ms == null ? "–" : (ms / 1000).toFixed(2) + "s");
 
 function dateLabel(iso) {
@@ -43,8 +47,89 @@ export async function updatesPage() {
         <h2>Get the update</h2>
         <p>Every new feature can be switched off in the mod's Settings screen if you'd rather play normally.</p>
       </div>
-      <a class="btn primary" href="https://github.com/Koiduu/BetterBuildbattle/releases" target="_blank" rel="noopener">Download</a>
+      <a class="btn primary" href="/install" data-link>Install</a>
     </section>`;
+}
+
+// ---------------------------------------------------------------- Install
+
+export async function installPage() {
+  document.title = "Install · Better Battle";
+  const step = (n, html) => `<li><span class="step">${n}</span><div>${html}</div></li>`;
+  const ext = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+  app.innerHTML = `
+    <section class="intro">
+      <h1>Install Better Battle</h1>
+      <p>A client-side mod for Hypixel Build Battle. It saves your games, grades your builds, tracks achievements and
+        Speed Builders times, and fills in your profile on this site.</p>
+    </section>
+
+    <div class="toggle install-pick" role="tablist" aria-label="Minecraft version">
+      <button role="tab" data-pick="fabric" aria-pressed="true">Minecraft 26.3 (Fabric)</button>
+      <button role="tab" data-pick="forge" aria-pressed="false">Minecraft 1.8.9 (Forge)</button>
+    </div>
+
+    <section class="card" data-panel="fabric">
+      <h2>Minecraft 26.3 with Fabric</h2>
+      <ol class="steps">
+        ${step(1, `Install ${ext("https://fabricmc.net/use/installer/", "Fabric Loader")} 0.20.1 or newer for Minecraft 26.3.`)}
+        ${step(2, `Download ${ext("https://modrinth.com/mod/fabric-api", "Fabric API")} for 26.3. Better Battle needs it.`)}
+        ${step(3, `Download <b>betterbattle-fabric-26.3</b> from the ${ext(DOWNLOAD_URL, "downloads page")}.`)}
+        ${step(4, `Put both jars in your <code>mods</code> folder, start Minecraft with the Fabric profile and join Hypixel.`)}
+      </ol>
+    </section>
+
+    <section class="card" data-panel="forge" hidden>
+      <h2>Minecraft 1.8.9 with Forge</h2>
+      <ol class="steps">
+        ${step(1, `Install ${ext("https://files.minecraftforge.net/net/minecraftforge/forge/index_1.8.9.html", "Forge")} 11.15.1.2318 for Minecraft 1.8.9.`)}
+        ${step(2, `Download <b>betterbattle-forge-1.8.9</b> from the ${ext(DOWNLOAD_URL, "downloads page")}.`)}
+        ${step(3, `Put the jar in your <code>mods</code> folder, start Minecraft with the Forge profile and join Hypixel.`)}
+      </ol>
+    </section>
+
+    <p class="sub">Works with the official launcher, Prism, MultiMC and other launchers that load Fabric or Forge mods.
+      Clients with their own mod system may not load it.</p>
+
+    <div class="cols even">
+      <section class="card">
+        <h2>Once you're in</h2>
+        <ul class="plain ticks">
+          <li>Press <b>B</b> (or type <code>/bb</code>) for your level, achievements, weekly challenges and last game.</li>
+          <li>Play a game. It's saved on your computer first, then synced.</li>
+          <li>To claim your profile here: sign up, open Account, get a code and run <code>/bb link &lt;code&gt;</code>.</li>
+          <li>Don't want the extras? <b>Settings</b> in the B menu switches each one off.</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Is it fair play?</h2>
+        <p class="muted">Better Battle only reads chat, the scoreboard and your own clicks. It never presses anything for you,
+          never shows where blocks go and never helps you guess. Whether a mod is allowed is up to Hypixel, so check their
+          rules on allowed modifications. You use any mod at your own risk.</p>
+      </section>
+    </div>
+
+    <p class="muted">Stuck? See <a href="/support" data-link>Support</a>. Curious what changed? See <a href="/updates" data-link>Updates</a>.</p>`;
+
+  app.querySelector(".install-pick").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-pick]");
+    if (!b) return;
+    for (const x of app.querySelectorAll("[data-pick]")) x.setAttribute("aria-pressed", String(x === b));
+    for (const p of app.querySelectorAll("[data-panel]")) p.hidden = p.dataset.panel !== b.dataset.pick;
+  });
+}
+
+/** A strip on the home page announcing the latest update. */
+export async function updateBanner(el) {
+  const data = await fetch("/updates.json").then((r) => r.json()).catch(() => null);
+  const u = data?.updates?.[0];
+  if (!u || !el) return;
+  el.innerHTML = `
+    <div class="banner">
+      <span class="chip pink">New</span>
+      <span><b>${esc(u.title)}</b> <span class="muted">v${esc(u.version)}</span></span>
+      <span class="banner-links"><a href="/updates" data-link>What's new</a><a class="btn small primary" href="/install" data-link>Install</a></span>
+    </div>`;
 }
 
 // ---------------------------------------------------------------- Speed Builders
