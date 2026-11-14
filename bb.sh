@@ -78,7 +78,8 @@ rotate_backups() {
 
 backup_database() {
   check_database || return 1
-  mkdir -p backups
+  mkdir -p backups || { echo "Could not create the backups directory." >&2; return 1; }
+  chmod 700 backups || { echo "Could not restrict permissions on the backups directory." >&2; return 1; }
   local stamp destination size temp_dump
   stamp="$(date +%Y%m%d-%H%M%S)"
   destination="backups/betterbattle-${stamp}.dump"
@@ -91,6 +92,11 @@ backup_database() {
   if ! docker compose cp "db:$temp_dump" "$destination"; then
     docker compose exec -T db rm -f "$temp_dump" >/dev/null 2>&1 || true
     echo "Could not copy the database dump to $destination." >&2
+    return 1
+  fi
+  if ! chmod 600 "$destination"; then
+    docker compose exec -T db rm -f "$temp_dump" >/dev/null 2>&1 || true
+    echo "Could not restrict permissions on $destination." >&2
     return 1
   fi
   if ! docker compose exec -T db rm -f "$temp_dump"; then
