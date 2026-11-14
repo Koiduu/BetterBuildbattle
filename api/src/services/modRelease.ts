@@ -145,12 +145,12 @@ async function removeOtherJars(directory: string, keep: string) {
     .map((file) => unlink(path.join(directory, file)).catch(() => {})));
 }
 
-async function downloadJar(asset: Asset): Promise<Jar | null> {
+async function downloadJar(loader: Loader, asset: Asset): Promise<Jar | null> {
   if (!asset.sha256) {
     console.warn(`No SHA-256 checksum published for ${asset.file}`);
     return null;
   }
-  const directory = cacheDirectory();
+  const directory = path.join(cacheDirectory(), loader);
   const cacheName = `${asset.sha256}.jar`;
   const cachePath = path.join(directory, cacheName);
   await mkdir(directory, { recursive: true });
@@ -195,7 +195,7 @@ export async function jarFor(loader: Loader): Promise<Jar | null> {
   }
   let inFlight = downloadsInFlight.get(asset.sha256);
   if (!inFlight) {
-    inFlight = downloadJar(asset).finally(() => downloadsInFlight.delete(asset.sha256!));
+    inFlight = downloadJar(loader, asset).finally(() => downloadsInFlight.delete(asset.sha256!));
     downloadsInFlight.set(asset.sha256, inFlight);
   }
   return inFlight;
