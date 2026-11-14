@@ -29,15 +29,17 @@ mod/
   forge-1.8.9/                   (next) same adapter for Forge 1.8.9; maps old block ids to modern names
 ```
 
-## What's still a stub
+## What's not finished
 
-- `patterns.json` regexes are guesses. Record real chat from a few games per mode and replace them.
-- The API's TypeScript has not been compiled or run yet. Its SQL was tested against PostgreSQL 16,
-  and the website was tested in Chrome against `tools/preview.mjs`. Expect a few small fixes on first `docker compose up`.
+- `patterns.json` holds best guesses at Hypixel's chat wording. Run `/bb debug`, play a game in each mode, and fix the
+  patterns from `config/betterbattle/debug.log`.
+- The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
-- Website accounts work (email or Discord login, bio, up to 10 pins), but the mod has no `/bb link <code>` command yet.
-  It should call `POST /bb/v1/mod/link {"code"}` with the mod token. Until then, players can claim through the Discord link on their Hypixel profile.
-- The two loader adapters and UI screens (toasts, `/bb` menu, local profile, credits screen).
+- Speed Builders ghosts, world records and tips are designed (see the plan) but not built.
+- Most one-off challenges have a detector; the streak, Speed Builders and Guess the Build ones don't yet.
+- The site loads Pixelify Sans from Google Fonts. Bundle the font file in `web/` if you'd rather not depend on that.
+
+To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
 
 ## Build metrics (instead of a vague "accuracy")
 

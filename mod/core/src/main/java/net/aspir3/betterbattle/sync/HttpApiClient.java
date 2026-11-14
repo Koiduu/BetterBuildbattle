@@ -49,6 +49,12 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(post("/auth/mod/verify", gson.toJson(body)), Verified.class).token;
     }
 
+    public void link(String code) throws Exception {
+        Map<String, String> body = new HashMap<String, String>();
+        body.put("code", code);
+        post("/mod/link", gson.toJson(body));
+    }
+
     public SyncResult sync(List<MatchRecord> matches, List<String> achievements, List<String> seenPlayers) throws Exception {
         List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
         for (MatchRecord m : matches) out.add(toJson(m));

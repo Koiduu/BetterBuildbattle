@@ -14,6 +14,9 @@ public interface ApiClient {
 
     void setToken(String token);
 
+    /** Ties this Minecraft account to the website account that made the code. */
+    void link(String code) throws Exception;
+
     SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception;
 
     final class Rejection {

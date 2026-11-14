@@ -29,7 +29,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [achievements|sync|palette|debug|credits]";
+        return "/bb [achievements|sync|link|palette|debug|credits]";
     }
 
     @Override
@@ -44,7 +44,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "sync", "palette", "debug", "credits");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "sync", "link", "palette", "debug", "credits");
         return null;
     }
 
@@ -65,6 +65,14 @@ final class BbCommand extends CommandBase {
             }
             core.syncNow();
             mod.chat(P + "Syncing your games...");
+        } else if (sub.equals("link")) {
+            if (args.length < 2) {
+                mod.chat(P + "Usage: /bb link <code from the website>");
+            } else if (!core.active()) {
+                mod.chat(P + "Join Hypixel first, then run this again.");
+            } else {
+                core.link(args[1]);
+            }
         } else if (sub.equals("palette")) {
             int size = 6;
             if (args.length > 1) {

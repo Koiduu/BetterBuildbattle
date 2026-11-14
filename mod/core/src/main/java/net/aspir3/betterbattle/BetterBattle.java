@@ -145,6 +145,11 @@ public final class BetterBattle {
         if (sync != null) sync.syncNow();
     }
 
+    /** /bb link CODE, with the code from the website's account page. */
+    public void link(String code) {
+        if (sync != null) sync.link(code.trim().toUpperCase());
+    }
+
     public void setDebug(boolean on) {
         config.debug = on;
         config.save();
@@ -237,6 +242,14 @@ public final class BetterBattle {
     private final class SyncListener implements SyncService.Listener {
         public void joinServer(String serverId) throws Exception {
             platform.joinServer(serverId);
+        }
+
+        public void manualResult(final boolean ok, final String message) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb " + (ok ? "\u00a7a" : "\u00a7c") + message);
+                }
+            });
         }
 
         public void offline(final int pending) {

@@ -9,8 +9,8 @@ const MODES = {
   speed_builders: "Speed Builders",
 };
 
-const GRADE_COLORS = { SS: "#ff66aa", S: "#c78bff", A: "#7ab8ff", B: "#b5aac1", C: "#9a8fa6" };
-const HEAT_COLORS = ["#2b2434", "#4a2840", "#7a3358", "#b8467c", "#ff66aa"];
+const GRADE_COLORS = { SS: "#ffaa00", S: "#ff55ff", A: "#55ffff", B: "#c6c6c6", C: "#9d9da6" };
+const HEAT_COLORS = ["#141416", "#1d4a12", "#2f7a1c", "#4fb82a", "#80ff20"];
 const NAME_RE = /^[A-Za-z0-9_]{1,16}$/;
 
 function esc(value) {
@@ -235,7 +235,7 @@ async function leaderboardPage() {
   const board = await get("/leaderboard?page=" + page);
   const pages = Math.max(1, Math.ceil(board.total / 50));
 
-  document.getElementById("lb-sub").textContent = `Ranked by Build Battle score · ${num(board.total)} players`;
+  document.getElementById("lb-sub").textContent = `Ranked by Build Battle score, ${num(board.total)} players`;
   document.getElementById("lb-body").innerHTML = leaderboardTable(board.rows);
   document.getElementById("lb-pager").innerHTML = `
     ${page > 1 ? `<a class="btn" href="/leaderboard?page=${page - 1}" data-link>Previous</a>` : ""}
@@ -304,7 +304,7 @@ async function profilePage(name) {
     : "";
   const titleMeter = t.next
     ? meter(`${title(t.current)} <span class="muted">to</span> ${title(t.next)}`, `${num(t.into)} / ${num(t.span)}`, t.pct, t.next.hex)
-    : `<div class="meter-label"><span>${title(t.current)} <span class="muted">· top title</span></span></div>`;
+    : `<div class="meter-label"><span>${title(t.current)} <span class="muted">(top title)</span></span></div>`;
 
   app.innerHTML = `
     <section class="profile-top">
@@ -333,7 +333,7 @@ async function profilePage(name) {
       </div>
     </section>
 
-    <section class="sync">
+    <section class="card sync">
       <div class="sync-text">
         <span class="dot${bb ? "" : " off"}"></span>
         <div>
@@ -517,7 +517,7 @@ async function loadModData(name) {
           <div class="badge" style="background:${GRADE_COLORS[m.grade] ?? "#b5aac1"}">${esc(m.grade ?? "–")}</div>
           <div class="row-text">
             <b>${esc(m.theme ?? "Untitled")}</b>
-            <span>${esc(MODES[m.mode] ?? m.mode)} · ${m.placement ? ordinal(m.placement) : "–"} of ${num(m.players)}</span>
+            <span>${esc(MODES[m.mode] ?? m.mode)}, ${m.placement ? ordinal(m.placement) : "–"} of ${num(m.players)}</span>
           </div>
           <span class="num">${num(m.score)}</span>
         </div>`).join("")
@@ -617,15 +617,8 @@ function drawGraph(el, points, days) {
 
   el.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Rank went from #${num(points[0].rank)} to #${num(last.rank)}">
-      <defs>
-        <linearGradient id="rank-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#ff66aa" stop-opacity=".25"/>
-          <stop offset="1" stop-color="#ff66aa" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
-      <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="rgba(255,255,255,.06)"/>
-      <path d="${line} L${W} ${H} L0 ${H} Z" fill="url(#rank-fill)"/>
-      <path d="${line}" fill="none" stroke="#ff66aa" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#2c2c33" stroke-dasharray="4 4"/>
+      <path d="${line}" fill="none" stroke="#55ff55" stroke-width="3" stroke-linejoin="miter" vector-effect="non-scaling-stroke"/>
     </svg>
     <div class="tip" style="left:100%;top:${(y(last.rank) / H) * 100}%;transform:translate(-100%,-130%)">#${num(last.rank)}</div>
     <div class="axis"><span>${days >= 365 ? "1 year ago" : `${days} days ago`}</span><span>Today</span></div>`;
@@ -1000,7 +993,7 @@ function pinRow(m, actions) {
       <div class="badge" style="background:${GRADE_COLORS[m.grade] ?? "#b5aac1"}">${esc(m.grade ?? "–")}</div>
       <div class="row-text">
         <b>${esc(m.theme ?? "Untitled")}</b>
-        <span>${esc(MODES[m.mode] ?? m.mode)} · ${m.placement ? ordinal(m.placement) : "–"} of ${num(m.players)} · ${timeAgo(m.played_at)}</span>
+        <span>${esc(MODES[m.mode] ?? m.mode)}, ${m.placement ? ordinal(m.placement) : "–"} of ${num(m.players)}, ${timeAgo(m.played_at)}</span>
       </div>
       <span class="num">${num(m.score)}</span>
       <div class="row-actions">${actions}</div>

@@ -3,6 +3,7 @@ package net.aspir3.betterbattle.fabric;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.Platform;
 import net.aspir3.betterbattle.achieve.Catalog;
@@ -126,6 +127,15 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                     chat(PREFIX + "Syncing your games...");
                     return 1;
                 }))
+                .then(ClientCommands.literal("link")
+                    .then(ClientCommands.argument("code", StringArgumentType.word()).executes(c -> {
+                        if (!core.active()) {
+                            chat(PREFIX + "Join Hypixel first, then run this again.");
+                            return 0;
+                        }
+                        core.link(StringArgumentType.getString(c, "code"));
+                        return 1;
+                    })))
                 .then(ClientCommands.literal("palette")
                     .executes(c -> palette(6))
                     .then(ClientCommands.argument("size", IntegerArgumentType.integer(3, 12))

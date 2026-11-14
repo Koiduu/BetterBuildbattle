@@ -23,6 +23,8 @@ public final class SyncService {
         /** The game asks Mojang's session server to confirm this player; runs off the main thread. */
         void joinServer(String serverId) throws Exception;
         void offline(int pendingGames);
+        /** Result of something the player asked for by hand (/bb sync, /bb link). */
+        void manualResult(boolean ok, String message);
         void synced(ApiClient.SyncResult result);
         void achievementConfirmed(String id);
         void achievementRevoked(String id);
@@ -70,6 +72,34 @@ public final class SyncService {
         exec.execute(new Runnable() {
             public void run() { tick(true); }
         });
+    }
+
+    public void link(final String code) {
+        exec.execute(new Runnable() {
+            public void run() {
+                try {
+                    ensureToken();
+                    api.link(code);
+                    listener.manualResult(true, "Linked to your website account.");
+                } catch (Exception e) {
+                    listener.manualResult(false, "Couldn't link: " + explain(e));
+                }
+            }
+        });
+    }
+
+    /** Turns an exception into something a player can act on. */
+    static String explain(Exception e) {
+        String m = String.valueOf(e.getMessage());
+        if (e instanceof java.net.UnknownHostException) return "can't find the stats server (" + m + "). Check apiBase in the config.";
+        if (e instanceof java.net.ConnectException || e instanceof java.net.SocketTimeoutException) return "the stats server isn't answering. It may be offline.";
+        if (e instanceof javax.net.ssl.SSLException) return "secure connection failed (" + m + ").";
+        if (e instanceof ApiClient.Unauthorized) return "login expired. Try again.";
+        if (m.contains("bad_code")) return "that code is wrong or has expired.";
+        if (m.contains("already_claimed") || m.contains("already_linked")) return "this Minecraft account is already linked.";
+        if (m.contains("not_verified")) return "Mojang couldn't confirm your account. Restart the game and try again.";
+        if (m.contains("HTTP 5") || m.contains("HTTP 1033") || m.contains("HTTP 530")) return "the stats server is having trouble (" + m.split(":")[0] + ").";
+        return m;
     }
 
     public void addSeenPlayers(List<String> uuids) {
@@ -127,10 +157,13 @@ public final class SyncService {
             offline = false;
             backoffMs = 0;
             nextAttemptAt = 0;
+            if (force) listener.manualResult(true, "Synced.");
         } catch (Exception e) {
             backoffMs = backoffMs == 0 ? MIN_BACKOFF_MS : Math.min(backoffMs * 2, MAX_BACKOFF_MS);
             nextAttemptAt = System.currentTimeMillis() + backoffMs;
-            if (!offline) {
+            if (force) {
+                listener.manualResult(false, "Couldn't sync: " + explain(e));
+            } else if (!offline) {
                 offline = true;
                 int pending = -1;
                 try { pending = db.countPending(); } catch (Exception ignored) { }
