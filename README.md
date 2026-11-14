@@ -10,7 +10,7 @@ api/
   db/migrations/001_init.sql     PostgreSQL 16 + TimescaleDB schema (all server tables)
   src/routes/mod.ts              Mojang handshake, /mod/bootstrap, idempotent batched /mod/sync
   src/routes/public.ts           Profiles, leaderboard, search, rank history, heatmap, achievements
-  src/jobs/crawler.ts            Finds and refreshes every Build Battle player (global ranking)
+  src/jobs/crawler.ts            Discovers players on demand for the global ranking
   src/jobs/daily.ts              Rank snapshots, leaderboard rebuild
   src/index.ts                   Server entry: API under /bb/v1 + serves the website
 web/                             The website (plain HTML/CSS/JS, no build step)
@@ -53,8 +53,9 @@ Country ranking is intentionally left out: there's no reliable country source.
 ## Global rank, levels, achievements
 
 - **Global rank** = Hypixel Build Battle score only, among **every Build Battle player we can discover**, not just mod users.
-  `api/src/jobs/crawler.ts` finds players from mod users' lobby rosters, their guilds, Hypixel's Build Battle
-  leaderboards and website searches, then refreshes scores from the Hypixel API on a schedule (top 10k every 6 h).
+  `api/src/jobs/crawler.ts` discovers players from hourly Hypixel Build Battle leaderboards, mod users' lobby rosters,
+  website searches, mod logins and one-off imports. It does not re-check players on a timer: sightings can queue a
+  player again after 7 days, while player-driven lookups refresh cached data after 1 hour.
   The ranking is keyed by UUID in Redis (`lb:bb_score`); scores are never trusted from the client.
 - **Titles**: `progress/Titles.java` and `api/src/lib/titles.ts` (Rookie 0 → Ascended 500,000, with § colours).
 - **Aspiring Level**: XP from n to n+1 = 500 + 100n. Same math in `progress/Level.java` and `api/src/services/level.ts`.
@@ -93,7 +94,7 @@ and writes `.env` for you, starts everything, and opens http://localhost:4000.
 | `bb restart` | Restart the app, e.g. after editing `.env` |
 | `bb logs` | Watch the app's logs |
 | `bb status` | Show what's running |
-| `bb seed` / `bb seed "Guild Name"` | Add a guild to the ranking (default: Aspiring) |
+| `bb seed` / `bb seed "Guild Name"` | Add a guild to the ranking (default: Aspiring); each member is looked up once |
 | `bb snapshot` | Record today's ranks now (normally automatic at 00:05 UTC) |
 | `bb update` | Rebuild after getting new code |
 | `bb reset` | Delete all data and start fresh (asks first) |

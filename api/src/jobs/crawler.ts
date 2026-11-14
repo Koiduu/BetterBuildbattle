@@ -1,17 +1,16 @@
-// Player discovery + refresh. Builds the global Build Battle ranking out of everyone we can find,
-// mod user or not. Global rank = position by bb_score among tracked_players.
+// Player discovery builds the global Build Battle ranking from anyone we can find.
+// Global rank = position by bb_score among tracked_players.
 //
-// Discovery sources (cheapest first):
-//   1. lobby   – every mod user's sync reports the UUIDs in their game lobbies (tab list).
-//                Thousands of new players a day once a few hundred people run the mod.
-//   2. guild   – each newly found player's guild; all members get queued.
-//   3. leaderboard – Hypixel /v2/leaderboards (Build Battle boards), re-read daily.
-//   4. search  – anyone searched on battle.aspir3.net is queued with high priority.
-//   5. import  – one-off CSV of names (e.g. from your DiscordAspire guild data).
+// Discovery sources:
+//   leaderboard – Hypixel /v2/leaderboards, checked hourly.
+//   lobby       – UUIDs seen in mod users' game lobbies.
+//   search      – players requested by website searches or profiles.
+//   mod_user    – players who log in through the mod.
+//   import      – one-off CSV of names.
 //
-// Refresh cadence (keeps API usage inside the key's limit):
-//   top 10k by score: every 6 h · score > 1,000: every 3 days · everyone else: every 14 days
-//   players with no Build Battle stats: marked no_bb_stats, re-checked every 60 days
+// There are no timed re-checks. A newly discovered player is checked once, then
+// leaderboard or lobby sightings can make them due again after 7 days. Player-driven
+// lookups refresh cached data after 1 hour. Failed requests use the retry backoff below.
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
 import { titleFor } from "../lib/titles";
@@ -21,20 +20,31 @@ const KEY = process.env.HYPIXEL_API_KEY!;
 const REQUESTS_PER_5_MIN = Number(process.env.HYPIXEL_RATE ?? 280); // stay under the key's limit
 const INTERVAL_MS = (5 * 60_000) / REQUESTS_PER_5_MIN;
 
-export async function queuePlayers(uuids: string[], source: string, priority = false) {
-  if (!uuids.length) return;
-  await pool.query(
+export async function queuePlayers(uuids: string[], source: string, priority = false, staleAfter = "7 days") {
+  if (!uuids.length) return 0;
+  const result = await pool.query(
     `INSERT INTO tracked_players (mc_uuid, source, next_check)
-     SELECT u, $2, CASE WHEN $3 THEN now() - interval '1 day' ELSE now() END
-     FROM unnest($1::uuid[]) AS u
-     ON CONFLICT (mc_uuid) DO NOTHING`,
-    [uuids, source, priority],
+     SELECT DISTINCT u, $2, CASE WHEN $3 THEN now() - interval '1 day' ELSE now() END
+     FROM unnest($1::uuid[]) AS input(u)
+     ON CONFLICT (mc_uuid) DO UPDATE
+       SET next_check = LEAST(tracked_players.next_check, EXCLUDED.next_check)
+       WHERE tracked_players.last_checked < now() - $4::interval
+         AND tracked_players.check_failures = 0
+     RETURNING (xmax = 0) AS inserted`,
+    [uuids, source, priority, staleAfter],
   );
+  return result.rows.filter((row: any) => row.inserted).length;
 }
 
 export class HypixelKeyError extends Error {}
 
 export async function refreshOne(uuid: string) {
+  const fresh = await pool.query(
+    "SELECT 1 FROM tracked_players WHERE mc_uuid = $1 AND last_checked >= now() - interval '1 hour'",
+    [uuid],
+  );
+  if (fresh.rowCount) return;
+
   const res = await fetch(`${HYPIXEL_API}/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
   if (res.status === 429) throw new Error("rate_limited");
   if (res.status === 401 || res.status === 403) {
@@ -54,14 +64,14 @@ export async function refreshOne(uuid: string) {
   if (!bb || !(bb.games_played || bb.score || bb.wins)) {
     await pool.query(
       `UPDATE tracked_players SET mc_name = $2, no_bb_stats = true, last_checked = now(),
-         next_check = now() + interval '60 days' WHERE mc_uuid = $1`, [uuid, player?.displayname ?? null]);
+         check_failures = 0, next_check = 'infinity' WHERE mc_uuid = $1`, [uuid, player?.displayname ?? null]);
     return;
   }
   const score: number = bb.score ?? 0;
   await pool.query(
     `UPDATE tracked_players SET mc_name = $2, bb_score = $3, bb_wins = $4, bb_games = $5, title = $6,
        hypixel_bb = $7, no_bb_stats = false, check_failures = 0, last_checked = now(),
-       next_check = now() + CASE WHEN $3 > 1000 THEN interval '3 days' ELSE interval '14 days' END
+       next_check = 'infinity'
      WHERE mc_uuid = $1`,
     [uuid, player.displayname, score, bb.wins ?? 0, bb.games_played ?? 0, titleFor(score).name, numericOnly(bb)],
   );
@@ -73,21 +83,6 @@ export async function refreshOne(uuid: string) {
   );
   await redis.zadd("lb:bb_score", score, uuid);   // global ranking keyed by UUID
 
-  // Discovery: queue this player's guild once.
-  if (Math.random() < 0.2) await queueGuildOf(uuid);
-}
-
-async function queueGuildOf(uuid: string) {
-  const res = await fetch(`${HYPIXEL_API}/v2/guild?player=${uuid}`, { headers: { "API-Key": KEY } });
-  if (!res.ok) return;
-  const { guild } = await res.json();
-  if (!guild) return;
-  const seen = await pool.query(
-    `INSERT INTO crawled_guilds (guild_id, name) VALUES ($1, $2)
-     ON CONFLICT (guild_id) DO UPDATE SET last_crawled = now()
-       WHERE crawled_guilds.last_crawled < now() - interval '30 days'
-     RETURNING 1`, [guild._id, guild.name]);
-  if (seen.rowCount) await queuePlayers(guild.members.map((m: any) => dash(m.uuid)), "guild");
 }
 
 /** One cheap call at startup so a bad key shows up straight away in the logs. */
@@ -105,32 +100,40 @@ export async function checkKey() {
 
 export async function crawlLeaderboards() {
   const res = await fetch(`${HYPIXEL_API}/v2/leaderboards`, { headers: { "API-Key": KEY } });
-  if (!res.ok) return;
-  const { leaderboards } = await res.json();
-  const boards = leaderboards?.BUILD_BATTLE ?? [];
+  if (!res.ok) {
+    console.warn(`Hypixel leaderboards returned ${res.status}`);
+    return;
+  }
+  const body = await res.json().catch(() => ({}));
+  const leaderboards = body && typeof body === "object" && !Array.isArray(body)
+    ? (body as any).leaderboards
+    : null;
+  const rawBoards = leaderboards && typeof leaderboards === "object" && !Array.isArray(leaderboards)
+    ? leaderboards.BUILD_BATTLE
+    : null;
+  const boards = Array.isArray(rawBoards) ? rawBoards : [];
   const uuids = new Set<string>();
-  for (const b of boards) for (const u of b.leaders ?? []) uuids.add(dash(u));
-  await queuePlayers([...uuids], "leaderboard", true);
-}
-
-/** Top-10k players refresh faster so the head of the ranking stays accurate. */
-async function bumpTopPlayers() {
-  const top = await redis.zrevrange("lb:bb_score", 0, 9999);
-  await pool.query(
-    `UPDATE tracked_players SET next_check = LEAST(next_check, last_checked + interval '6 hours')
-     WHERE mc_uuid = ANY($1::uuid[])`, [top]);
+  let validBoards = 0;
+  for (const board of boards) {
+    if (!board || typeof board !== "object" || !Array.isArray((board as any).leaders)) continue;
+    validBoards++;
+    for (const value of (board as any).leaders) {
+      if (typeof value !== "string") continue;
+      const uuid = dash(value);
+      if (/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(uuid)) uuids.add(uuid);
+    }
+  }
+  const players = [...uuids];
+  const added = await queuePlayers(players, "leaderboard", true);
+  console.log(`Hypixel leaderboards: ${players.length} players on ${validBoards} Build Battle boards (${added} new)`);
 }
 
 export async function runCrawler(signal: AbortSignal) {
-  let lastBump = 0;
   while (!signal.aborted) {
-    if (Date.now() - lastBump > 3_600_000) { await bumpTopPlayers(); lastBump = Date.now(); }
     const due = await pool.query(
-      `SELECT mc_uuid FROM tracked_players WHERE next_check <= now() AND NOT no_bb_stats
+      `SELECT mc_uuid FROM tracked_players WHERE next_check <= now()
        ORDER BY next_check LIMIT 100`);
-    const extra: { mc_uuid: string }[] = due.rowCount ? [] : (await pool.query(
-      `SELECT mc_uuid FROM tracked_players WHERE no_bb_stats AND next_check <= now() LIMIT 20`)).rows;
-    const batch = [...due.rows, ...extra];
+    const batch: { mc_uuid: string }[] = due.rows;
     if (!batch.length) { await sleep(10_000); continue; }
     for (const row of batch) {
       if (signal.aborted) return;
