@@ -8,6 +8,10 @@ import { evaluateAchievements, catalog } from "../services/achievementEngine";
 import { rateLimit, requireModToken } from "../plugins/auth";
 import { MOJANG_SESSION, dashUuid } from "../lib/upstream";
 import { queuePlayers, globalRank, refreshOne } from "../jobs/crawler";
+import { weeklyProgress } from "../services/weekly";
+import { worldRecords } from "../services/speedBuilders";
+import { updateProgressBoards } from "../services/boards";
+import { recordBroken, type RecordBroken } from "../lib/events";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -33,8 +37,21 @@ const MatchIn = z.object({
     }))
     .max(64)
     .default([]),
+  // One-off challenge ids this game met (even ones already unlocked). Weekly challenges count from these.
+  tags: z.array(z.string().regex(/^[a-z0-9_]{1,48}$/)).max(64).default([]),
+  gtbCorrect: z.number().int().min(0).max(100).nullable().default(null),
   spbRounds: z
-    .array(z.object({ build: z.string(), timeMs: z.number().int().positive(), accuracy: z.number().min(0).max(1) }))
+    .array(z.object({
+      build: z.string().regex(/^[a-z0-9_]{1,48}$/),
+      name: z.string().max(64).nullable().default(null),
+      timeMs: z.number().int().positive().max(600_000).nullable().default(null),   // null: not a perfect build
+      accuracy: z.number().min(0).max(1).nullable().default(null),
+      precision: z.number().min(0).max(1).nullable().default(null),
+      perfect: z.boolean().default(false),
+      placed: z.number().int().min(0).max(5000).default(0),
+      broken: z.number().int().min(0).max(5000).default(0),
+    }))
+    .max(20)
     .optional(),
 });
 
@@ -91,16 +108,20 @@ export function modRoutes(app: Router) {
     return { token, expiresInDays: 30 };
   });
 
-  // ---- Bootstrap: catalog + weekly challenges + confirmed achievements ----
+  // ---- Bootstrap: catalog, weekly challenges with progress, confirmed achievements, Speed Builders records ----
   app.get("/mod/bootstrap", [requireModToken], async (req) => {
-    const [mine, weekly] = await Promise.all([
+    const [mine, weekly, records] = await Promise.all([
       pool.query("SELECT achievement_id FROM user_achievements WHERE user_id = $1", [req.user.id]),
-      pool.query("SELECT id, text, xp FROM weekly_challenges WHERE week_start = date_trunc('week', now())::date"),
+      weeklyProgress(pool, req.user.id),
+      worldRecords(),
     ]);
     return {
       catalogVersion: catalog.catalog_version,
       confirmedAchievements: mine.rows.map((r: any) => r.achievement_id),
-      weeklyChallenges: weekly.rows,
+      weeklyChallenges: weekly.weekly,
+      weekEndsAt: weekly.weekEndsAt,
+      // Times only: the mod shows them next to its timer. No placements, so nothing can guide a build.
+      worldRecords: records.map((r) => ({ build: r.build, name: r.name, holder: r.holder, timeMs: r.timeMs })),
     };
   });
 
@@ -113,6 +134,7 @@ export function modRoutes(app: Router) {
       const accepted: string[] = [];
       let xpGained = 0;
       const rejected: { nonce: string; reason: string }[] = [];
+      const broken: RecordBroken[] = [];
       // Oldest first, so streaks and first-win-of-day are counted in play order.
       const ordered = [...body.matches].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
       try {
@@ -133,14 +155,15 @@ export function modRoutes(app: Router) {
           const ins = await client.query(
             `INSERT INTO matches (user_id, played_at, mode, theme, placement, players, score,
                                   duration_sec, blocks_placed, blocks_broken, max_score, palette,
-                                  spb_rounds, client_nonce, mod_version, mc_version, grade, xp_earned)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+                                  spb_rounds, client_nonce, mod_version, mc_version, grade, xp_earned, tags, gtb_correct)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
              ON CONFLICT (user_id, client_nonce, played_at) DO NOTHING
              RETURNING id`,
             [userId, m.playedAt, m.mode, m.theme, m.placement, m.players, m.score, m.durationSec,
              m.blocksPlaced, m.blocksBroken, maxScore(m), m.palette ?? null,
              m.spbRounds ? JSON.stringify(m.spbRounds) : null, m.nonce,
-             body.modVersion, body.mcVersion, m.grade, xp],
+             body.modVersion, body.mcVersion, m.grade, xp, m.tags.length ? m.tags : null,
+             m.mode === "gtb" ? m.gtbCorrect : null],
           );
           accepted.push(m.nonce); // duplicates count as accepted: the mod can mark them synced
           if (ins.rowCount === 0) continue;
@@ -151,6 +174,7 @@ export function modRoutes(app: Router) {
                VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
               [userId, m.nonce, m.playedAt, v.round, v.vote, v.builder, v.at]);
           }
+          broken.push(...await saveSpeedBuildersBests(client, userId, m));
           if (m.mode !== "gtb" || m.placement !== null) {
             streak = m.placement === 1 ? streak + 1 : 0;
             best = Math.max(best, streak);
@@ -169,17 +193,19 @@ export function modRoutes(app: Router) {
           );
         }
         const { confirmed, revoked, apGained } = await evaluateAchievements(client, userId, body.localAchievements);
+        const weekly = await weeklyProgress(client, userId, true);
         const prog = await client.query(
           `INSERT INTO user_progress (user_id, xp) VALUES ($1, $2)
            ON CONFLICT (user_id) DO UPDATE SET xp = user_progress.xp + EXCLUDED.xp, updated_at = now()
            RETURNING xp`,
-          [userId, xpGained + apGained * 10],
+          [userId, xpGained + apGained * 10 + weekly.xpGained],
         );
         const level = levelForXp(Number(prog.rows[0].xp));
         await client.query(
           "UPDATE user_progress SET level = $2, ap = ap + $3, win_streak = $4, best_win_streak = $5 WHERE user_id = $1",
           [userId, level, apGained, streak, best]);
         await client.query("COMMIT");
+        for (const b of broken) recordBroken(b);
 
         // Lobby rosters → discovery queue for the global ranking.
         await queuePlayers(body.seenPlayers, "lobby");
@@ -187,8 +213,11 @@ export function modRoutes(app: Router) {
         // Global rank = Hypixel Build Battle score among ALL tracked players (crawler keeps it fresh).
         const uuid = (await pool.query("SELECT mc_uuid FROM users WHERE id = $1", [userId])).rows[0].mc_uuid;
         const { rank, of } = await globalRank(uuid);
+        const totals = await pool.query("SELECT xp, ap FROM user_progress WHERE user_id = $1", [userId]);
+        await updateProgressBoards(uuid, Number(totals.rows[0]?.xp ?? 0), Number(totals.rows[0]?.ap ?? 0)).catch(() => {});
         return { accepted, rejected, confirmed, revoked, level, xp: Number(prog.rows[0].xp),
-                 globalRank: rank, rankedPlayers: of };
+                 globalRank: rank, rankedPlayers: of,
+                 weekly: weekly.weekly, weekEndsAt: weekly.weekEndsAt, weeklyCompleted: weekly.completedNow };
       } catch (e) {
         await client.query("ROLLBACK");
         throw e;
@@ -205,9 +234,41 @@ function maxScore(m: z.infer<typeof MatchIn>): number | null {
   return voters > 0 ? voters * 18 : null;
 }
 
+/** Learns new builds and keeps each player's fastest perfect time per build. */
+async function saveSpeedBuildersBests(client: any, userId: number, m: z.infer<typeof MatchIn>): Promise<RecordBroken[]> {
+  const broken: RecordBroken[] = [];
+  if (m.mode !== "speed_builders") return broken;
+  for (const r of m.spbRounds ?? []) {
+    if (!r.perfect || r.timeMs === null) continue;
+    // The record this time has to beat, to announce it if it does. Flagged accounts never count.
+    const wr = await client.query(
+      `SELECT p.time_ms, u.mc_name, u.id FROM spb_personal_bests p JOIN users u ON u.id = p.user_id
+       WHERE p.build_id = $1 AND NOT u.flagged ORDER BY p.time_ms, p.set_at LIMIT 1`, [r.build]);
+    const me = await client.query("SELECT mc_name, flagged FROM users WHERE id = $1", [userId]);
+    if (wr.rowCount && r.timeMs < wr.rows[0].time_ms && !me.rows[0]?.flagged) {
+      broken.push({
+        build: r.build, buildName: r.name ?? r.build.replace(/_/g, " "), holder: me.rows[0]?.mc_name ?? "Someone",
+        timeMs: r.timeMs, previousMs: wr.rows[0].time_ms,
+        previousHolder: wr.rows[0].id === userId ? null : wr.rows[0].mc_name,
+      });
+    }
+    await client.query(
+      "INSERT INTO spb_builds (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+      [r.build, r.name ?? r.build.replace(/_/g, " ")]);
+    await client.query(
+      `INSERT INTO spb_personal_bests (user_id, build_id, time_ms, accuracy, set_at) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, build_id) DO UPDATE SET time_ms = EXCLUDED.time_ms, accuracy = EXCLUDED.accuracy,
+         set_at = EXCLUDED.set_at
+       WHERE EXCLUDED.time_ms < spb_personal_bests.time_ms`,
+      [userId, r.build, r.timeMs, r.precision, m.playedAt]);
+  }
+  return broken;
+}
+
 async function sanityCheck(client: any, m: z.infer<typeof MatchIn>): Promise<string | null> {
   if (new Date(m.playedAt).getTime() > Date.now() + 5 * 60_000) return "future_timestamp";
   for (const r of m.spbRounds ?? []) {
+    if (r.timeMs === null) continue;
     const b = await client.query("SELECT min_time_ms FROM spb_builds WHERE id = $1", [r.build]);
     if (b.rowCount && r.timeMs < b.rows[0].min_time_ms) return "impossible_spb_time";
   }

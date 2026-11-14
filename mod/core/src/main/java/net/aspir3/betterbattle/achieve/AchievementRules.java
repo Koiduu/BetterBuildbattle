@@ -1,15 +1,13 @@
 package net.aspir3.betterbattle.achieve;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import net.aspir3.betterbattle.game.MatchRecord;
+import net.aspir3.betterbattle.game.SpbTracker;
 import net.aspir3.betterbattle.palette.Palettes;
 import net.aspir3.betterbattle.store.LocalDatabase;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,8 +29,8 @@ public final class AchievementRules {
             new LegacyBlocksOnly(), new WaterAndLava(), new ModeMarathon(),
             new WinStreak(3, "hat_trick"), new WinStreak(10, "unstoppable"), new SsStreak5(),
             new Comeback(), new NightOwl(), new HundredInADay(), new PerfectCrowd(), new FullLobbyWin(),
-            // SpbNoBreak waits until the adapters report block breaks (onOwnBlockBroken).
-            new SpbSweep(), new WithinHalfSecondOfWr(), new SetWr(),
+            new SpbNoBreak(), new SpbSweep(), new WithinHalfSecondOfWr(), new SetWr(),
+            new SpbGrounded(), new GoodEnough(), new AssemblyLine(), new PhotoFinish(), new FromTheBottom(), new Speedrunner(),
             new GtbFastGuess(), new GtbAllRounds(), new PaletteRollWin(), new OfflineGames(),
             new HeightLimit(), new NoFlying(), new LavaFloor(), new DefaultPlot(), new BackgroundSwitches()));
         for (String tab : new String[] {"building", "colored", "natural", "functional", "redstone"}) {
@@ -392,38 +390,16 @@ public final class AchievementRules {
         }
     }
 
-    private static final class SpbRound {
-        String build;
-        Integer timeMs;
-        Double accuracy;
-    }
-
-    private static List<SpbRound> spbRounds(MatchRecord m) {
-        if (m.spbRoundsJson == null || m.spbRoundsJson.trim().isEmpty()) return Collections.emptyList();
-        try {
-            List<SpbRound> rounds = new Gson().fromJson(m.spbRoundsJson, new TypeToken<List<SpbRound>>() {}.getType());
-            if (rounds == null) return Collections.emptyList();
-            for (SpbRound round : rounds) {
-                if (round == null || round.build == null || round.build.trim().isEmpty()
-                    || round.timeMs == null || round.timeMs < 0 || round.accuracy == null
-                    || round.accuracy < 0.0 || round.accuracy > 1.0 || Double.isNaN(round.accuracy)) {
-                    return Collections.emptyList();
-                }
-            }
-            return rounds;
-        } catch (Exception e) {
-            return Collections.emptyList();
-        }
+    private static boolean spbWin(MatchRecord m) {
+        return "speed_builders".equals(m.mode) && m.won() && !m.spbRounds.isEmpty();
     }
 
     public static final class SpbSweep implements Rule {
         public String id() { return "spb_sweep"; }
 
         public boolean onMatch(MatchRecord m, LocalDatabase db) {
-            if (!"speed_builders".equals(m.mode) || !m.won()) return false;
-            List<SpbRound> rounds = spbRounds(m);
-            if (rounds.isEmpty()) return false;
-            for (SpbRound round : rounds) if (round.accuracy < 1.0) return false;
+            if (!spbWin(m)) return false;
+            for (SpbTracker.Round r : m.spbRounds) if (!r.perfect) return false;
             return true;
         }
     }
@@ -433,9 +409,10 @@ public final class AchievementRules {
 
         public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
             if (!"speed_builders".equals(m.mode)) return false;
-            for (SpbRound round : spbRounds(m)) {
-                Long wr = db.worldRecordMs(round.build);
-                if (wr != null && round.timeMs.longValue() - wr.longValue() <= 500L) return true;
+            for (SpbTracker.Round r : m.spbRounds) {
+                if (!r.perfect || r.timeMs == null) continue;
+                Long wr = db.worldRecordMs(r.build);
+                if (wr != null && r.timeMs - wr <= 500L) return true;
             }
             return false;
         }
@@ -446,11 +423,80 @@ public final class AchievementRules {
 
         public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
             if (!"speed_builders".equals(m.mode)) return false;
-            for (SpbRound round : spbRounds(m)) {
-                Long wr = db.worldRecordMs(round.build);
-                if (wr != null && round.timeMs.longValue() < wr.longValue()) return true;
+            for (SpbTracker.Round r : m.spbRounds) {
+                if (!r.perfect || r.timeMs == null) continue;
+                Long wr = db.worldRecordMs(r.build);
+                if (wr != null && r.timeMs < wr) return true;
             }
             return false;
+        }
+    }
+
+    /** Win a Speed Builders game without flying, in a game where the server would have let you. */
+    public static final class SpbGrounded implements Rule {
+        public String id() { return "spb_grounded"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return spbWin(m) && m.couldFly && !m.flew && m.blocksPlaced > 0;
+        }
+    }
+
+    /** Win without a perfect build in every round. */
+    public static final class GoodEnough implements Rule {
+        public String id() { return "spb_good_enough"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!spbWin(m)) return false;
+            for (SpbTracker.Round r : m.spbRounds) if (!r.perfect) return true;
+            return false;
+        }
+    }
+
+    /** Win placing one block type at a time: once you move on from a block, you can't go back to it that round. */
+    public static final class AssemblyLine implements Rule {
+        public String id() { return "spb_assembly_line"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!spbWin(m)) return false;
+            for (SpbTracker.Round r : m.spbRounds) if (!r.oneTypeAtATime) return false;
+            return true;
+        }
+    }
+
+    /** A perfect build with under a second left on the round clock. */
+    public static final class PhotoFinish implements Rule {
+        public String id() { return "spb_photo_finish"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!"speed_builders".equals(m.mode)) return false;
+            for (SpbTracker.Round r : m.spbRounds) {
+                if (r.perfect && r.remainingMs != null && r.remainingMs <= 1000) return true;
+            }
+            return false;
+        }
+    }
+
+    /** Win after the slowest perfect build of round 1 (at least two others got one first). */
+    public static final class FromTheBottom implements Rule {
+        public String id() { return "spb_from_the_bottom"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!spbWin(m)) return false;
+            SpbTracker.Round first = m.spbRounds.get(0);
+            return first.perfect && first.othersPerfect >= 2 && first.othersPerfectBefore == first.othersPerfect;
+        }
+    }
+
+    /** Win with a perfect build in every round, each time with more than half the round's clock left. */
+    public static final class Speedrunner implements Rule {
+        public String id() { return "spb_speedrunner"; }
+
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            if (!spbWin(m) || m.spbRounds.size() < 3) return false;
+            for (SpbTracker.Round r : m.spbRounds) {
+                if (!r.perfect || r.timeMs == null || r.limitMs == null || r.timeMs * 2 >= r.limitMs) return false;
+            }
+            return true;
         }
     }
 

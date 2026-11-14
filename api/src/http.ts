@@ -14,12 +14,18 @@ export interface Req {
   cookies: Record<string, string>;
   reply: { headers: Record<string, string | string[]> };
   body: unknown;
+  /** The request body exactly as sent. Webhook signatures are checked against these bytes. */
+  rawBody?: Buffer;
   ip: string;
   user: { id: number; mcUuid: string | null };
 }
 
 export class HttpError extends Error {
   constructor(public status: number, public body: Record<string, unknown>) { super(String(body.error ?? status)); }
+}
+/** Return from a handler to send bytes (an image, say) instead of JSON. */
+export class Raw {
+  constructor(public body: Buffer, public type: string, public headers: Record<string, string> = {}) {}
 }
 export class Redirect {
   constructor(public location: string) {}
@@ -52,7 +58,8 @@ export class Router {
 
   match(method: string, pathname: string) {
     for (const r of this.routes) {
-      if (r.method !== method) continue;
+      // HEAD is answered by the GET route (link-preview crawlers often check with HEAD first)
+      if (r.method !== method && !(method === "HEAD" && r.method === "GET")) continue;
       const m = pathname.match(r.re);
       if (!m) continue;
       const params: Record<string, string> = {};
@@ -87,7 +94,7 @@ function parseCookies(header: string | undefined) {
   return cookies;
 }
 
-async function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<unknown> {
+async function readRaw(req: http.IncomingMessage, limit = 1_000_000): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const c of req) {
@@ -95,11 +102,19 @@ async function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<u
     if (size > limit) fail(413, "body_too_large");
     chunks.push(c as Buffer);
   }
-  if (!size) return undefined;
-  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { return fail(400, "invalid_json"); }
+  return Buffer.concat(chunks);
 }
 
-export function createServer(routers: Router[], opts: { staticDir?: string; apiPrefix: string; log?: (msg: string) => void }) {
+function parseBody(raw: Buffer): unknown {
+  if (!raw.length) return undefined;
+  try { return JSON.parse(raw.toString("utf8")); } catch { return fail(400, "invalid_json"); }
+}
+
+export function createServer(routers: Router[], opts: {
+  staticDir?: string; apiPrefix: string; log?: (msg: string) => void;
+  /** Rewrites index.html for a path (link preview tags). Must not throw. */
+  page?: (html: string, pathname: string) => Promise<string>;
+}) {
   const log = opts.log ?? ((m) => console.log(m));
   const staticRoot = opts.staticDir ? path.resolve(opts.staticDir) : null;
 
@@ -112,18 +127,26 @@ export function createServer(routers: Router[], opts: { staticDir?: string; apiP
       for (const r of routers) {
         const hit = r.match(method, url.pathname);
         if (!hit) continue;
+        const rawBody = method === "GET" || method === "HEAD" ? undefined : await readRaw(req);
         const request: Req = {
           method, path: url.pathname, params: hit.params,
           query: Object.fromEntries(url.searchParams),
           headers: req.headers,
           cookies: parseCookies(req.headers.cookie),
           reply: { headers: replyHeaders },
-          body: method === "GET" ? undefined : await readBody(req),
+          rawBody,
+          body: rawBody ? parseBody(rawBody) : undefined,
           ip: (req.headers["cf-connecting-ip"] as string) ?? (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.socket.remoteAddress ?? "",
           user: null as any,
         };
         for (const h of hit.route.hooks) await h(request);
         const out = await hit.route.handler(request);
+        if (out instanceof Raw) {
+          res.writeHead(200, { ...replyHeaders, ...out.headers, "content-type": out.type, "content-length": String(out.body.length) });
+          res.end(method === "HEAD" ? undefined : out.body);
+          log(`${method} ${url.pathname} 200 ${Date.now() - started}ms`);
+          return;
+        }
         if (out instanceof Redirect) {
           send(res, 302, null, { ...replyHeaders, location: out.location });
           log(`${method} ${url.pathname} 302 ${Date.now() - started}ms`);
@@ -148,6 +171,10 @@ export function createServer(routers: Router[], opts: { staticDir?: string; apiP
           "cache-control": file.endsWith("index.html") ? "no-cache" : "public, max-age=300",
         });
         if (method === "HEAD") return res.end();
+        if (opts.page && file.endsWith("index.html")) {
+          res.end(await opts.page(await fs.promises.readFile(file, "utf8"), url.pathname));
+          return;
+        }
         fs.createReadStream(file).pipe(res);
         return;
       }

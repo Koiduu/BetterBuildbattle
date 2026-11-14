@@ -14,4 +14,7 @@ public interface Platform {
 
     /** Print a chat line. Uses § colour codes. Called on the main thread. */
     void chat(String message);
+
+    /** Open a text page (What's New, Last Game...). Called on the main thread. */
+    void openPage(net.aspir3.betterbattle.pages.Pages.Page page);
 }

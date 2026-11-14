@@ -1,9 +1,11 @@
 import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { statsCommands } from "./stats";
 
 const moderate = PermissionFlagsBits.ModerateMembers;
 const manageGuild = PermissionFlagsBits.ManageGuild;
 
 export const commands = [
+  ...statsCommands,
   new SlashCommandBuilder()
     .setName("setup").setDescription("Configure Better Battle moderation and ticket settings")
     .setDefaultMemberPermissions(manageGuild)
@@ -15,7 +17,7 @@ export const commands = [
     .addStringOption((option) => option.setName("name").setDescription("Minecraft username").setRequired(true).setMaxLength(16)),
   new SlashCommandBuilder().setName("unverify").setDescription("Remove your verified Minecraft link"),
   new SlashCommandBuilder().setName("stats").setDescription("Show a player's Build Battle stats")
-    .addStringOption((option) => option.setName("player").setDescription("Minecraft username").setMaxLength(16)),
+    .addStringOption((option) => option.setName("player").setDescription("Minecraft username").setMaxLength(16).setAutocomplete(true)),
   new SlashCommandBuilder().setName("ticket-panel").setDescription("Post the support ticket panel")
     .setDefaultMemberPermissions(manageGuild),
   new SlashCommandBuilder().setName("warn").setDescription("Warn a server member")

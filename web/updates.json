@@ -1,0 +1,66 @@
+{
+  "updates": [
+    {
+      "version": "0.2.0",
+      "date": "2026-11-14",
+      "title": "The Speed Builders Update",
+      "summary": "Speed Builders gets the attention it deserves: a timer, personal bests, world records and six new challenges. Plus game recaps, weekly challenges you can actually see, and a settings screen.",
+      "sections": [
+        {
+          "heading": "Speed Builders",
+          "items": [
+            "A timer while you build, with your best time on that build next to it",
+            "Personal bests for every build, saved even when you're offline",
+            "Better Battle world records, with a leaderboard for each build on the website",
+            "Precision: how many of your clicks actually ended up in the build"
+          ]
+        },
+        {
+          "heading": "New challenges",
+          "items": [
+            "Feet on the Ground: win a Speed Builders game without flying",
+            "Good Enough: win without a Perfect Build in every round",
+            "Assembly Line: win placing one block type at a time",
+            "Photo Finish: a Perfect Build with less than a second left",
+            "From the Bottom: win after the slowest Perfect Build in round 1",
+            "Speedrunner: win with more than half the clock left in every round",
+            "Measure Twice now works: win without breaking a single block"
+          ]
+        },
+        {
+          "heading": "After every game",
+          "items": [
+            "A recap in chat: placement, grade, crowd score, XP and what you unlocked",
+            "Last Game in the B menu shows the full breakdown, round by round",
+            "Share a card of your profile from the website"
+          ]
+        },
+        {
+          "heading": "Everything else",
+          "items": [
+            "Weekly challenges in the B menu and on your profile, with a countdown to the Monday reset",
+            "See how rare each achievement is, and compare yourself with another player",
+            "A Settings screen: every new feature can be switched off if you'd rather play normally"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-11-01",
+      "title": "First release",
+      "summary": "Better Battle tracks your Build Battle games, grades your builds and puts you on a global ranking.",
+      "sections": [
+        {
+          "heading": "Highlights",
+          "items": [
+            "Every game saved on your computer first, then synced",
+            "Grades, crowd score and the Aspiring Level",
+            "Over 100 achievements, many unlocked from your existing Hypixel stats",
+            "Profiles and a global ranking at battle.aspir3.net"
+          ]
+        }
+      ]
+    }
+  ]
+}

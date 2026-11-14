@@ -74,7 +74,8 @@ async function localTotals(client: PoolClient, userId: number): Promise<Record<s
             count(*) FILTER (WHERE crowd_score >= 0.9)         AS crowd_90,
             count(DISTINCT date_trunc('day', played_at))       AS days_played,
             coalesce(sum((SELECT count(*) FROM jsonb_array_elements(CASE WHEN jsonb_typeof(spb_rounds) = 'array' THEN spb_rounds ELSE '[]'::jsonb END) e
-                          WHERE (e->>'accuracy')::float >= 1)), 0) AS precision_100
+                          WHERE coalesce((e->>'precision')::float, (e->>'accuracy')::float) >= 1
+                            AND coalesce((e->>'perfect')::boolean, true))), 0) AS precision_100
      FROM matches WHERE user_id = $1`,
     [userId],
   );

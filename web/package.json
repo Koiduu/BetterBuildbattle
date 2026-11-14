@@ -1,0 +1,5 @@
+{
+  "//": "Tells Node that the scripts in web/ are ES modules. The API imports card.js and style-options.js from here; without this, Node 20 misreads them and the server will not start.",
+  "private": true,
+  "type": "module"
+}

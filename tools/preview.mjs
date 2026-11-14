@@ -172,6 +172,30 @@ async function accountRoute(req, res, route, url) {
   return json(res, 404, { error: "not_found" });
 }
 
+// ---- Speed Builders and weekly challenges (sample data)
+const SPB_BUILDS = [
+  { build: "pagoda", name: "Pagoda" }, { build: "tiny_house", name: "Tiny House" },
+  { build: "lamp_post", name: "Lamp Post" }, { build: "pirate_ship", name: "Pirate Ship" },
+];
+function spbBoard(b) {
+  const seed = [...b.build].reduce((a, c) => a + c.charCodeAt(0), 0);
+  return players.filter((x) => x.usesMod).map((x, i) => ({
+    holder: x.name,
+    timeMs: 4000 + ((seed * (i + 3)) % 9000),
+    precision: [1, 0.96, 0.9, 1, 0.83][i % 5],
+    setAt: new Date(Date.now() - (i + 1) * 86400_000).toISOString(),
+  })).sort((a, b) => a.timeMs - b.timeMs);
+}
+function weekly() {
+  const now = new Date();
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + ((8 - now.getUTCDay()) % 7 || 7)));
+  return { weekEndsAt: end.toISOString(), challenges: [
+    { id: "w_crowd_85", text: "Get 85%+ crowd score 3 times", xp: 250, progress: 2, target: 3, done: false },
+    { id: "w_spb_precision", text: "Finish 5 SPB rounds at 100% precision", xp: 300, progress: 5, target: 5, done: true },
+    { id: "w_palette", text: "Win with a /bb palette roll", xp: 400, progress: 0, target: 1, done: false },
+  ] };
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -193,6 +217,22 @@ const server = http.createServer((req, res) => {
       { id: "w_crowd_85", text: "Get 85%+ crowd score 3 times", xp: 250 },
       { id: "w_spb_precision", text: "Finish 5 SPB rounds at 100% precision", xp: 300 },
       { id: "w_palette", text: "Win with a /bb palette roll", xp: 400 }]);
+    if (route === "/billing/plans") return json(res, 200, { configured: false, plans: [
+      { id: "free", name: "Builder", tagline: "Everything you need to play", perks: ["The mod, with every achievement and challenge", "Speed Builders timer, bests and world records", "Your full profile, global rank and share card"], price: { amount: 0, currency: "usd", interval: "month" } },
+      { id: "architect", name: "Architect", tagline: "Make your profile yours", perks: ["Supporter badge", "Profile accent colour and banner", "Your position on every Build Battle leaderboard"], price: null },
+      { id: "master", name: "Master Builder", tagline: "Every statistic, as deep as it goes", perks: ["Everything in Architect", "Build Battle Wrapped whenever you like", "Theme analytics", "Private leaderboards"], price: null }] });
+    if (route === "/boards") return json(res, 200, [{ id: "score", name: "Build Battle score", short: "Score", group: "Overall" }]);
+    if (route === "/spb/builds") return json(res, 200, SPB_BUILDS.map((b) => ({ ...b, ...spbBoard(b)[0], players: spbBoard(b).length })));
+    const spb = route.match(/^\/spb\/builds\/([a-z0-9_]+)$/);
+    if (spb) {
+      const b = SPB_BUILDS.find((x) => x.build === spb[1]);
+      if (!b) return json(res, 404, { error: "not_found" });
+      return json(res, 200, { build: b.build, name: b.name, rows: spbBoard(b).map((r, i) => ({
+        rank: i + 1, name: r.holder, timeMs: r.timeMs, precision: r.precision, setAt: r.setAt })) });
+    }
+    if (route === "/achievements/rarity") {
+      return json(res, 200, { players: 318, counts: Object.fromEntries(ACH.map((a, i) => [a.id, [2, 9, 31, 70, 140, 260][i % 6]])) });
+    }
     const m = route.match(/^\/players\/([^/]+)(\/[a-z-]+)?$/);
     if (m) {
       const pl = players.find((x) => x.name.toLowerCase() === decodeURIComponent(m[1]).toLowerCase());
@@ -200,18 +240,27 @@ const server = http.createServer((req, res) => {
       const sub = m[2];
       if (!sub) return json(res, 200, profile(pl));
       if (sub === "/rank-history") return json(res, 200, rankHistory(pl, Number(url.searchParams.get("days") ?? 90)));
+      if (sub === "/leaderboards") return json(res, 200, { name: pl.name, locked: true, requires: "architect",
+        boards: [{ id: "score", name: "Build Battle score", short: "Score", group: "Overall", rank: players.indexOf(pl) + 1, of: 412806, value: pl.score, top: 0.01 }],
+        lockedBoards: ["Total wins", "Tokens", "Solo wins", "Speed Builders wins"].map((name, i) => ({ id: "b" + i, name, group: "Overall" })) });
       if (!pl.usesMod) return json(res, 200, sub === "/achievements" ? { unlocked: [], total: 0 } : []);
       if (sub === "/matches") return json(res, 200, matches(url.searchParams.get("mode")));
       if (sub === "/heatmap") return json(res, 200, heatmap());
       if (sub === "/achievements") return json(res, 200, { unlocked: ACH, total: 104 });
       if (sub === "/pins") return json(res, 200, pl.name === "Koidu" ? pinRows() : []);
+      if (sub === "/weekly") return json(res, 200, weekly());
+      if (sub === "/spb-bests") return json(res, 200, SPB_BUILDS.flatMap((b) => {
+        const board = spbBoard(b);
+        const i = board.findIndex((r) => r.holder === pl.name);
+        return i < 0 ? [] : [{ build: b.build, name: b.name, timeMs: board[i].timeMs, setAt: board[i].setAt, rank: i + 1, players: board.length }];
+      }));
     }
     return json(res, 404, { error: "not_found" });
   }
   // static files with SPA fallback
   const file = path.join(WEB, path.normalize(p).replace(/^(\.\.[/\\])+/, ""));
   const target = fs.existsSync(file) && fs.statSync(file).isFile() ? file : path.join(WEB, "index.html");
-  const type = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" }[path.extname(target)] ?? "application/octet-stream";
+  const type = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".ttf": "font/ttf", ".png": "image/png" }[path.extname(target)] ?? "application/octet-stream";
   res.writeHead(200, { "content-type": type + "; charset=utf-8" });
   fs.createReadStream(target).pipe(res);
 });

@@ -1,0 +1,88 @@
+/* Plans: pricing page, supporter marks, profile style, positions, insights, Wrapped, private leaderboards.
+   Uses the tokens from style.css. */
+
+/* Pricing */
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 14px; align-items: stretch; }
+.plan { display: flex; flex-direction: column; gap: 8px; }
+.plan.architect { border-color: var(--pink); }
+.plan.master { border-color: var(--gold); }
+.plan .price { font: 700 30px var(--display); margin: 4px 0 6px; }
+.plan .price .per { font: 400 13px var(--body); color: var(--muted); }
+.plan ul { flex: 1; }
+.plan-action { margin-top: 10px; min-height: 34px; display: flex; align-items: center; }
+.upsell { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px;
+  margin-top: 10px; padding: 10px 12px; background: var(--pink-bg); border: 2px solid var(--edge); }
+.upsell p { color: var(--soft); max-width: 60ch; }
+
+/* Supporter marks */
+.chip.supporter.architect { background: var(--pink); color: #000; }
+.chip.supporter.master { background: var(--gold); color: #000; }
+.sup-mark { margin-left: 6px; font-size: 13px; }
+.sup-mark.architect { color: var(--pink); }
+.sup-mark.master { color: var(--gold); }
+
+/* Profile style */
+.profile-banner { height: 72px; border: 2px solid var(--edge); border-bottom: 0; image-rendering: pixelated; }
+.profile-top.accented .who h1 { color: var(--accent); }
+.profile-top.accented .avatar { border-color: var(--accent); }
+.row-item.featured { margin-bottom: 6px; border-color: var(--gold); }
+
+/* Account: plan card and style editor */
+.perk-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.style-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 20px; margin-top: 8px; }
+.field-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 4px; }
+.swatch { width: 28px; height: 28px; border: 2px solid var(--edge); background: var(--card-2); color: var(--muted); cursor: pointer; padding: 0; font-size: 12px; }
+.swatches.wide .swatch { width: 44px; }
+.swatch.on { outline: 2px solid #fff; outline-offset: 1px; }
+#style-editor select { width: 100%; }
+select { background: var(--card-2); color: var(--text); border: 2px solid var(--edge); padding: 5px 8px; font: inherit; }
+.inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.inline-form input { flex: 1; min-width: 140px; }
+
+/* Leaderboard picker and positions */
+.lb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tiles.positions { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.tile.pos { text-decoration: none; color: inherit; display: flex; flex-direction: column; }
+.tile.pos:hover { border-color: var(--gold); }
+.tile.pos small { font-size: 11px; color: var(--muted); }
+.tile.pos.podium b { color: var(--gold); }
+
+/* Insights */
+.stats.four { margin-bottom: 14px; }
+.bars { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 44px; align-items: center; gap: 8px; }
+.bar-row .bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars.weak .bar div { background: var(--red); }
+.bars.votes .bar-row { grid-template-columns: 90px minmax(0, 1fr) 44px; }
+.months { display: flex; align-items: flex-end; gap: 6px; min-height: 80px; }
+.month { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; color: var(--muted); }
+.month i { display: block; width: 18px; background: var(--green); border: 1px solid var(--edge); }
+.spark polyline { stroke: var(--green); stroke-width: 2; }
+.spark-record { stroke: var(--gold); stroke-width: 1; stroke-dasharray: 4 3; }
+.better { color: var(--green); }
+.worse { color: var(--red); }
+
+/* Wrapped */
+.wrap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.wrap-tile { background: var(--card-2); border: 2px solid var(--edge); padding: 10px 12px; display: flex; flex-direction: column; }
+.wrap-tile b { font: 700 28px var(--display); color: var(--gold); }
+.wrap-tile span { font-size: 12px; color: var(--muted); }
+.toggle a.tab { padding: 4px 10px; background: var(--card-2); color: var(--soft); border: 2px solid var(--edge); font: 500 14px/1.2 var(--display); text-decoration: none; }
+.toggle a.tab[aria-current="true"] { background: var(--gold); color: #000; }
+
+/* Private leaderboards */
+a.row-item.link { text-decoration: none; color: inherit; }
+a.row-item.link:hover { border-color: var(--gold); }
+tr.me td { background: var(--pink-bg); }
+.btn.danger { color: var(--red); }
+
+@media (max-width: 640px) {
+  .bar-row { grid-template-columns: minmax(0, 1fr) 60px 40px; }
+}
+
+/* Five nav links don't fit one phone line: let them wrap. */
+@media (max-width: 640px) {
+  .pills { flex-wrap: wrap; row-gap: 0; }
+  .pills a { padding: 6px 8px; font-size: 15px; }
+}

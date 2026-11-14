@@ -1,12 +1,18 @@
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
+import { rebuildBoards } from "../services/boards";
 
-/** Daily: record every tracked player's global rank (powers the rank graph). */
+/** Daily: record account holders' positions in the global ranking. */
 export async function snapshotRanks() {
   await pool.query(
-    `INSERT INTO player_rank_history (mc_uuid, taken_on, global_rank, bb_score)
-     SELECT mc_uuid, current_date, rank() OVER (ORDER BY bb_score DESC), bb_score
-     FROM tracked_players WHERE bb_score IS NOT NULL
+    `WITH ranked AS (
+       SELECT mc_uuid, current_date AS taken_on, rank() OVER (ORDER BY bb_score DESC) AS global_rank, bb_score
+       FROM tracked_players WHERE bb_score IS NOT NULL
+     )
+     INSERT INTO player_rank_history (mc_uuid, taken_on, global_rank, bb_score)
+     SELECT r.mc_uuid, r.taken_on, r.global_rank, r.bb_score
+     FROM ranked r
+     WHERE EXISTS (SELECT 1 FROM users u WHERE u.mc_uuid = r.mc_uuid)
      ON CONFLICT (mc_uuid, taken_on) DO UPDATE
        SET global_rank = EXCLUDED.global_rank, bb_score = EXCLUDED.bb_score`,
   );
@@ -23,6 +29,7 @@ export async function rebuildLeaderboard() {
     if (args.length) await redis.zadd(tmp, ...args);
   }
   if (r.rows.length) await redis.rename(tmp, "lb:bb_score");
+  await rebuildBoards();
 }
 
 /** Run `fn` every day at hh:mm UTC. */

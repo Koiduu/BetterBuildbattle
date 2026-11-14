@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Copy api/db/seeds/achievements.yaml into the mod as JSON. Run after editing the catalog:
+"""Copy api/db/seeds/achievements.yaml into the mod as JSON, and web/updates.json (the patch notes)
+into the mod for its What's New page. Run after editing either:
     python3 tools/gen-catalog.py
 """
 import json, pathlib, yaml
@@ -23,3 +24,7 @@ for o in data["one_offs"]:
 out = root / "mod/core/src/main/resources/betterbattle/achievements.json"
 out.write_text(json.dumps({"version": data["catalog_version"], "achievements": entries}, indent=1) + "\n")
 print(f"wrote {len(entries)} achievements to {out.relative_to(root)}")
+
+notes = root / "mod/core/src/main/resources/betterbattle/changelog.json"
+notes.write_text((root / "web/updates.json").read_text())
+print(f"copied patch notes to {notes.relative_to(root)}")
