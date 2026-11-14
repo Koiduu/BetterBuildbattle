@@ -1,5 +1,7 @@
 const API = "/bb/v1";
 const app = document.getElementById("app");
+const SUPPORT = { email: null, discord: "https://discord.gg/zgQcwWpkrq" };
+let flashNotice = null;
 
 const MODES = {
   solo: "Solo",
@@ -76,6 +78,10 @@ const routes = [
   { path: /^\/login\/?$/, page: () => authPage("login") },
   { path: /^\/signup\/?$/, page: () => authPage("signup") },
   { path: /^\/account\/?$/, page: accountPage },
+  { path: /^\/privacy\/?$/, page: privacyPage },
+  { path: /^\/terms\/?$/, page: termsPage },
+  { path: /^\/cookies\/?$/, page: cookiesPage },
+  { path: /^\/support\/?$/, page: supportPage },
 ];
 
 function go(url) {
@@ -112,6 +118,101 @@ document.addEventListener("click", (e) => {
 });
 
 window.addEventListener("popstate", render);
+
+function supportContact() {
+  const links = [];
+  if (SUPPORT.email) links.push(`<a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a>`);
+  if (SUPPORT.discord) links.push(`<a href="${esc(SUPPORT.discord)}" target="_blank" rel="noopener noreferrer">Join the Better Battle Discord</a>`);
+  return links.length ? links.join(" · ") : "Contact details coming soon";
+}
+
+function legalPage(name, content, showLastUpdated = true) {
+  document.title = `${name} · Better Battle`;
+  app.innerHTML = `
+    <article class="card legal-page">
+      <header class="legal-head">
+        <h1>${name}</h1>
+        ${showLastUpdated ? `<p class="sub">Last updated 13 November 2026</p>` : ""}
+      </header>
+      ${content}
+    </article>`;
+}
+
+function privacyPage() {
+  legalPage("Privacy", `
+    <section><h2>Who runs Better Battle</h2>
+      <p>Better Battle is a hobby project run by Koidu, not a company. It is not affiliated with Hypixel, Mojang or Microsoft.</p></section>
+    <section><h2>Website accounts</h2>
+      <p>An account stores your email and an Argon2id password hash, never your password itself. If you use Discord login, we receive your Discord ID, username and avatar URL. Discord login asks only for the <code>identify</code> scope, not your email.</p>
+      <p>When linked, we store your Minecraft UUID and name, bio and pinned matches.</p></section>
+    <section><h2>Discord bot</h2>
+      <p>The bot stores your Discord ID and the Minecraft name and UUID you verify with <code>/verify</code>. <code>/unverify</code> removes that link.</p>
+      <p>It stores moderation warnings with the Discord user ID, moderator ID, reason and time. It also stores support tickets with the Discord user ID, the topic you typed, and open and close times. The ticket conversation stays in Discord's private thread.</p>
+      <p>The bot reads no other messages. Discord's own AutoMod filters messages.</p></section>
+    <section><h2>Mod data</h2>
+      <p>When you log in with the mod, the server verifies your Minecraft name with Mojang's session server. The mod never sees or sends your Microsoft password.</p>
+      <p>Each sync sends your finished games: time, mode, theme, placement, player count, score, grade, duration, blocks placed and broken, palette, and your votes with the builder name. Votes are visible only to Better Battle admins and are used to check results. Syncs also send local achievement claims, mod and Minecraft version, and the names and UUIDs of players seen in your lobbies.</p>
+      <p>The mod also saves this information on your PC in a SQLite file. A <code>/bb debug</code> log stays on your PC unless you share it.</p></section>
+    <section><h2>Other players and public profiles</h2>
+      <p>Better Battle fetches public Build Battle stats from the official Hypixel API by UUID for leaderboard players, players seen in lobbies, and players someone searches for. Players who have never signed up can appear in the global ranking. We keep only their name, UUID and public Hypixel Build Battle stats while they are in the ranking, and do not record who saw them or in which lobby. They can ask us on Discord to be removed.</p>
+      <p>Profiles are public. They can show a name, Hypixel stats, rank, bio, pins, Better Battle matches, achievements and heatmap. Email, Discord ID and votes are never public.</p></section>
+    <section><h2>Services involved</h2>
+      <p>Cloudflare carries all traffic and sees IP addresses. Player heads load from mc-heads.net, which sees the visitor's IP. Discord avatars load from cdn.discordapp.com. The server contacts Hypixel and Mojang, and contacts Discord only if you use Discord login.</p>
+      <p>IP addresses are used only in memory for rate limiting and are never written to the database.</p></section>
+    <section><h2>How long data stays</h2>
+      <p>Your Better Battle account data stays until you delete your account. Deleting removes your Better Battle data immediately. Public Hypixel stats in the global ranking stay unless you ask support to remove them. Login sessions expire after 30 days.</p></section>
+    <section><h2>Your choices and age</h2>
+      <p>You can delete your account or download a copy of your data from the Account page. To request a correction or removal of account data, contact us on Discord using the link below. Public Hypixel stats can also be removed on request.</p>
+      <p>You must be at least 13, or older if your country requires it, to make an account. If we learn that an account belongs to someone under 13, we delete it. Parents or guardians can ask us to do so on Discord.</p>
+      <p class="contact-block">${supportContact()}</p></section>`);
+}
+
+function termsPage() {
+  legalPage("Terms", `
+    <section><h2>About the service</h2>
+      <p>Better Battle is a hobby project run by Koidu, not a company. It is not affiliated with Hypixel, Mojang or Microsoft.</p>
+      <p>The site and mod are provided as-is, without warranty. They may change or go offline.</p></section>
+    <section><h2>Accounts and games</h2>
+      <p>You must be at least 13, or older if your country requires it, to make an account.</p>
+      <p>Do not cheat, bot or fake synced games. Faked results can be removed, and the account can be hidden from leaderboards.</p></section>
+    <section><h2>Profiles and bios</h2>
+      <p>Bios must not be hateful, sexual or harassing, and must not contain personal information about other people. Bios that break this rule can be removed.</p></section>
+    <section><h2>Using the mod</h2>
+      <p>Using the mod on Hypixel is at your own risk under Hypixel's rules. The mod reads chat and the scoreboard; it never plays for you.</p></section>
+    <section><h2>Changes</h2>
+      <p>These terms can change. The date at the top shows the latest version.</p></section>`);
+}
+
+function cookiesPage() {
+  legalPage("Cookies", `
+    <section><h2>Login cookies</h2>
+      <p><code>bb_session</code> is an HttpOnly login cookie that lasts 30 days. It is cleared when you log out. <code>bb_oauth</code> is a short-lived state cookie used only during Discord login.</p></section>
+    <section><h2>Browser storage</h2>
+      <p><code>localStorage</code> holds <code>bb_cookie_notice</code> to remember that you dismissed this notice. The admin page alone stores the admin token there.</p></section>
+    <section><h2>Other requests</h2>
+      <p>Better Battle does not use analytics, ads or tracking cookies. Cloudflare carries site traffic. Player heads load from mc-heads.net and Discord avatars load from cdn.discordapp.com.</p></section>`);
+}
+
+function supportPage() {
+  legalPage("Support", `
+    <section><h2>Installing the mod</h2>
+      <p>Put the Fabric 26.3 or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder.</p></section>
+    <section><h2>Linking your account</h2>
+      <p>Get a code from the Account page, then run <code>/bb link &lt;code&gt;</code> in game.</p></section>
+    <section><h2>The stats server cannot be reached</h2>
+      <p>If you see “Can't reach the stats server” or HTTP 502, games are saved locally and upload on your next <code>/bb sync</code>.</p></section>
+    <section><h2>Stats are not updating</h2>
+      <p>Hypixel totals refresh every few days.</p></section>
+    <section><h2>Getting a copy of your data</h2>
+      <p>Sign in and use Download my data on the Account page. For help, corrections or removal requests, contact us on Discord.</p></section>
+    <section><h2>Using the Discord bot</h2>
+      <p>Use the Better Battle bot: <code>/download</code>, <code>/stats</code>, <code>/verify</code>, and the Open a ticket button in the support channel.</p></section>
+    <section><h2>Deleting your account</h2>
+      <p>Use the Delete account section at the bottom of the Account page. If your account has no password, type <code>DELETE</code> to confirm.</p></section>
+    <section><h2>Contact</h2>
+      <p>For account data copies, corrections or removal requests, contact us on Discord.</p>
+      <p class="contact-block">${supportContact()}</p></section>`, false);
+}
 
 // Search box in the top bar
 
@@ -151,7 +252,10 @@ searchForm.addEventListener("submit", (e) => {
 
 async function homePage() {
   document.title = "Better Battle";
+  const notice = flashNotice;
+  flashNotice = null;
   app.innerHTML = `
+    ${notice ? `<p class="status-notice" role="status">${esc(notice)}</p>` : ""}
     <section class="intro">
       <h1>Every Build Battle player, ranked.</h1>
       <p>Look up anyone who has played Build Battle on Hypixel. Install the Better Battle mod to add your games, levels and achievements to your profile.</p>
@@ -732,6 +836,7 @@ async function authPage(mode) {
         <p class="form-error" id="auth-error" role="alert"${error ? "" : " hidden"}>${error ?? ""}</p>
         <button class="btn primary wide" type="submit">${signup ? "Create account" : "Log in"}</button>
       </form>
+      ${signup ? `<p class="auth-terms">By creating an account you agree to the <a href="/terms" data-link>Terms</a> and the <a href="/privacy" data-link>Privacy Policy</a>.</p>` : ""}
       <p class="auth-switch">${signup
         ? `Already have an account? <a href="/login" data-link>Log in</a>`
         : `New here? <a href="/signup" data-link>Create an account</a>`}</p>
@@ -822,7 +927,35 @@ async function accountPage() {
       </section>
     </div>
 
-    <section class="card" id="pins-card"></section>`;
+    <section class="card" id="pins-card"></section>
+
+    <section class="card export-card">
+      <div>
+        <h2>Download my data</h2>
+        <p class="muted">Save a copy of the information linked to your account.</p>
+      </div>
+      <a class="btn" href="${API}/me/export">Download my data</a>
+    </section>
+
+    <section class="card danger-card">
+      <div>
+        <h2>Delete account</h2>
+        <p class="muted">This removes your Better Battle account data, including matches, pins and achievements. Public Hypixel stats in the global ranking are not deleted.</p>
+      </div>
+      <form class="form" id="delete-account-form">
+        ${me.hasPassword ? `
+          <label class="field">
+            <span>Confirm with your password</span>
+            <input type="password" name="password" autocomplete="current-password" maxlength="200" required>
+          </label>` : `
+          <label class="field">
+            <span>Type DELETE to confirm</span>
+            <input type="text" name="confirm" autocomplete="off" maxlength="6" pattern="DELETE" required>
+          </label>`}
+        <p class="form-error" id="delete-account-error" role="alert" hidden></p>
+        <div class="form-row"><button class="btn danger" type="submit">Delete account</button></div>
+      </form>
+    </section>`;
 
   document.getElementById("logout").addEventListener("click", async () => {
     await request("POST", "/auth/logout").catch(() => {});
@@ -833,6 +966,7 @@ async function accountPage() {
   renderMinecraftCard(providers);
   setUpBio();
   setUpPins();
+  setUpAccountDeletion();
 }
 
 function renderMinecraftCard(providers) {
@@ -987,6 +1121,39 @@ function setUpBio() {
   });
 }
 
+function setUpAccountDeletion() {
+  const form = document.getElementById("delete-account-form");
+  const errorBox = document.getElementById("delete-account-error");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = me.hasPassword
+      ? { password: form.password.value }
+      : { confirm: form.confirm.value };
+    if (!me.hasPassword && payload.confirm !== "DELETE") {
+      errorBox.textContent = "Type DELETE to confirm.";
+      errorBox.hidden = false;
+      return;
+    }
+    const button = form.querySelector("button");
+    button.disabled = true;
+    errorBox.hidden = true;
+    try {
+      await request("DELETE", "/me", payload);
+      setMe(null);
+      flashNotice = "Your account was deleted.";
+      go("/");
+    } catch (err) {
+      errorBox.textContent = ({
+        wrong_password: "That password is not correct.",
+        confirm_required: "Type DELETE to confirm.",
+        rate_limited: "Too many attempts. Wait a minute and try again.",
+      })[err.message] ?? "Couldn't delete the account. Try again.";
+      errorBox.hidden = false;
+      button.disabled = false;
+    }
+  });
+}
+
 function pinRow(m, actions) {
   return `
     <div class="row-item">
@@ -1094,5 +1261,36 @@ async function setUpPins() {
   status.textContent = "";
 }
 
+function setupCookieNotice() {
+  const notice = document.getElementById("cookie-notice");
+  const button = document.getElementById("cookie-notice-ok");
+  let dismissed = false;
+  try { dismissed = localStorage.getItem("bb_cookie_notice") === "1"; } catch {}
+  notice.hidden = dismissed;
+  let observer;
+  const updateReservedSpace = () => {
+    document.body.style.setProperty("--cookie-notice-height", `${notice.getBoundingClientRect().height}px`);
+  };
+  if (!dismissed) {
+    document.body.classList.add("cookie-notice-visible");
+    updateReservedSpace();
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateReservedSpace);
+      observer.observe(notice);
+    } else {
+      window.addEventListener("resize", updateReservedSpace);
+    }
+  }
+  button.addEventListener("click", () => {
+    try { localStorage.setItem("bb_cookie_notice", "1"); } catch {}
+    notice.hidden = true;
+    document.body.classList.remove("cookie-notice-visible");
+    document.body.style.removeProperty("--cookie-notice-height");
+    observer?.disconnect();
+    window.removeEventListener("resize", updateReservedSpace);
+  });
+}
+
+setupCookieNotice();
 const meReady = loadMe();
 render();

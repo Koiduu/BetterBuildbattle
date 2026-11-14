@@ -206,6 +206,104 @@ export function accountRoutes(app: Router) {
 
   app.get("/me", [requireWebSession], async (req) => getMe(req.user.id));
 
+  app.get("/me/export", [rateLimit(5, 60_000, "/me/export"), requireWebSession], async (req) => {
+    const result = await pool.query("SELECT * FROM users WHERE id = $1", [req.user.id]);
+    const row = result.rows[0];
+    if (!row) fail(401, "not_logged_in");
+    const { password_hash, ...user } = row;
+    const userId = req.user.id;
+    const [
+      sessions, matches, matchVotes, pinnedMatches, userStats, userProgress,
+      userAchievements, userWeeklyChallenges, userThemes, spbPersonalBests,
+      rankSnapshots, linkCodes, dailyActivity,
+    ] = await Promise.all([
+      pool.query(
+        `SELECT id, kind, mod_version, mc_version, expires_at, created_at
+         FROM sessions WHERE user_id = $1 ORDER BY created_at`, [userId]),
+      pool.query("SELECT * FROM matches WHERE user_id = $1 ORDER BY played_at", [userId]),
+      pool.query("SELECT * FROM match_votes WHERE user_id = $1 ORDER BY played_at, round", [userId]),
+      pool.query("SELECT * FROM pinned_matches WHERE user_id = $1 ORDER BY position", [userId]),
+      pool.query("SELECT * FROM user_stats WHERE user_id = $1 ORDER BY mode", [userId]),
+      pool.query("SELECT * FROM user_progress WHERE user_id = $1", [userId]),
+      pool.query("SELECT * FROM user_achievements WHERE user_id = $1 ORDER BY unlocked_at", [userId]),
+      pool.query("SELECT * FROM user_weekly_challenges WHERE user_id = $1 ORDER BY week_start, id", [userId]),
+      pool.query("SELECT * FROM user_themes WHERE user_id = $1 ORDER BY theme", [userId]),
+      pool.query("SELECT * FROM spb_personal_bests WHERE user_id = $1 ORDER BY build_id", [userId]),
+      pool.query("SELECT * FROM rank_snapshots WHERE user_id = $1 ORDER BY taken_on, mode", [userId]),
+      pool.query("SELECT * FROM link_codes WHERE user_id = $1 ORDER BY expires_at", [userId]),
+      pool.query("SELECT day::date::text AS day, games, wins FROM daily_activity WHERE user_id = $1 ORDER BY day", [userId]),
+    ]);
+    req.reply.headers["content-disposition"] = 'attachment; filename="better-battle-data.json"';
+    return {
+      user: { ...user, hasPassword: !!password_hash },
+      linkedAccounts: {
+        discord: user.discord_id ? { id: user.discord_id, name: user.discord_name } : null,
+        minecraft: user.mc_uuid ? { uuid: user.mc_uuid, name: user.mc_name } : null,
+      },
+      data: {
+        sessions: sessions.rows,
+        matches: matches.rows,
+        matchVotes: matchVotes.rows,
+        pinnedMatches: pinnedMatches.rows,
+        userStats: userStats.rows,
+        userProgress: userProgress.rows[0] ?? null,
+        userAchievements: userAchievements.rows,
+        userWeeklyChallenges: userWeeklyChallenges.rows,
+        userThemes: userThemes.rows,
+        spbPersonalBests: spbPersonalBests.rows,
+        rankSnapshots: rankSnapshots.rows,
+        linkCodes: linkCodes.rows,
+        dailyActivity: dailyActivity.rows,
+      },
+    };
+  });
+
+  app.delete("/me", [rateLimit(5, 60_000, "/me/delete"), requireWebSession], async (req) => {
+    const { password, confirm } = z.object({
+      password: z.string().max(200).optional(),
+      confirm: z.string().optional(),
+    }).parse(req.body ?? {});
+    let matchRange: { min_played_at: Date | null; max_played_at: Date | null } | undefined;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query("SELECT password_hash FROM users WHERE id = $1 FOR UPDATE", [req.user.id]);
+      const user = result.rows[0] as { password_hash: string | null } | undefined;
+      if (!user) return fail(401, "not_logged_in");
+      if (user.password_hash) {
+        if (!password || !await verify(user.password_hash, password)) fail(401, "wrong_password");
+      } else if (confirm !== "DELETE") {
+        fail(400, "confirm_required");
+      }
+      const matches = await client.query<{ min_played_at: Date | null; max_played_at: Date | null }>(
+        "SELECT min(played_at) AS min_played_at, max(played_at) AS max_played_at FROM matches WHERE user_id = $1",
+        [req.user.id]);
+      matchRange = matches.rows[0];
+      const deleted = await client.query("DELETE FROM users WHERE id = $1", [req.user.id]);
+      if (!deleted.rowCount) fail(401, "not_logged_in");
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    await endWebSession(req);
+    if (matchRange?.min_played_at && matchRange.max_played_at) {
+      try {
+        await pool.query(
+          `CALL refresh_continuous_aggregate(
+            'daily_activity',
+            date_trunc('day', $1::timestamptz),
+            date_trunc('day', $2::timestamptz) + interval '1 day')`,
+          [matchRange.min_played_at, matchRange.max_played_at]);
+      } catch (error) {
+        console.error("Failed to refresh daily_activity after account deletion", error);
+      }
+    }
+    return { ok: true };
+  });
+
   app.put("/me", [requireWebSession], async (req) => {
     const { bio } = z.object({ bio: z.string().trim().max(1000).nullable() }).parse(req.body);
     await pool.query("UPDATE users SET bio = $2 WHERE id = $1", [req.user.id, bio?.trim() || null]);
