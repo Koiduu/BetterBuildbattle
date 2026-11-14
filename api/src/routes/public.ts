@@ -18,9 +18,10 @@ async function resolvePlayer(name: string) {
     "SELECT * FROM tracked_players WHERE mc_name = $1 ORDER BY last_checked DESC NULLS LAST LIMIT 1",
     [name],
   );
-  if (known.rowCount && known.rows[0].last_checked) return known.rows[0];
+  const cached = known.rows[0];
+  if (cached?.last_checked && Date.now() - new Date(cached.last_checked).getTime() < 60 * 60_000) return cached;
 
-  let uuid: string | undefined = known.rows[0]?.mc_uuid;
+  let uuid: string | undefined = cached?.mc_uuid;
   if (!uuid) {
     const res = await fetch(`${MOJANG_API}/users/profiles/minecraft/${encodeURIComponent(name)}`);
     if (res.status !== 200) return null;
@@ -31,6 +32,7 @@ async function resolvePlayer(name: string) {
   try {
     await refreshOne(uuid);
   } catch (e) {
+    if (cached?.last_checked) return cached;
     if (e instanceof HypixelKeyError) fail(503, "hypixel_unavailable", { reason: "api_key" });
     fail(503, "hypixel_unavailable");
   }

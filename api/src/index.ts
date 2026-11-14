@@ -92,7 +92,10 @@ if (process.env.NO_JOBS !== "1") {
     await checkKey();
     runCrawler(ac.signal).catch((e) => console.error("crawler stopped", e));
     crawlLeaderboards().catch((e) => console.error("leaderboard crawl failed", e));
-    daily(1, 0, crawlLeaderboards);
+    setInterval(
+      () => crawlLeaderboards().catch((e) => console.error("leaderboard crawl failed", e)),
+      60 * 60_000,
+    );
   } else {
     console.warn("HYPIXEL_API_KEY not set: crawler disabled, rankings will not update");
   }
