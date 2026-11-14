@@ -110,7 +110,7 @@ and writes `.env` for you, starts everything, and opens http://localhost:4000.
 | `bb status` | Show what's running |
 | `bb seed` / `bb seed "Guild Name"` | Add a guild to the ranking (default: Aspiring); each member is looked up once |
 | `bb snapshot` | Record today's ranks now (normally automatic at 00:05 UTC) |
-| `bb update` | Rebuild after getting new code |
+| `bb update` | Pull the latest code with fast-forward only, then rebuild; a failed pull stops the rebuild |
 | `bb reset` | Delete all data and start fresh (asks first) |
 
 Run commands from a terminal in the project folder (`.\bb seed` in PowerShell, `bb seed` in Command Prompt).
@@ -121,8 +121,9 @@ To go public, point a Cloudflare Tunnel at `localhost:4000` for `battle.aspir3.n
 - `bb backup` writes a compressed database dump to `backups/` and keeps the newest 14.
 - `bb restore <file>` replaces the current database after you type `RESTORE`.
 - `bb backup-daily` schedules a daily 04:00 backup on Windows, or prints a crontab line on macOS/Linux. Use `bb backup-daily off` to remove the schedule.
+- Set `BACKUP_COPY_DIR` in `.env` to copy each successful backup, including restore safety backups, to another folder; that folder also keeps the newest 14 Better Battle dumps.
 
-Backups contain emails, password hashes, and Discord IDs. Keep them private and off GitHub. For real protection if the PC is lost, copy them somewhere separate, such as OneDrive.
+Backups contain emails, password hashes, and Discord IDs. Keep them private and off GitHub. For protection if the PC is lost, set `BACKUP_COPY_DIR` to a separate location such as OneDrive.
 
 ## Discord bot
 
