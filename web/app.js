@@ -145,6 +145,10 @@ function privacyPage() {
     <section><h2>Website accounts</h2>
       <p>An account stores your email and an Argon2id password hash, never your password itself. If you use Discord login, we receive your Discord ID, username and avatar URL. Discord login asks only for the <code>identify</code> scope, not your email.</p>
       <p>When linked, we store your Minecraft UUID and name, bio and pinned matches.</p></section>
+    <section><h2>Discord bot</h2>
+      <p>The bot stores your Discord ID and the Minecraft name and UUID you verify with <code>/verify</code>. <code>/unverify</code> removes that link.</p>
+      <p>It stores moderation warnings with the Discord user ID, moderator ID, reason and time. It also stores support tickets with the Discord user ID, the topic you typed, and open and close times. The ticket conversation stays in Discord's private thread.</p>
+      <p>The bot reads no other messages. Discord's own AutoMod filters messages.</p></section>
     <section><h2>Mod data</h2>
       <p>When you log in with the mod, the server verifies your Minecraft name with Mojang's session server. The mod never sees or sends your Microsoft password.</p>
       <p>Each sync sends your finished games: time, mode, theme, placement, player count, score, grade, duration, blocks placed and broken, palette, and your votes with the builder name. Votes are visible only to Better Battle admins and are used to check results. Syncs also send local achievement claims, mod and Minecraft version, and the names and UUIDs of players seen in your lobbies.</p>
@@ -201,6 +205,8 @@ function supportPage() {
       <p>Hypixel totals refresh every few days.</p></section>
     <section><h2>Getting a copy of your data</h2>
       <p>Sign in and use Download my data on the Account page. For help, corrections or removal requests, contact us on Discord.</p></section>
+    <section><h2>Using the Discord bot</h2>
+      <p>Use the Better Battle bot: <code>/download</code>, <code>/stats</code>, <code>/verify</code>, and the Open a ticket button in the support channel.</p></section>
     <section><h2>Deleting your account</h2>
       <p>Use the Delete account section at the bottom of the Account page. If your account has no password, type <code>DELETE</code> to confirm.</p></section>
     <section><h2>Contact</h2>
