@@ -8,6 +8,7 @@ import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
 import { adminRoutes } from "./routes/admin";
 import { billingRoutes } from "./routes/billing";
+import { downloadRoutes } from "./routes/download";
 import { perkRoutes } from "./routes/perks";
 import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
@@ -20,12 +21,14 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const PREFIX = "/bb/v1";
 
 const api = new Router(PREFIX);
+const downloads = new Router("");
 accountRoutes(api);
 modRoutes(api);
 publicRoutes(api);
 adminRoutes(api);
 billingRoutes(api);
 perkRoutes(api);
+downloadRoutes(api, downloads);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
   return { ok: true };
@@ -72,7 +75,7 @@ await seedCatalog();
 await pickWeekly();
 await ensureBoards().catch((e) => console.error("Couldn't build the leaderboards", e));
 
-const server = createServer([api], {
+const server = createServer([api, downloads], {
   apiPrefix: PREFIX,
   staticDir: process.env.WEB_DIR ?? path.resolve(here, "../../web"),
   log: process.env.LOG_REQUESTS === "1" ? (m) => console.log(m) : () => {},
