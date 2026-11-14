@@ -63,6 +63,13 @@ public final class LocalDatabase implements AutoCloseable {
                 s.execute("ALTER TABLE matches ADD COLUMN votes TEXT");
                 setMeta("schema_version", "2");
             }
+            if (v < 3) {
+                s.execute("ALTER TABLE matches ADD COLUMN tags TEXT");
+                s.execute("ALTER TABLE matches ADD COLUMN gtb_correct INTEGER NOT NULL DEFAULT 0");
+                s.execute("ALTER TABLE personal_bests ADD COLUMN name TEXT");
+                s.execute("ALTER TABLE wr_ghosts ADD COLUMN name TEXT");
+                setMeta("schema_version", "3");
+            }
         }
     }
 
@@ -73,7 +80,8 @@ public final class LocalDatabase implements AutoCloseable {
         conn.setAutoCommit(false);
         try (PreparedStatement p = conn.prepareStatement(
                 "INSERT OR IGNORE INTO matches (nonce, played_at, mode, theme, placement, players, score, grade," +
-                " duration_sec, blocks_placed, blocks_broken, max_score, palette, spb_rounds, votes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
+                 " duration_sec, blocks_placed, blocks_broken, max_score, palette, spb_rounds, votes, tags, gtb_correct)" +
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             p.setString(1, m.nonce);
             p.setLong(2, m.playedAt);
             p.setString(3, m.mode);
@@ -90,6 +98,8 @@ public final class LocalDatabase implements AutoCloseable {
             p.setString(13, m.paletteJson());
             p.setString(14, m.spbRoundsJson);
             p.setString(15, m.votesJson());
+            p.setString(16, m.tags.isEmpty() ? null : String.join(",", m.tags));
+            p.setInt(17, m.gtbCorrect);
             boolean inserted = p.executeUpdate() == 1;
             if (inserted && m.placement != null && m.placement == 1) {
                 try (PreparedStatement e = conn.prepareStatement("INSERT INTO events (at, kind, mode) VALUES (?, 'win', ?)")) {
@@ -191,6 +201,72 @@ public final class LocalDatabase implements AutoCloseable {
                 long timeMs = r.getLong(1);
                 return r.wasNull() ? null : Long.valueOf(timeMs);
             }
+        }
+    }
+
+    /** Re-save a game's challenge tags (they're worked out after the game is first stored). */
+    public synchronized void setTags(String nonce, List<String> tags) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement("UPDATE matches SET tags = ? WHERE nonce = ?")) {
+            p.setString(1, tags.isEmpty() ? null : String.join(",", tags));
+            p.setString(2, nonce);
+            p.executeUpdate();
+        }
+    }
+
+    // ---------------- Speed Builders bests and records ----------------
+
+    public synchronized Long personalBestMs(String buildId) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement("SELECT time_ms FROM personal_bests WHERE build_id = ?")) {
+            p.setString(1, buildId);
+            try (ResultSet r = p.executeQuery()) { return r.next() ? r.getLong(1) : null; }
+        }
+    }
+
+    /** Keeps the faster time. Returns true if this one was saved. */
+    public synchronized boolean savePersonalBest(String buildId, String name, long timeMs, double precision) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement(
+                "INSERT INTO personal_bests (build_id, name, time_ms, accuracy, set_at, synced) VALUES (?, ?, ?, ?, ?, 0)" +
+                " ON CONFLICT(build_id) DO UPDATE SET name = excluded.name, time_ms = excluded.time_ms," +
+                " accuracy = excluded.accuracy, set_at = excluded.set_at, synced = 0 WHERE excluded.time_ms < personal_bests.time_ms")) {
+            p.setString(1, buildId);
+            p.setString(2, name);
+            p.setLong(3, timeMs);
+            p.setDouble(4, precision);
+            p.setLong(5, System.currentTimeMillis());
+            return p.executeUpdate() == 1;
+        }
+    }
+
+    public synchronized String worldRecordHolder(String buildId) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement("SELECT holder FROM wr_ghosts WHERE build_id = ?")) {
+            p.setString(1, buildId);
+            try (ResultSet r = p.executeQuery()) { return r.next() ? r.getString(1) : null; }
+        }
+    }
+
+    /** Replaces the cached world records with the server's list (times only, no placements). */
+    public synchronized void saveWorldRecords(List<String[]> records) throws SQLException {
+        conn.setAutoCommit(false);
+        try (Statement s = conn.createStatement();
+             PreparedStatement p = conn.prepareStatement(
+                 "INSERT INTO wr_ghosts (build_id, name, holder, time_ms, fetched_at) VALUES (?, ?, ?, ?, ?)")) {
+            s.execute("DELETE FROM wr_ghosts");
+            long now = System.currentTimeMillis();
+            for (String[] r : records) {     // build id, name, holder, time ms
+                p.setString(1, r[0]);
+                p.setString(2, r[1]);
+                p.setString(3, r[2]);
+                p.setLong(4, Long.parseLong(r[3]));
+                p.setLong(5, now);
+                p.addBatch();
+            }
+            p.executeBatch();
+            conn.commit();
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(true);
         }
     }
 

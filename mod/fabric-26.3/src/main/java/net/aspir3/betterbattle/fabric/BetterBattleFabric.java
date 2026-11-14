@@ -11,6 +11,10 @@ import net.aspir3.betterbattle.fabric.ui.AchievementToast;
 import net.aspir3.betterbattle.fabric.ui.AchievementsScreen;
 import net.aspir3.betterbattle.fabric.ui.CreditsScreen;
 import net.aspir3.betterbattle.fabric.ui.MenuScreen;
+import net.aspir3.betterbattle.fabric.ui.SettingsScreen;
+import net.aspir3.betterbattle.fabric.ui.SpbTimerToast;
+import net.aspir3.betterbattle.fabric.ui.TextPageScreen;
+import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
 import net.aspir3.betterbattle.palette.Palettes;
 import net.fabricmc.api.ClientModInitializer;
@@ -20,6 +24,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
@@ -98,6 +103,12 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             return InteractionResult.PASS;
         });
 
+        // Left-clicking a block breaks it. Measure Twice and Speed Builders precision count these.
+        AttackBlockCallback.EVENT.register((player, level, hand, pos, direction) -> {
+            if (level.isClientSide() && core.active() && !level.getBlockState(pos).isAir()) core.game().onOwnBlockBroken();
+            return InteractionResult.PASS;
+        });
+
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
         registerCommands();
     }
@@ -105,8 +116,12 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     private void registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(
             ClientCommands.literal("bb")
-                .executes(c -> open(() -> new MenuScreen(null)))
+                .executes(c -> open(this::menu))
                 .then(ClientCommands.literal("achievements").executes(c -> open(() -> new AchievementsScreen(null))))
+                .then(ClientCommands.literal("recap").executes(c -> open(() -> new TextPageScreen(null, core.lastGamePage()))))
+                .then(ClientCommands.literal("weekly").executes(c -> open(() -> new TextPageScreen(null, core.weeklyPage()))))
+                .then(ClientCommands.literal("news").executes(c -> open(() -> new TextPageScreen(null, Pages.whatsNew()))))
+                .then(ClientCommands.literal("settings").executes(c -> open(() -> new SettingsScreen(null))))
                 .then(ClientCommands.literal("credits").executes(c -> open(() -> new CreditsScreen(null))))
                 .then(ClientCommands.literal("sync").executes(c -> {
                     if (!core.active()) {
@@ -140,6 +155,12 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                 }))));
     }
 
+    /** The B menu, or What's New on the first press after an update (Back goes to the menu). */
+    private Screen menu() {
+        MenuScreen menu = new MenuScreen(null);
+        return core.takeWhatsNew() ? new TextPageScreen(menu, Pages.whatsNew()) : menu;
+    }
+
     private int open(Supplier<Screen> screen) {
         // Opened on the next tick, after the chat box has closed.
         pendingScreen = screen;
@@ -168,7 +189,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     }
 
     private void tick(Minecraft client) {
-        while (menuKey.consumeClick()) pendingScreen = () -> new MenuScreen(null);
+        while (menuKey.consumeClick()) pendingScreen = this::menu;
         if (pendingScreen != null) {
             client.gui.setScreen(pendingScreen.get());
             pendingScreen = null;
@@ -184,6 +205,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         while ((change = blockChanges.poll()) != null) game.onBlockUpdate(change.x(), change.y(), change.z(), change.block());
 
         if (ticks % 10 == 0) readSidebar(client);
+        if (!SpbTimerToast.showing() && !core.hudLines().isEmpty()) client.gui.toastManager().addToast(new SpbTimerToast());
         if (ticks % 100 == 0) readTabList(client);
 
         if (game.state() == GameStateMachine.State.BUILDING) {
@@ -300,6 +322,11 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     @Override
     public void showAchievement(Catalog.Entry achievement) {
         Minecraft.getInstance().gui.toastManager().addToast(new AchievementToast(achievement));
+    }
+
+    @Override
+    public void openPage(Pages.Page page) {
+        pendingScreen = () -> new TextPageScreen(null, page);
     }
 
     @Override

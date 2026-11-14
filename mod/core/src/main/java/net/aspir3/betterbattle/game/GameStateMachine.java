@@ -37,6 +37,8 @@ public final class GameStateMachine {
     private Integer players;
     private int voteRound = -1;
     private String roundBuilder;
+    private SpbTracker spb;
+    private SpbTracker.Records spbRecords;
 
     public GameStateMachine(ChatParser parser, Listener listener, String mcVersion, String playerName) {
         this.parser = parser;
@@ -46,6 +48,16 @@ public final class GameStateMachine {
     }
 
     public State state() { return state; }
+
+    /** Where Speed Builders bests and records come from. Set by the core once the database is open. */
+    public void setSpbRecords(SpbTracker.Records records) { this.spbRecords = records; }
+
+    /** The running Speed Builders game, or null. */
+    public SpbTracker spb() { return spb; }
+
+    private boolean speedBuilders() {
+        return "speed_builders".equals(mode);
+    }
 
     private void setState(State next) {
         if (next == state) return;
@@ -82,6 +94,8 @@ public final class GameStateMachine {
             // The lobby keeps shrinking as people leave; the count when voting starts is what matters.
             if (p != null && state != State.VOTING) players = p;
             if (parser.isBuildTimer(line)) timer = true;
+            Integer left = parser.secondsLeft(line);
+            if (left != null && spb != null) spb.onSecondsLeft(left, System.currentTimeMillis());
             if (i + 1 < lines.size()) {
                 String next = lines.get(i + 1);
                 if (line.equals("Theme:") && !next.isEmpty() && !next.equals("Vote Now!")) theme = next;
@@ -93,7 +107,7 @@ public final class GameStateMachine {
             }
         }
         // Backup for the chat announcement, e.g. if the mod was turned on mid-game.
-        if (state == State.LOBBY && timer && theme != null) startBuilding(theme);
+        if (state == State.LOBBY && timer && theme != null && !speedBuilders()) startBuilding(theme);
         if (builder != null) startGtbRound(builder);
     }
 
@@ -131,6 +145,22 @@ public final class GameStateMachine {
             case GAME_END:
                 finish();
                 break;
+            case SPB_BUILD:
+                if (state == State.LOBBY && speedBuilders()) startBuilding(null);
+                if (spb != null) {
+                    spb.onBuild(e.text, System.currentTimeMillis());
+                    if (current.theme == null) current.theme = e.text;
+                }
+                break;
+            case SPB_START:
+                if (spb != null) spb.onStart(System.currentTimeMillis());
+                break;
+            case SPB_PERFECT:
+                if (spb != null) spb.onPerfect(e.text, e.text2, System.currentTimeMillis());
+                break;
+            case SPB_ACCURACY:
+                if (spb != null) spb.onAccuracy(e.text);
+                break;
             case GTB_CORRECT_GUESS:
                 if (current != null && "gtb".equals(current.mode)
                     && gtbRoundStartedAt > 0 && !gtbCorrectInRound) {
@@ -162,6 +192,7 @@ public final class GameStateMachine {
         current.mode = mode == null ? "solo" : mode;
         current.mcVersion = mcVersion;
         current.theme = theme;
+        spb = "speed_builders".equals(current.mode) ? new SpbTracker(playerName, spbRecords) : null;
         startedAt = System.currentTimeMillis();
         voteRound = -1;
         roundBuilder = null;
@@ -212,12 +243,15 @@ public final class GameStateMachine {
     public void onOwnBlockPlaced(String blockId, String creativeTab, int y) {
         if (!building()) return;
         current.countBlock(blockId);
+        if (spb != null) spb.onPlace(blockId);
         if (creativeTab != null) current.blockTabs.put(blockId, creativeTab);
         if (plot != null) plot.onPlace(y);
     }
 
     public void onOwnBlockBroken() {
-        if (building()) current.blocksBroken++;
+        if (!building()) return;
+        current.blocksBroken++;
+        if (spb != null) spb.onBreak();
     }
 
     /** Called every tick the player is flying. */
@@ -243,6 +277,10 @@ public final class GameStateMachine {
         done.durationSec = (int) ((done.playedAt - startedAt) / 1000L);
         done.players = players;
         done.grade = Grades.of(done.placement, done.players, done.crowdScore());
+        if (spb != null) {
+            done.spbRounds.addAll(spb.finish());
+            done.spbRoundsJson = SpbTracker.toJson(done.spbRounds);
+        }
         if (plot != null) {
             done.floor = plot.floor();
             done.floorChanges = plot.floorChanges();
@@ -255,6 +293,7 @@ public final class GameStateMachine {
 
     private void reset() {
         current = null;
+        spb = null;
         gtbLastBuilder = null;
         gtbRoundStartedAt = 0;
         gtbCorrectInRound = false;

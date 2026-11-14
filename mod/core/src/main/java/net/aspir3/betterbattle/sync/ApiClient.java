@@ -19,6 +19,28 @@ public interface ApiClient {
 
     SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception;
 
+    /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
+    Bootstrap bootstrap() throws Exception;
+
+    /** A weekly challenge and how far along this player is. */
+    final class Weekly {
+        public String id, text;
+        public int xp, progress, target;
+        public boolean done;
+    }
+
+    /** The fastest time anyone with Better Battle has on a Speed Builders build. */
+    final class WorldRecord {
+        public String build, name, holder;
+        public long timeMs;
+    }
+
+    final class Bootstrap {
+        public List<Weekly> weeklyChallenges = new ArrayList<Weekly>();
+        public String weekEndsAt;
+        public List<WorldRecord> worldRecords = new ArrayList<WorldRecord>();
+    }
+
     final class Rejection {
         public String nonce, reason;
     }
@@ -33,6 +55,10 @@ public interface ApiClient {
         public Long xp;
         public Integer globalRank;
         public Integer rankedPlayers;
+        public List<Weekly> weekly;
+        public String weekEndsAt;
+        /** Weekly challenges this sync completed. */
+        public List<String> weeklyCompleted = new ArrayList<String>();
     }
 
     /** Thrown when the server says the token is missing or expired. */

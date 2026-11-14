@@ -28,7 +28,12 @@ public final class SyncService {
         void synced(ApiClient.SyncResult result);
         void achievementConfirmed(String id);
         void achievementRevoked(String id);
+        /** New weekly challenges or world records arrived. */
+        void bootstrapped(ApiClient.Bootstrap b);
     }
+
+    private static final long BOOTSTRAP_EVERY_MS = 30L * 60L * 1000L;
+    private long lastBootstrapAt;
 
     private final LocalDatabase db;
     private final ApiClient api;
@@ -156,6 +161,17 @@ public final class SyncService {
                 listener.synced(res);
             } while (batch.size() == BATCH && ++rounds < 20);
             db.setMeta("last_sync_at", Long.toString(System.currentTimeMillis()));
+            if (System.currentTimeMillis() - lastBootstrapAt > BOOTSTRAP_EVERY_MS) {
+                // Not worth failing the sync over: records and weekly challenges can wait.
+                try {
+                    ApiClient.Bootstrap b = api.bootstrap();
+                    lastBootstrapAt = System.currentTimeMillis();
+                    if (b != null) listener.bootstrapped(b);
+                } catch (ApiClient.Unauthorized e) {
+                    throw e;
+                } catch (Exception ignored) {
+                }
+            }
             offline = false;
             backoffMs = 0;
             nextAttemptAt = 0;

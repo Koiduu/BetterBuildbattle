@@ -1,5 +1,5 @@
 {
- "version": 2,
+ "version": 3,
  "achievements": [
   {
    "id": "bb_wins_t1",
@@ -1048,9 +1048,57 @@
   {
    "id": "spb_no_break",
    "name": "Measure Twice",
-   "description": "Win a Speed Builders game without breaking a single block",
+   "description": "Win a Speed Builders game without breaking a single block: no left clicks, no misplacing",
    "category": "speed_builders",
    "points": 20,
+   "secret": false
+  },
+  {
+   "id": "spb_grounded",
+   "name": "Feet on the Ground",
+   "description": "Win a Speed Builders game without flying",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "spb_good_enough",
+   "name": "Good Enough",
+   "description": "Win a Speed Builders game without getting a Perfect Build in every round",
+   "category": "speed_builders",
+   "points": 10,
+   "secret": false
+  },
+  {
+   "id": "spb_assembly_line",
+   "name": "Assembly Line",
+   "description": "Win a Speed Builders game placing one block type at a time: once you switch blocks, you can't go back that round",
+   "category": "speed_builders",
+   "points": 35,
+   "secret": false
+  },
+  {
+   "id": "spb_photo_finish",
+   "name": "Photo Finish",
+   "description": "Get a Perfect Build with less than a second left on the clock",
+   "category": "speed_builders",
+   "points": 20,
+   "secret": false
+  },
+  {
+   "id": "spb_from_the_bottom",
+   "name": "From the Bottom",
+   "description": "Win a Speed Builders game after having the slowest Perfect Build in round 1",
+   "category": "speed_builders",
+   "points": 30,
+   "secret": false
+  },
+  {
+   "id": "spb_speedrunner",
+   "name": "Speedrunner",
+   "description": "Win a Speed Builders game with a Perfect Build in under 15 seconds every round",
+   "category": "speed_builders",
+   "points": 50,
    "secret": false
   },
   {

@@ -7,7 +7,7 @@
 # one_offs: unlocked by a rule class in mod/core/.../achieve (rule: <ClassName>).
 # secret: hidden in the menu until unlocked.
 
-catalog_version: 2
+catalog_version: 3
 
 tracks:
   # ---------------- Build Battle, from Hypixel totals (retroactive) ----------------
@@ -315,10 +315,46 @@ one_offs:
     rule: SetWr
   - id: spb_no_break
     name: "Measure Twice"
-    description: "Win a Speed Builders game without breaking a single block"
+    description: "Win a Speed Builders game without breaking a single block: no left clicks, no misplacing"
     category: speed_builders
     points: 20
     rule: SpbNoBreak
+  - id: spb_grounded
+    name: "Feet on the Ground"
+    description: "Win a Speed Builders game without flying"
+    category: speed_builders
+    points: 20
+    rule: SpbGrounded
+  - id: spb_good_enough
+    name: "Good Enough"
+    description: "Win a Speed Builders game without getting a Perfect Build in every round"
+    category: speed_builders
+    points: 10
+    rule: GoodEnough
+  - id: spb_assembly_line
+    name: "Assembly Line"
+    description: "Win a Speed Builders game placing one block type at a time: once you switch blocks, you can't go back that round"
+    category: speed_builders
+    points: 35
+    rule: AssemblyLine
+  - id: spb_photo_finish
+    name: "Photo Finish"
+    description: "Get a Perfect Build with less than a second left on the clock"
+    category: speed_builders
+    points: 20
+    rule: PhotoFinish
+  - id: spb_from_the_bottom
+    name: "From the Bottom"
+    description: "Win a Speed Builders game after having the slowest Perfect Build in round 1"
+    category: speed_builders
+    points: 30
+    rule: FromTheBottom
+  - id: spb_speedrunner
+    name: "Speedrunner"
+    description: "Win a Speed Builders game with a Perfect Build in under 15 seconds every round"
+    category: speed_builders
+    points: 50
+    rule: Speedrunner
 
   # ---------------- Guess The Build challenges ----------------
   - id: gtb_first_guess

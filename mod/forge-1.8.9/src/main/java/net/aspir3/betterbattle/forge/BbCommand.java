@@ -4,6 +4,9 @@ import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.forge.ui.AchievementsScreen;
 import net.aspir3.betterbattle.forge.ui.CreditsScreen;
 import net.aspir3.betterbattle.forge.ui.MenuScreen;
+import net.aspir3.betterbattle.forge.ui.SettingsScreen;
+import net.aspir3.betterbattle.forge.ui.TextPageScreen;
+import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.palette.Palettes;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -13,7 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-/** /bb, /bb achievements, /bb sync, /bb palette [size], /bb debug, /bb credits */
+/** /bb, /bb achievements, /bb recap, /bb weekly, /bb news, /bb settings, /bb sync, /bb palette [size], /bb debug, /bb credits */
 final class BbCommand extends CommandBase {
     private static final String P = BetterBattleForge.PREFIX;
     private final BetterBattleForge mod;
@@ -29,7 +32,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [achievements|sync|link|palette|debug|credits]";
+        return "/bb [achievements|recap|weekly|news|settings|sync|link|palette|debug|credits]";
     }
 
     @Override
@@ -44,7 +47,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "sync", "link", "palette", "debug", "credits");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "recap", "weekly", "news", "settings", "sync", "link", "palette", "debug", "credits");
         return null;
     }
 
@@ -53,9 +56,17 @@ final class BbCommand extends CommandBase {
         BetterBattle core = mod.core();
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
         if (sub.isEmpty()) {
-            mod.openLater(new MenuScreen(null));
+            mod.openLater(mod.menu());
         } else if (sub.equals("achievements")) {
             mod.openLater(new AchievementsScreen(null));
+        } else if (sub.equals("recap")) {
+            mod.openLater(new TextPageScreen(null, core.lastGamePage()));
+        } else if (sub.equals("weekly")) {
+            mod.openLater(new TextPageScreen(null, core.weeklyPage()));
+        } else if (sub.equals("news")) {
+            mod.openLater(new TextPageScreen(null, Pages.whatsNew()));
+        } else if (sub.equals("settings")) {
+            mod.openLater(new SettingsScreen(null));
         } else if (sub.equals("credits")) {
             mod.openLater(new CreditsScreen(null));
         } else if (sub.equals("sync")) {

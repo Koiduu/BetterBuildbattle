@@ -1,6 +1,6 @@
 {
   "_note": "Taken from a real Solo game on Hypixel (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Other modes may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
-  "version": 2,
+  "version": 3,
   "title": "BUILD BATTLE",
   "modes": {
     "solo": "solo",
@@ -22,6 +22,11 @@
     "SCORE": "^Your Score: ([\\d.]+)$",
     "PLACEMENT": "^\\((\\d+)(?:st|nd|rd|th) Place\\)$",
     "GAME_END": "^Reward Summary$",
-    "GTB_CORRECT_GUESS": "^\\s*\\+\\d+ .*\\(Correct Guess\\)|^\\s*You (?:correctly )?guessed the (?:theme|build)"
+    "GTB_CORRECT_GUESS": "^\\s*\\+\\d+ .*\\(Correct Guess\\)|^\\s*You (?:correctly )?guessed the (?:theme|build)",
+    "_spb_note": "Speed Builders lines below are GUESSES until checked against a real game with /bb debug. SPB_PERFECT: group 1 = player name (empty for 'You'), group 2 = seconds.",
+    "SPB_BUILD": "^(?:Build|Recreate|Copy)(?: this build)?: (.+)$",
+    "SPB_START": "^(?:GO!|Start building!|Build!)$",
+    "SPB_PERFECT": "^(?:You|([A-Za-z0-9_]{1,16})) (?:got a perfect build|got a PERFECT BUILD|completed the build perfectly) in ([\\d.]+) ?s(?:econds)?!?$",
+    "SPB_ACCURACY": "^(?:Your build was|Accuracy:) (\\d{1,3})%"
   }
 }

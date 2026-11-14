@@ -4,6 +4,8 @@ import net.aspir3.betterbattle.achieve.AchievementRules;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.game.GameStateMachine;
 import net.aspir3.betterbattle.game.MatchRecord;
+import net.aspir3.betterbattle.game.SpbTracker;
+import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.parse.ChatParser;
 import net.aspir3.betterbattle.progress.Level;
 import net.aspir3.betterbattle.store.LocalDatabase;
@@ -51,6 +53,8 @@ public final class BetterBattle {
     private String lastSidebarTitle = "";
     private List<String> lastSidebar = new ArrayList<String>();
     private PrintWriter debugLog;
+    private boolean whatsNewDue, whatsNewAnnounced;
+    private long joinedAt;
 
     private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
         this.platform = platform;
@@ -77,6 +81,7 @@ public final class BetterBattle {
     public boolean active() { return game != null; }
     public GameStateMachine game() { return game; }
     public LocalDatabase db() { return db; }
+    public String modVersion() { return modVersion; }
 
     /** Called when the player joins a server. Only Hypixel unless anyServer is on. */
     public void onJoin(String address, UUID uuid, String name) {
@@ -89,6 +94,16 @@ public final class BetterBattle {
             HttpApiClient api = new HttpApiClient(config.apiBase, modVersion, mcVersion);
             sync = new SyncService(db, api, name, new SyncListener());
             game = new GameStateMachine(parser, new GameListener(), mcVersion, name);
+            game.setSpbRecords(new LocalRecords());
+            joinedAt = System.currentTimeMillis();
+            if (!modVersion.equals(config.lastSeenVersion)) {
+                if (config.whatsNew) {
+                    whatsNewDue = true;
+                } else {
+                    config.lastSeenVersion = modVersion;
+                    config.save();
+                }
+            }
             sync.start();
             if (config.debug) openDebugLog();
             debug("joined " + address + " as " + name);
@@ -131,6 +146,7 @@ public final class BetterBattle {
     /** Sidebar title and lines, top to bottom. Call it often; nothing happens unless something changed. */
     public void onSidebar(String title, List<String> lines) {
         if (game == null) return;
+        announceUpdate();
         List<String> cleaned = new ArrayList<String>();
         for (String line : lines) cleaned.add(ChatParser.clean(line));
         String cleanTitle = ChatParser.clean(title);
@@ -156,6 +172,59 @@ public final class BetterBattle {
         List<String> fresh = new ArrayList<String>();
         for (UUID u : uuids) if (seenThisSession.add(u)) fresh.add(u.toString());
         if (!fresh.isEmpty()) sync.addSeenPlayers(fresh);
+    }
+
+    // ---- pages and the timer
+
+    /**
+     * After an update, the first B press opens What's New instead of the menu (once).
+     * Never pops up by itself, so it can't land on top of a game or the chat box.
+     */
+    public boolean takeWhatsNew() {
+        if (!whatsNewDue) return false;
+        whatsNewDue = false;
+        config.lastSeenVersion = modVersion;
+        config.save();
+        return true;
+    }
+
+    /** A chat nudge a few seconds after joining, once per update. Called from onSidebar. */
+    private void announceUpdate() {
+        if (!whatsNewDue || whatsNewAnnounced || System.currentTimeMillis() - joinedAt < 5000) return;
+        whatsNewAnnounced = true;
+        platform.chat("§d§lBetter Battle §8» §7Updated to §f" + modVersion + "§7. Press §fB §7to see what's new.");
+    }
+
+    public Pages.Page lastGamePage() {
+        List<String> lines = null;
+        try {
+            if (db != null) lines = new com.google.gson.Gson().fromJson(db.getMeta("last_recap", null),
+                new com.google.gson.reflect.TypeToken<List<String>>() {}.getType());
+        } catch (Exception ignored) {
+        }
+        if (lines == null || lines.isEmpty()) {
+            lines = new ArrayList<String>();
+            lines.add(db == null ? "§7Join Hypixel to see your games." : "§7Play a game and its recap shows up here.");
+        }
+        return new Pages.Page("Last Game", lines);
+    }
+
+    public Pages.Page weeklyPage() {
+        String json = null, ends = null;
+        try {
+            if (db != null) {
+                json = db.getMeta("weekly", null);
+                ends = db.getMeta("week_ends_at", null);
+            }
+        } catch (Exception ignored) {
+        }
+        return Pages.weekly(Pages.weeklyFromJson(json), ends);
+    }
+
+    /** Lines for the Speed Builders timer, or an empty list when it shouldn't show. */
+    public List<String> hudLines() {
+        if (!config.spbTimer || game == null || game.spb() == null) return new ArrayList<String>();
+        return game.spb().hudLines(System.currentTimeMillis(), config.spbShowRecord);
     }
 
     public void syncNow() {
@@ -234,28 +303,69 @@ public final class BetterBattle {
                 }
                 // Count XP locally so the level bar moves even while offline; the server's number replaces it on sync.
                 long xp = Long.parseLong(db.getMeta("xp", "0"));
-                db.setMeta("xp", String.valueOf(xp + Level.xpForMatch(m.mode, m.won(), m.grade, 0, 0, false)));
-                unlock("welcome", m);
+                long gained = Level.xpForMatch(m.mode, m.won(), m.grade, 0, 0, false);
+                db.setMeta("xp", String.valueOf(xp + gained));
+                List<String> unlocked = new ArrayList<String>();
+                if (unlock("welcome", m)) unlocked.add(Catalog.get("welcome").name);
                 for (AchievementRules.Rule rule : AchievementRules.all()) {
-                    if (rule.onMatch(m, db)) unlock(rule.id(), m);
+                    try {
+                        if (!rule.onMatch(m, db)) continue;
+                    } catch (Exception e) {
+                        debug("rule " + rule.id() + " failed: " + e);
+                        continue;
+                    }
+                    m.tags.add(rule.id());
+                    if (unlock(rule.id(), m)) {
+                        Catalog.Entry entry = Catalog.get(rule.id());
+                        if (entry != null) unlocked.add(entry.name);
+                    }
+                }
+                db.setTags(m.nonce, m.tags);
+                db.setMeta("last_recap", new com.google.gson.Gson().toJson(Pages.recap(m, gained, unlocked).lines));
+                if (config.recap && m.placement != null) {
+                    for (String line : Pages.recapChat(m, gained, unlocked)) platform.chat(line);
+                } else if (config.chatMessages && m.placement != null) {
+                    String grade = m.grade == null ? "" : "  §7Grade §f" + m.grade;
+                    platform.chat("§d§lBetter Battle §8» §7Game saved." + grade + "  §8(" + m.blocksPlaced + " blocks)");
                 }
             } catch (Exception e) {
                 System.err.println("[Better Battle] couldn't save game: " + e);
             }
-            if (config.chatMessages && m.placement != null) {
-                String grade = m.grade == null ? "" : "  §7Grade §f" + m.grade;
-                platform.chat("§d§lBetter Battle §8» §7Game saved." + grade + "  §8(" + m.blocksPlaced + " blocks)");
-            }
             if (sync != null) sync.nudge();
         }
 
-        private void unlock(String id, MatchRecord m) throws Exception {
-            if (!db.unlockLocal(id, m.playedAt)) return;
+        /** True if this unlocked it just now. */
+        private boolean unlock(String id, MatchRecord m) throws Exception {
+            if (!db.unlockLocal(id, m.playedAt)) return false;
             final Catalog.Entry entry = Catalog.get(id);
-            if (entry == null) return;
+            if (entry == null) return false;
             if (config.toasts) platform.showAchievement(entry);
             if (config.chatMessages) {
                 platform.chat("§a>> §6Achievement Unlocked: §e" + entry.name + " §a<<  §7(+" + entry.points + " AP)");
+            }
+            return true;
+        }
+    }
+
+    /** Bests from the local database, world records from the server's last list. */
+    private final class LocalRecords implements SpbTracker.Records {
+        public Long personalBest(String buildId) {
+            try { return db == null ? null : db.personalBestMs(buildId); } catch (Exception e) { return null; }
+        }
+
+        public Long worldRecord(String buildId) {
+            try { return db == null ? null : db.worldRecordMs(buildId); } catch (Exception e) { return null; }
+        }
+
+        public String worldRecordHolder(String buildId) {
+            try { return db == null ? null : db.worldRecordHolder(buildId); } catch (Exception e) { return null; }
+        }
+
+        public void savePersonalBest(String buildId, String buildName, long timeMs, double precision) {
+            try {
+                if (db != null) db.savePersonalBest(buildId, buildName, timeMs, precision);
+            } catch (Exception e) {
+                debug("couldn't save best: " + e);
             }
         }
     }
@@ -291,7 +401,47 @@ public final class BetterBattle {
             if (entry != null) fromServer.add(entry);
         }
 
+        public void bootstrapped(ApiClient.Bootstrap b) {
+            LocalDatabase d = db;
+            if (d == null) return;
+            try {
+                if (b.weeklyChallenges != null && !b.weeklyChallenges.isEmpty()) saveWeekly(d, b.weeklyChallenges, b.weekEndsAt);
+                if (b.worldRecords != null) {
+                    List<String[]> rows = new ArrayList<String[]>();
+                    for (ApiClient.WorldRecord r : b.worldRecords) {
+                        if (r.build != null) rows.add(new String[] {r.build, r.name, r.holder, Long.toString(r.timeMs)});
+                    }
+                    d.saveWorldRecords(rows);
+                }
+            } catch (Exception e) {
+                debug("bootstrap: " + e);
+            }
+        }
+
+        private void saveWeekly(LocalDatabase d, List<ApiClient.Weekly> weekly, String endsAt) throws Exception {
+            d.setMeta("weekly", new com.google.gson.Gson().toJson(weekly));
+            if (endsAt != null) d.setMeta("week_ends_at", endsAt);
+        }
+
         public void synced(ApiClient.SyncResult result) {
+            if (result.weekly != null && db != null) {
+                try {
+                    saveWeekly(db, result.weekly, result.weekEndsAt);
+                } catch (Exception ignored) {
+                }
+            }
+            if (config.weeklyAlerts && result.weekly != null && result.weeklyCompleted != null) {
+                for (final String id : result.weeklyCompleted) {
+                    for (final ApiClient.Weekly w : result.weekly) {
+                        if (!w.id.equals(id)) continue;
+                        platform.runOnMainThread(new Runnable() {
+                            public void run() {
+                                platform.chat("§d§lBetter Battle §8» §6Weekly challenge done: §f" + w.text + " §a(+" + w.xp + " XP)");
+                            }
+                        });
+                    }
+                }
+            }
             final List<Catalog.Entry> unlocked = new ArrayList<Catalog.Entry>(fromServer);
             fromServer.clear();
             if (unlocked.isEmpty()) return;
