@@ -35,7 +35,12 @@ mod/
   `/bb debug` log each to confirm their wording.
 - The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
-- Speed Builders ghosts, world records and tips are designed (see the plan) but not built.
+- Speed Builders: the timer, personal bests, world records and round tracking are built, but the chat wording in
+  `patterns.json` (`SPB_BUILD`, `SPB_START`, `SPB_PERFECT`, `SPB_ACCURACY`) is a guess. Play one game with `/bb debug`
+  on and fix those four lines. Ghost replays (showing where the record holder placed blocks) are left out on purpose:
+  that kind of build help could break Hypixel's allowed-mods rules.
+- Block breaks come from left clicks on a block. Check on 1.8.9 that Forge fires `LEFT_CLICK_BLOCK` on the client in
+  Speed Builders; if not, Measure Twice and precision will be too generous there.
 - Every one-off challenge has a detector; `spb_no_break` is off until the adapters report block breaks, `spb_sweep`, `spb_wr_close` and `spb_wr` await a tracker filling `spbRoundsJson` and `wr_ghosts`, and the Guess the Build chat pattern is a guess to check with `/bb debug`.
 - The site loads Pixelify Sans from Google Fonts. Bundle the font file in `web/` if you'd rather not depend on that.
 
@@ -109,8 +114,21 @@ Latest jars: https://github.com/Koiduu/BetterBuildbattle/releases/tag/dev (rebui
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
 
-In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb sync`, `/bb palette [3-12]`,
-`/bb debug`, `/bb credits`.
+In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb recap` (last game), `/bb weekly`,
+`/bb news` (What's New), `/bb settings`, `/bb sync`, `/bb palette [3-12]`, `/bb debug`, `/bb credits`.
+
+The first B press after an update opens What's New. Patch notes live in `web/updates.json`; run
+`python3 tools/gen-catalog.py` to copy them into the mod.
+
+Every feature can be switched off in game under **Settings** (B menu), or in `config.json`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `spbTimer` | `true` | Speed Builders stopwatch with your best time |
+| `spbShowRecord` | `true` | Also show the Better Battle world record on it |
+| `recap` | `true` | Short summary in chat after each game |
+| `whatsNew` | `true` | Open What's New once after the mod updates |
+| `weeklyAlerts` | `true` | Chat message when you finish a weekly challenge |
 
 Settings live in `config/betterbattle/config.json`:
 
