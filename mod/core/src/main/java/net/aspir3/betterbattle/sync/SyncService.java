@@ -45,7 +45,7 @@ public final class SyncService {
 
     private long backoffMs;
     private long nextAttemptAt;
-    private boolean offline;
+    private volatile boolean offline;
 
     public SyncService(LocalDatabase db, ApiClient api, String playerName, Listener listener) {
         this.db = db;
@@ -106,7 +106,7 @@ public final class SyncService {
         seenPlayers.addAll(uuids);
     }
 
-    public synchronized boolean isOffline() { return offline; }
+    public boolean isOffline() { return offline; }
 
     private void ensureToken() throws Exception {
         String token = db.getMeta("token", null);
