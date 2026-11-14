@@ -684,7 +684,7 @@ th.right, td.right { text-align: right; }
 }
 
 .footer-links a { white-space: nowrap; }
-.mojang { flex-basis: 100%; text-align: center; }
+.mojang { flex: 0 0 100%; width: 100%; white-space: normal; text-align: center; }
 
 .legal-page {
   width: 100%;
@@ -729,10 +729,11 @@ th.right, td.right { text-align: right; }
 .cookie-notice[hidden] { display: none; }
 .cookie-notice > span { min-width: 0; }
 .cookie-notice .btn { flex: none; }
+body.cookie-notice-visible { padding-bottom: calc(var(--cookie-notice-height, 0px) + 24px); }
 .auth-terms { text-align: center; color: var(--muted); font-size: 12px; }
 .status-notice { padding: 8px 12px; background: var(--card-2); border: 2px solid var(--edge); color: var(--soft); }
-.export-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-.export-card > .btn { flex: none; }
+.export-card { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 16px; text-align: left; }
+.export-card > .btn { flex: none; align-self: flex-start; }
 .danger-card { border-color: var(--red); }
 .danger-card h2 { color: var(--red); }
 .danger-card .form { width: 100%; max-width: 420px; }

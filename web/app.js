@@ -122,17 +122,17 @@ window.addEventListener("popstate", render);
 function supportContact() {
   const links = [];
   if (SUPPORT.email) links.push(`<a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a>`);
-  if (SUPPORT.discord) links.push(`<a href="${esc(SUPPORT.discord)}" target="_blank" rel="noopener noreferrer">Discord server</a>`);
+  if (SUPPORT.discord) links.push(`<a href="${esc(SUPPORT.discord)}" target="_blank" rel="noopener noreferrer">Join the Better Battle Discord</a>`);
   return links.length ? links.join(" · ") : "Contact details coming soon";
 }
 
-function legalPage(name, content) {
+function legalPage(name, content, showLastUpdated = true) {
   document.title = `${name} · Better Battle`;
   app.innerHTML = `
     <article class="card legal-page">
       <header class="legal-head">
         <h1>${name}</h1>
-        <p class="sub">Last updated 13 November 2026</p>
+        ${showLastUpdated ? `<p class="sub">Last updated 13 November 2026</p>` : ""}
       </header>
       ${content}
     </article>`;
@@ -205,7 +205,7 @@ function supportPage() {
       <p>Use the Delete account section at the bottom of the Account page. If your account has no password, type <code>DELETE</code> to confirm.</p></section>
     <section><h2>Contact</h2>
       <p>For account data copies, corrections or removal requests, contact us on Discord.</p>
-      <p class="contact-block">${supportContact()}</p></section>`);
+      <p class="contact-block">${supportContact()}</p></section>`, false);
 }
 
 // Search box in the top bar
@@ -1261,9 +1261,27 @@ function setupCookieNotice() {
   let dismissed = false;
   try { dismissed = localStorage.getItem("bb_cookie_notice") === "1"; } catch {}
   notice.hidden = dismissed;
+  let observer;
+  const updateReservedSpace = () => {
+    document.body.style.setProperty("--cookie-notice-height", `${notice.getBoundingClientRect().height}px`);
+  };
+  if (!dismissed) {
+    document.body.classList.add("cookie-notice-visible");
+    updateReservedSpace();
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateReservedSpace);
+      observer.observe(notice);
+    } else {
+      window.addEventListener("resize", updateReservedSpace);
+    }
+  }
   button.addEventListener("click", () => {
     try { localStorage.setItem("bb_cookie_notice", "1"); } catch {}
     notice.hidden = true;
+    document.body.classList.remove("cookie-notice-visible");
+    document.body.style.removeProperty("--cookie-notice-height");
+    observer?.disconnect();
+    window.removeEventListener("resize", updateReservedSpace);
   });
 }
 
