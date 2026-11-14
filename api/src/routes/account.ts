@@ -3,7 +3,8 @@ import { hash, verify } from "@node-rs/argon2";
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { fail, Redirect, Router, type Req } from "../http";
-import { DISCORD_API, HYPIXEL_API, MOJANG_API, dashUuid } from "../lib/upstream";
+import { DISCORD_API } from "../lib/upstream";
+import { verifyHypixelDiscord } from "../lib/verifyHypixelDiscord";
 import { endWebSession, rateLimit, readWebSession, requireModToken, requireWebSession, startWebSession } from "../plugins/auth";
 import { queuePlayers } from "../jobs/crawler";
 
@@ -253,39 +254,7 @@ export function accountRoutes(app: Router) {
     const discordName = account.rows[0]?.discord_name as string | undefined;
     if (!discordName) return fail(400, "discord_required");
 
-    let uuid = "";
-    let mcName = name;
-    try {
-      const profile = await fetch(`${MOJANG_API}/users/profiles/minecraft/${encodeURIComponent(name)}`);
-      if (!profile.ok) return fail(404, "not_found");
-      const data = await profile.json() as { id?: string; name?: string };
-      if (!data.id) return fail(404, "not_found");
-      uuid = dashUuid(data.id);
-      mcName = data.name ?? name;
-    } catch (error) {
-      if ((error as { status?: number })?.status === 404) throw error;
-      return fail(404, "not_found");
-    }
-
-    let player: { socialMedia?: { links?: { DISCORD?: unknown } } };
-    try {
-      const response = await fetch(`${HYPIXEL_API}/v2/player?uuid=${encodeURIComponent(uuid)}`, {
-        headers: { "API-Key": process.env.HYPIXEL_API_KEY ?? "" },
-      });
-      if (!response.ok) return fail(503, "hypixel_unavailable");
-      const data = await response.json() as { player?: { socialMedia?: { links?: { DISCORD?: unknown } } } | null };
-      if (!data.player) return fail(503, "hypixel_unavailable");
-      player = data.player;
-    } catch (error) {
-      if ((error as { status?: number })?.status === 503) throw error;
-      return fail(503, "hypixel_unavailable");
-    }
-    const raw = player?.socialMedia?.links?.DISCORD;
-    const hypixelDiscord = typeof raw === "string" ? raw : null;
-    const normalize = (value: string) => value.trim().toLowerCase().replace(/^@/, "").replace(/#0$/, "");
-    if (!hypixelDiscord || normalize(hypixelDiscord) !== normalize(discordName)) {
-      fail(400, "discord_mismatch", { hypixelDiscord });
-    }
+    const { uuid, mcName } = await verifyHypixelDiscord(name, discordName);
     const userId = await claimMinecraft(req.user.id, uuid, mcName);
     return getMe(userId);
   });
