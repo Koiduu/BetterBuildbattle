@@ -11,6 +11,7 @@ import { queuePlayers, globalRank, refreshOne } from "../jobs/crawler";
 import { weeklyProgress } from "../services/weekly";
 import { worldRecords } from "../services/speedBuilders";
 import { updateProgressBoards } from "../services/boards";
+import { recordBroken, type RecordBroken } from "../lib/events";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -133,6 +134,7 @@ export function modRoutes(app: Router) {
       const accepted: string[] = [];
       let xpGained = 0;
       const rejected: { nonce: string; reason: string }[] = [];
+      const broken: RecordBroken[] = [];
       // Oldest first, so streaks and first-win-of-day are counted in play order.
       const ordered = [...body.matches].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
       try {
@@ -172,7 +174,7 @@ export function modRoutes(app: Router) {
                VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
               [userId, m.nonce, m.playedAt, v.round, v.vote, v.builder, v.at]);
           }
-          await saveSpeedBuildersBests(client, userId, m);
+          broken.push(...await saveSpeedBuildersBests(client, userId, m));
           if (m.mode !== "gtb" || m.placement !== null) {
             streak = m.placement === 1 ? streak + 1 : 0;
             best = Math.max(best, streak);
@@ -203,6 +205,7 @@ export function modRoutes(app: Router) {
           "UPDATE user_progress SET level = $2, ap = ap + $3, win_streak = $4, best_win_streak = $5 WHERE user_id = $1",
           [userId, level, apGained, streak, best]);
         await client.query("COMMIT");
+        for (const b of broken) recordBroken(b);
 
         // Lobby rosters → discovery queue for the global ranking.
         await queuePlayers(body.seenPlayers, "lobby");
@@ -232,10 +235,23 @@ function maxScore(m: z.infer<typeof MatchIn>): number | null {
 }
 
 /** Learns new builds and keeps each player's fastest perfect time per build. */
-async function saveSpeedBuildersBests(client: any, userId: number, m: z.infer<typeof MatchIn>) {
-  if (m.mode !== "speed_builders") return;
+async function saveSpeedBuildersBests(client: any, userId: number, m: z.infer<typeof MatchIn>): Promise<RecordBroken[]> {
+  const broken: RecordBroken[] = [];
+  if (m.mode !== "speed_builders") return broken;
   for (const r of m.spbRounds ?? []) {
     if (!r.perfect || r.timeMs === null) continue;
+    // The record this time has to beat, to announce it if it does. Flagged accounts never count.
+    const wr = await client.query(
+      `SELECT p.time_ms, u.mc_name, u.id FROM spb_personal_bests p JOIN users u ON u.id = p.user_id
+       WHERE p.build_id = $1 AND NOT u.flagged ORDER BY p.time_ms, p.set_at LIMIT 1`, [r.build]);
+    const me = await client.query("SELECT mc_name, flagged FROM users WHERE id = $1", [userId]);
+    if (wr.rowCount && r.timeMs < wr.rows[0].time_ms && !me.rows[0]?.flagged) {
+      broken.push({
+        build: r.build, buildName: r.name ?? r.build.replace(/_/g, " "), holder: me.rows[0]?.mc_name ?? "Someone",
+        timeMs: r.timeMs, previousMs: wr.rows[0].time_ms,
+        previousHolder: wr.rows[0].id === userId ? null : wr.rows[0].mc_name,
+      });
+    }
     await client.query(
       "INSERT INTO spb_builds (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
       [r.build, r.name ?? r.build.replace(/_/g, " ")]);
@@ -246,6 +262,7 @@ async function saveSpeedBuildersBests(client: any, userId: number, m: z.infer<ty
        WHERE EXCLUDED.time_ms < spb_personal_bests.time_ms`,
       [userId, r.build, r.timeMs, r.precision, m.playedAt]);
   }
+  return broken;
 }
 
 async function sanityCheck(client: any, m: z.infer<typeof MatchIn>): Promise<string | null> {

@@ -30,3 +30,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_vanity_idx ON users (vanity);
 -- Paid plans can pin up to 20 builds.
 ALTER TABLE pinned_matches DROP CONSTRAINT IF EXISTS pinned_matches_position_check;
 ALTER TABLE pinned_matches ADD CONSTRAINT pinned_matches_position_check CHECK (position BETWEEN 1 AND 20);
+
+-- Discord: a channel for automatic posts (new Speed Builders world records).
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS feed_channel_id TEXT;
