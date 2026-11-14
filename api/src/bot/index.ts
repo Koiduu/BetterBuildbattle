@@ -28,27 +28,47 @@ async function reportInteractionError(interaction: Interaction, error: unknown) 
 export async function startDiscordBot(token: string, guildId: string) {
   if (!guildId) throw new Error("DISCORD_GUILD_ID is required when DISCORD_BOT_TOKEN is set");
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-  client.once(Events.ClientReady, (ready) => {
-    void (async () => {
+  const permissions = PermissionsBitField.resolve([
+    PermissionFlagsBits.ViewChannel,
+    PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.EmbedLinks,
+    PermissionFlagsBits.AttachFiles,
+    PermissionFlagsBits.ReadMessageHistory,
+    PermissionFlagsBits.ManageMessages,
+    PermissionFlagsBits.KickMembers,
+    PermissionFlagsBits.BanMembers,
+    PermissionFlagsBits.ModerateMembers,
+    PermissionFlagsBits.ManageGuild,
+    PermissionFlagsBits.CreatePrivateThreads,
+    PermissionFlagsBits.SendMessagesInThreads,
+    PermissionFlagsBits.ManageThreads,
+  ]).toString();
+  const guildHint = "Is the bot in the server with DISCORD_GUILD_ID? Open the invite link above; commands register as soon as it joins.";
+  const registerCommands = async (client: Client) => {
+    try {
+      const user = client.user;
+      if (!user) return;
+      const guild = client.guilds.cache.get(guildId);
       const rest = new REST({ version: "10" }).setToken(token);
-      await rest.put(Routes.applicationGuildCommands(ready.user.id, guildId), { body: commands.map((command) => command.toJSON()) });
-      const permissions = PermissionsBitField.resolve([
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.EmbedLinks,
-        PermissionFlagsBits.AttachFiles,
-        PermissionFlagsBits.ReadMessageHistory,
-        PermissionFlagsBits.ManageMessages,
-        PermissionFlagsBits.KickMembers,
-        PermissionFlagsBits.BanMembers,
-        PermissionFlagsBits.ModerateMembers,
-        PermissionFlagsBits.ManageGuild,
-        PermissionFlagsBits.CreatePrivateThreads,
-        PermissionFlagsBits.SendMessagesInThreads,
-        PermissionFlagsBits.ManageThreads,
-      ]).toString();
-      console.log(`Discord bot ready as ${ready.user.tag}. Invite it: https://discord.com/oauth2/authorize?client_id=${ready.user.id}&scope=bot+applications.commands&permissions=${permissions}`);
-    })().catch((error) => console.error(`Discord bot command setup failed: ${oneLine(error)}`));
+      await rest.put(Routes.applicationGuildCommands(user.id, guildId), { body: commands.map((command) => command.toJSON()) });
+      console.log(`Registered ${commands.length} slash commands in ${guild?.name ?? guildId}`);
+    } catch (error) {
+      const code = Number((error as { code?: unknown }).code);
+      const hint = code === 50001 || code === 10004 ? ` ${guildHint}` : "";
+      console.error(`Discord bot command setup failed: ${oneLine(error)}${hint}`);
+    }
+  };
+  client.once(Events.ClientReady, (ready) => {
+    const invite = `https://discord.com/oauth2/authorize?client_id=${ready.user.id}&scope=bot+applications.commands&permissions=${permissions}`;
+    console.log(`Discord bot ready as ${ready.user.tag}. Invite it: ${invite}`);
+    if (client.guilds.cache.has(guildId)) {
+      void registerCommands(client);
+    } else {
+      console.warn(`Discord bot is not in the server yet. Check DISCORD_GUILD_ID. ${guildHint}`);
+    }
+  });
+  client.on(Events.GuildCreate, (guild) => {
+    if (guild.id === guildId) void registerCommands(client);
   });
   client.on(Events.InteractionCreate, (interaction) => {
     void (async () => {
