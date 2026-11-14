@@ -9,6 +9,11 @@ import { titleProgress } from "../lib/titles";
 import { levelForXp, totalXpForLevel } from "../services/level";
 import { rateLimit } from "../plugins/auth";
 import { MOJANG_API, dashUuid } from "../lib/upstream";
+import { weeklyProgress, currentWeek } from "../services/weekly";
+import { worldRecords, buildLeaderboard, playerBests } from "../services/speedBuilders";
+
+// Rarity changes slowly; one count for everybody every 10 minutes is plenty.
+let rarityCache: { at: number; body: unknown } | null = null;
 
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
 
@@ -243,5 +248,47 @@ export function publicRoutes(app: Router) {
       `SELECT id, text, xp FROM weekly_challenges
        WHERE week_start = date_trunc('week', now())::date ORDER BY id`);
     return r.rows;
+  });
+
+  /** This week's challenges with the player's progress, and when the week ends. */
+  app.get("/players/:name/weekly", async (req) => {
+    const id = await userIdFor(req.params.name);
+    if (!id) {
+      const { endsAt } = await currentWeek(pool);
+      const r = await pool.query(
+        "SELECT id, text, xp FROM weekly_challenges WHERE week_start = date_trunc('week', now())::date ORDER BY id");
+      return { weekEndsAt: endsAt, challenges: r.rows.map((c: any) => ({ ...c, progress: 0, target: null, done: false })) };
+    }
+    const w = await weeklyProgress(pool, id);
+    return { weekEndsAt: w.weekEndsAt, challenges: w.weekly };
+  });
+
+  /** How many Better Battle players have each achievement. */
+  app.get("/achievements/rarity", async () => {
+    if (rarityCache && Date.now() - rarityCache.at < 10 * 60_000) return rarityCache.body;
+    const [players, counts] = await Promise.all([
+      pool.query("SELECT count(*)::int AS n FROM user_progress"),
+      pool.query("SELECT achievement_id AS id, count(*)::int AS n FROM user_achievements GROUP BY achievement_id"),
+    ]);
+    const body = {
+      players: players.rows[0].n,
+      counts: Object.fromEntries(counts.rows.map((r: any) => [r.id, r.n])),
+    };
+    rarityCache = { at: Date.now(), body };
+    return body;
+  });
+
+  // ---- Speed Builders
+  app.get("/spb/builds", async () => worldRecords());
+
+  app.get("/spb/builds/:id", async (req) => {
+    if (!/^[a-z0-9_]{1,48}$/.test(req.params.id)) fail(400, "bad_build");
+    const board = await buildLeaderboard(req.params.id);
+    return board ?? fail(404, "not_found");
+  });
+
+  app.get("/players/:name/spb-bests", async (req) => {
+    const id = await userIdFor(req.params.name);
+    return id ? playerBests(id) : [];
   });
 }
