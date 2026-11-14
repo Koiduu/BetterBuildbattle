@@ -1,3 +1,8 @@
+import {
+  updatesPage, speedBuildersPage, speedBuildPage, comparePage,
+  loadWeekly, renderAchievements, spbBestsSection, loadSpbBests, openShareCard,
+} from "./features.js";
+
 const API = "/bb/v1";
 const app = document.getElementById("app");
 
@@ -76,6 +81,10 @@ const routes = [
   { path: /^\/login\/?$/, page: () => authPage("login") },
   { path: /^\/signup\/?$/, page: () => authPage("signup") },
   { path: /^\/account\/?$/, page: accountPage },
+  { path: /^\/updates\/?$/, page: updatesPage, nav: "updates" },
+  { path: /^\/speed-builders\/?$/, page: speedBuildersPage, nav: "spb" },
+  { path: /^\/speed-builders\/([a-z0-9_]{1,48})\/?$/, page: speedBuildPage, nav: "spb" },
+  { path: /^\/compare(?:\/([A-Za-z0-9_]{1,16}))?(?:\/([A-Za-z0-9_]{1,16}))?\/?$/, page: comparePage },
 ];
 
 function go(url) {
@@ -342,6 +351,8 @@ async function profilePage(name) {
         </div>
       </div>
       ${profileAction(p)}
+      <a class="btn" href="/compare/${esc(p.name)}" data-link>Compare</a>
+      <button class="btn" id="share-card">Share card</button>
       <button class="btn primary" id="share">Share profile</button>
     </section>
 
@@ -374,6 +385,8 @@ async function profilePage(name) {
     </div>
 
     ${bb ? modSections(bb) : getModCard()}`;
+
+  document.getElementById("share-card").addEventListener("click", () => openShareCard(p));
 
   document.getElementById("share").addEventListener("click", async (e) => {
     const url = `${location.origin}/p/${p.name}`;
@@ -417,7 +430,7 @@ function getModCard() {
     <section class="card get-mod">
       <div>
         <h2>See the rest of this profile with the mod</h2>
-        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders tips. Fabric 26.3 and Forge 1.8.9.</p>
+        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3 and Forge 1.8.9.</p>
       </div>
       <a class="btn primary" href="https://github.com/Koiduu/BetterBuildbattle" target="_blank" rel="noopener">Get the mod</a>
     </section>`;
@@ -461,7 +474,7 @@ function modSections(bb) {
       <section class="card">
         <div class="card-head">
           <h2>This week</h2>
-          <span class="muted" style="font-size:12px">resets Monday</span>
+          <span class="muted" style="font-size:12px" id="weekly-reset">resets Monday</span>
         </div>
         <div class="list" id="weekly"></div>
       </section>
@@ -471,6 +484,8 @@ function modSections(bb) {
       <h2>Pinned builds</h2>
       <div class="pin-grid" id="pins"></div>
     </section>
+
+    ${spbBestsSection()}
 
     <section class="card">
       <div class="card-head">
@@ -486,30 +501,16 @@ function modSections(bb) {
 
 async function loadModData(name) {
   const n = encodeURIComponent(name);
-  const [heat, achievements, pins, weekly] = await Promise.all([
+  const [heat, achievements, pins] = await Promise.all([
     get(`/players/${n}/heatmap`).catch(() => []),
     get(`/players/${n}/achievements`).catch(() => ({ unlocked: [], total: 0 })),
     get(`/players/${n}/pins`).catch(() => []),
-    get("/challenges/weekly").catch(() => []),
   ]);
 
   drawHeatmap(heat);
-
-  document.getElementById("ach-count").textContent = `${num(achievements.unlocked.length)} of ${num(achievements.total)}`;
-  document.getElementById("achievements").innerHTML = achievements.unlocked.length
-    ? achievements.unlocked.slice(0, 6).map((a) => `
-        <div class="row-item">
-          <div class="badge">+${num(a.points)}</div>
-          <div class="row-text"><b>${esc(a.name)}</b><span>${esc(a.description)}</span></div>
-        </div>`).join("")
-    : `<p class="muted">None yet.</p>`;
-
-  document.getElementById("weekly").innerHTML = weekly.length
-    ? weekly.map((w) => `
-        <div class="row-item">
-          <div class="row-text"><b>${esc(w.text)}</b><span>${num(w.xp)} XP</span></div>
-        </div>`).join("")
-    : `<p class="muted">No challenges yet this week.</p>`;
+  renderAchievements(achievements);
+  loadWeekly(name);
+  loadSpbBests(name);
 
   document.getElementById("pins").innerHTML = pins.length
     ? pins.map((m) => `
@@ -1096,3 +1097,6 @@ async function setUpPins() {
 
 const meReady = loadMe();
 render();
+
+// For features.js
+export { app, esc, num, percent, ordinal, timeAgo, avatar, title, get, go, MODES, NAME_RE };
