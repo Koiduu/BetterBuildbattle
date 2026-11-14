@@ -113,6 +113,18 @@ restore_failure() {
   fi
 }
 
+refresh_leaderboard() {
+  local attempt
+  for attempt in {1..10}; do
+    if docker compose exec -T redis redis-cli DEL lb:bb_score >/dev/null &&
+      docker compose exec -T app npm run snapshot; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Warning: the Redis leaderboard could not be refreshed; rankings will fix themselves at 03:00 UTC." >&2
+}
+
 restore_database() {
   local source="${1:-}" safety_backup restore_dump restore_stamp
   if [[ -z "$source" ]]; then
@@ -179,6 +191,7 @@ restore_database() {
     echo "The database was restored, but the app could not be restarted. Run bb start." >&2
     return 1
   fi
+  refresh_leaderboard
   if (( pg_restore_status != 0 )); then
     echo "Restore ran timescaledb_post_restore(), but pg_restore reported errors; review the output above." >&2
     return 1

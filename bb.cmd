@@ -193,6 +193,7 @@ if errorlevel 1 (
   echo  The database was restored, but the app could not be restarted. Run bb start.
   goto :fail
 )
+call :refresh_leaderboard
 if defined PG_RESTORE_WARN (
   echo  Restore ran post_restore, but pg_restore reported errors; review the output above.
   goto :fail
@@ -205,6 +206,18 @@ echo  Restore failed. Cleaning up and attempting to restart the app.
 docker compose exec -T db rm -f "!RESTORE_DUMP!" >nul 2>&1
 docker compose start app
 goto :fail
+
+:refresh_leaderboard
+for /l %%i in (1,1,10) do (
+  docker compose exec -T redis redis-cli DEL lb:bb_score >nul
+  if not errorlevel 1 (
+    docker compose exec -T app npm run snapshot
+    if not errorlevel 1 exit /b 0
+  )
+  timeout /t 2 /nobreak >nul
+)
+echo  Warning: the Redis leaderboard could not be refreshed; rankings will fix themselves at 03:00 UTC.
+exit /b 0
 
 :reset
 echo.
