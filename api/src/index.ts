@@ -1,7 +1,9 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool } from "./db/pool";
+import { migrate } from "./db/migrate";
 import { Router, createServer } from "./http";
+import { accountRoutes } from "./routes/account";
 import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
 import { adminRoutes } from "./routes/admin";
@@ -13,6 +15,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const PREFIX = "/bb/v1";
 
 const api = new Router(PREFIX);
+accountRoutes(api);
 modRoutes(api);
 publicRoutes(api);
 adminRoutes(api);
@@ -57,6 +60,7 @@ async function waitForDatabase() {
 }
 
 await waitForDatabase();
+await migrate();
 await seedCatalog();
 await pickWeekly();
 

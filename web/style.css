@@ -613,6 +613,214 @@ tr:last-child td { border-bottom: 0; }
 
 .get-mod p { max-width: 640px; margin-top: 4px; color: var(--soft); }
 
+/* Accounts */
+
+.top-right { display: flex; align-items: center; gap: 8px; }
+
+.account-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.account-link:hover { background: var(--card-2); color: var(--text); }
+.account-link.signed-in { padding: 0 16px 0 8px; }
+
+.account-link img, .account-link .initial {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--card-2);
+  image-rendering: pixelated;
+}
+
+.account-link .initial {
+  display: grid;
+  place-items: center;
+  background: var(--pink);
+  color: #18141d;
+  font: 700 13px var(--display);
+}
+
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.primary:disabled:hover { background: var(--pink); }
+.btn.small { height: 34px; padding: 0 14px; font-size: 13px; }
+.btn.wide { justify-content: center; width: 100%; }
+.btn.discord { justify-content: center; gap: 10px; border: 0; background: #5865f2; color: #fff; font-weight: 600; }
+.btn.discord:hover { background: #6d78f4; color: #fff; }
+.btn svg { flex: none; margin-right: 8px; }
+.btn.discord svg { margin-right: 0; }
+
+.auth {
+  width: 100%;
+  max-width: 420px;
+  margin: 24px auto;
+  padding: 28px;
+  gap: 20px;
+}
+
+.auth-head h1 { font: 600 28px/1.15 var(--display); letter-spacing: -0.02em; }
+.auth-head .sub { margin-top: 6px; font-size: 13px; }
+.auth-switch { text-align: center; font-size: 13px; color: var(--muted); }
+
+.or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.form { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: 13px; color: var(--soft); }
+.field small { font-size: 12px; color: var(--muted); }
+
+.form input, .form textarea, .inline-form input {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.form textarea {
+  height: auto;
+  min-height: 120px;
+  padding: 12px 16px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.form input:focus, .form textarea:focus, .inline-form input:focus { border-color: rgba(255, 102, 170, 0.5); outline: 0; }
+
+.form-row { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.form-error { padding: 10px 14px; border-radius: 12px; background: rgba(255, 85, 85, 0.1); color: #ff9a9a; font-size: 13px; }
+.form-error a { color: inherit; }
+.saved, .counter { font-size: 12px; }
+
+code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--card-3);
+  color: var(--text);
+  font: 500 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.account-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.account-top h1 { font: 600 34px/1.1 var(--display); letter-spacing: -0.03em; }
+
+.linked { display: flex; align-items: center; gap: 14px; }
+.linked .sub { margin: 0; }
+.linked-name { font: 600 22px/1.2 var(--display) !important; }
+.avatar.small { width: 56px; height: 56px; border-radius: 16px; }
+
+.link-ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.link-way {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--card-2);
+}
+
+.link-way p { font-size: 13px; }
+.link-way > div:last-child, .link-way #code-box { width: 100%; }
+.step-title { display: flex; align-items: center; gap: 10px; }
+
+.step {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--pink-bg);
+  color: var(--pink-text);
+  font: 700 12px var(--display);
+}
+
+.inline-form { display: flex; gap: 8px; width: 100%; }
+.inline-form input { flex: 1; min-width: 0; height: 44px; border-radius: 999px; }
+
+.code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 18px;
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+.code code { padding: 0; background: none; font-size: 18px; letter-spacing: 0.04em; color: var(--pink-text); }
+.waiting { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12px; }
+.dot.pulse { width: 8px; height: 8px; background: var(--pink); box-shadow: none; animation: pulse 1.4s ease-in-out infinite; }
+
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+.row-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--card-3);
+  color: var(--soft);
+  font: 700 15px var(--display);
+}
+
+.row-icon.discord-icon { color: #8b95ff; }
+.row-actions { display: flex; gap: 4px; }
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--card-3);
+  color: var(--soft);
+  cursor: pointer;
+}
+
+.icon-btn:hover { color: var(--text); background: #3d3448; }
+.icon-btn:disabled { opacity: 0.3; cursor: default; }
+.card h2.minor { font-size: 14px; color: var(--soft); }
+.btn.more { align-self: center; }
+
+.bio {
+  max-width: 520px;
+  color: var(--soft);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 footer.footer {
   display: flex;
   flex-wrap: wrap;
@@ -625,12 +833,13 @@ footer.footer {
 }
 
 @media (max-width: 960px) {
-  .profile-top, .cols { grid-template-columns: 1fr; }
+  .profile-top, .cols, .link-ways { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
   .shell { margin: 0; padding: 16px; border: 0; border-radius: 0; }
-  .search { width: 100%; }
+  .top-right { width: 100%; }
+  .search { flex: 1; width: auto; }
   .who { align-items: flex-start; }
   .who h1 { font-size: 34px; }
   .avatar { width: 72px; height: 72px; border-radius: 18px; }
