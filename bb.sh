@@ -97,6 +97,7 @@ backup_database() {
   fi
   rotate_backups
   size="$(wc -c < "$destination" | tr -d '[:space:]')"
+  BACKUP_PATH="$destination"
   printf 'Backup saved to %s (%s bytes).\n' "$destination" "$size"
 }
 
@@ -109,7 +110,7 @@ restore_failure() {
 }
 
 restore_database() {
-  local source="${1:-}"
+  local source="${1:-}" safety_backup
   if [[ -z "$source" ]]; then
     echo "Usage: bb restore <file>" >&2
     return 1
@@ -132,6 +133,16 @@ restore_database() {
     restore_failure "Could not copy the backup into the database container."
     return 1
   fi
+  if ! docker compose exec -T db pg_restore -l /tmp/restore.dump >/dev/null; then
+    restore_failure "The backup file is invalid; the current database was not changed."
+    return 1
+  fi
+  if ! backup_database; then
+    restore_failure "Could not create a safety backup; the current database was not changed."
+    return 1
+  fi
+  safety_backup="$BACKUP_PATH"
+  printf 'Safety backup of the current data: %s\n' "$safety_backup"
   if ! docker compose exec -T db psql -U bb -d postgres -v ON_ERROR_STOP=1 \
     -c "DROP DATABASE betterbattle WITH (FORCE)" -c "CREATE DATABASE betterbattle"; then
     restore_failure "Could not recreate the betterbattle database."

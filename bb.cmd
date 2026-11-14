@@ -96,26 +96,31 @@ if errorlevel 1 (
 exit /b 0
 
 :backup
-call :check_db || goto :fail
+call :backup_core || goto :fail
+goto :done
+
+:backup_core
+call :check_db || exit /b 1
 if not exist "backups" mkdir "backups"
-if errorlevel 1 goto :fail
+if errorlevel 1 exit /b 1
+set "STAMP="
 for /f %%t in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "STAMP=%%t"
 if not defined STAMP (
   echo  Could not create a backup timestamp.
-  goto :fail
+  exit /b 1
 )
 set "DUMP=backups\betterbattle-!STAMP!.dump"
 docker compose exec -T db pg_dump -U bb -d betterbattle -Fc -f /tmp/bb.dump
 if errorlevel 1 (
   docker compose exec -T db rm -f /tmp/bb.dump >nul 2>&1
   echo  Database backup failed.
-  goto :fail
+  exit /b 1
 )
 docker compose cp db:/tmp/bb.dump "!DUMP!"
 if errorlevel 1 (
   docker compose exec -T db rm -f /tmp/bb.dump >nul 2>&1
   echo  Could not copy the database dump to !DUMP!.
-  goto :fail
+  exit /b 1
 )
 docker compose exec -T db rm -f /tmp/bb.dump
 if errorlevel 1 echo  Warning: backup was copied, but /tmp/bb.dump could not be removed.
@@ -129,7 +134,7 @@ for %%F in ("!DUMP!") do (
   set "SIZE=%%~zF"
 )
 echo  Backup saved to !FULL_DUMP! (!SIZE! bytes).
-goto :done
+exit /b 0
 
 :restore
 set "BACKUP_FILE=%~2"
@@ -150,6 +155,17 @@ docker compose stop app
 if errorlevel 1 goto :fail
 docker compose cp "%BACKUP_FILE%" db:/tmp/restore.dump
 if errorlevel 1 goto :restore_error
+docker compose exec -T db pg_restore -l /tmp/restore.dump >nul
+if errorlevel 1 (
+  echo  The backup file is invalid; the current database was not changed.
+  goto :restore_error
+)
+call :backup_core
+if errorlevel 1 (
+  echo  Could not create a safety backup; the current database was not changed.
+  goto :restore_error
+)
+echo  Safety backup of the current data: !FULL_DUMP!
 docker compose exec -T db psql -U bb -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE betterbattle WITH (FORCE)" -c "CREATE DATABASE betterbattle"
 if errorlevel 1 goto :restore_error
 docker compose exec -T db psql -U bb -d betterbattle -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS timescaledb" -c "SELECT timescaledb_pre_restore()"
