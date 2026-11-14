@@ -15,8 +15,8 @@ const targetLabel = (id: string, tag?: string) => `<@${id}>${tag ? ` (${tag})` :
 async function record(interaction: ChatInputCommandInteraction, action: string, target: string, reason: string, reply: string) {
   const guild = interaction.guild!;
   const settings = await settingsFor(guild.id);
-  await sendLog(guild, settings.log_channel_id, logEmbed(action, target, interaction.user.tag, reason));
-  return interaction.editReply(reply);
+  const logged = await sendLog(guild, settings.log_channel_id, logEmbed(action, target, interaction.user.tag, reason)).catch(() => false);
+  return interaction.editReply(logged ? reply : `${reply}\nNot logged: set a log channel with /setup.`);
 }
 
 async function checkedMember(interaction: ChatInputCommandInteraction) {
