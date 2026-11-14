@@ -24,7 +24,7 @@ const supporterOf = (row: any) => {
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";
-import { queuePlayers, refreshOne, globalRank, HypixelKeyError } from "../jobs/crawler";
+import { queuePlayers, refreshOne, globalRank, HypixelKeyError, takeOnDemandLookup } from "../jobs/crawler";
 import { titleProgress } from "../lib/titles";
 import { levelForXp, totalXpForLevel } from "../services/level";
 import { rateLimit } from "../plugins/auth";
@@ -46,6 +46,7 @@ async function resolvePlayer(name: string) {
   if (known.rowCount && known.rows[0].last_checked) return known.rows[0];
 
   let uuid: string | undefined = known.rows[0]?.mc_uuid;
+  if (!takeOnDemandLookup()) fail(503, "hypixel_unavailable", { reason: "busy" });
   if (!uuid) {
     const res = await fetch(`${MOJANG_API}/users/profiles/minecraft/${encodeURIComponent(name)}`);
     if (res.status !== 200) return null;

@@ -152,6 +152,9 @@ export async function planPrices() {
       prices[plan] = null;
     }
   }
-  if (Object.values(prices).some(Boolean)) priceCache = { at: Date.now(), prices };
+  // A full answer is kept for an hour; a failed one for a minute, so a Stripe outage (or someone
+  // reloading the pricing page in a loop) can't turn into a stream of requests to Stripe.
+  const complete = Object.values(prices).every(Boolean);
+  priceCache = { at: complete ? Date.now() : Date.now() - 3_600_000 + 60_000, prices };
   return prices;
 }

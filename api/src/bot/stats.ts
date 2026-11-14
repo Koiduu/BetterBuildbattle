@@ -31,6 +31,8 @@ const num = (n: number | null | undefined) => (n == null ? "–" : Number(n).toL
 const secs = (ms: number) => (ms / 1000).toFixed(2) + "s";
 const head = (uuid: string) => `https://mc-heads.net/avatar/${uuid}/128`;
 const site = (path = "") => siteOrigin() + path;
+/** Text that came from a player (a theme, a build name) with Discord's markdown and mentions defused. */
+const md = (s: unknown) => String(s ?? "").replace(/[\\*_~`|>\[\]()@#:]/g, (c) => "\\" + c).slice(0, 80);
 const medal = (rank: number) => (["🥇", "🥈", "🥉"][rank - 1] ?? `\`#${num(rank)}\``);
 
 function embed(title: string, color = GOLD) {
@@ -241,7 +243,7 @@ async function records(interaction: ChatInputCommandInteraction) {
     const board = id ? await buildLeaderboard(id, 10) : null;
     if (!board) return interaction.reply({ content: "No times on that build yet.", ephemeral: true });
     const record = board.rows[0];
-    const e = embed(`Speed Builders · ${board.name}`).setURL(site(`/speed-builders/${board.build}`))
+    const e = embed(`Speed Builders · ${md(board.name)}`).setURL(site(`/speed-builders/${board.build}`))
       .setDescription(board.rows.map((r) =>
         `${medal(r.rank)} **${r.name}** · ${secs(r.timeMs)}${r.rank === 1 ? "" : ` · +${secs(r.timeMs - record.timeMs)}`}`).join("\n") || "No times yet.");
     return interaction.reply({ embeds: [e], components: [linkRow(["Full leaderboard", site(`/speed-builders/${board.build}`)])] });
@@ -249,7 +251,7 @@ async function records(interaction: ChatInputCommandInteraction) {
   const all = await worldRecords();
   const e = embed("Speed Builders world records").setURL(site("/speed-builders"))
     .setDescription(all.length
-      ? all.slice(0, 15).map((r) => `**${r.name}** · ${secs(r.timeMs)} · ${r.holder ?? "–"}`).join("\n")
+      ? all.slice(0, 15).map((r) => `**${md(r.name)}** · ${secs(r.timeMs)} · ${r.holder ?? "–"}`).join("\n")
         + (all.length > 15 ? `\n…and ${all.length - 15} more builds.` : "")
       : "No records yet. They appear as Better Battle players finish Speed Builders rounds.");
   return interaction.reply({ embeds: [e], components: [linkRow(["All records", site("/speed-builders")])] });
@@ -295,7 +297,7 @@ async function recent(interaction: ChatInputCommandInteraction) {
       const place = m.placement === 1 ? "🏆 **Win**" : m.placement ? `#${m.placement}${m.players ? ` of ${m.players}` : ""}` : "–";
       const bits = [place, m.grade ? `Grade ${m.grade}` : null, m.crowd_score != null ? `${Math.round(m.crowd_score * 100)}% crowd` : null,
         m.xp_earned ? `+${m.xp_earned} XP` : null].filter(Boolean).join(" · ");
-      return `**${m.theme ?? MODES[m.mode] ?? m.mode}** · ${MODES[m.mode] ?? m.mode} · <t:${Math.floor(new Date(m.played_at).getTime() / 1000)}:R>\n${bits}`;
+      return `**${m.theme ? md(m.theme) : MODES[m.mode] ?? m.mode}** · ${MODES[m.mode] ?? m.mode} · <t:${Math.floor(new Date(m.played_at).getTime() / 1000)}:R>\n${bits}`;
     }).join("\n\n"));
   return interaction.reply({ embeds: [e], components: [linkRow(["Full profile", site(`/p/${player.name}`)])] });
 }
@@ -333,6 +335,10 @@ async function help(interaction: ChatInputCommandInteraction) {
 
 async function feed(interaction: ChatInputCommandInteraction) {
   if (!interaction.guildId) return interaction.reply({ content: "Use this command in a server.", ephemeral: true });
+  // Discord hides this command from members without Manage Server, but a server can override that, so check again.
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return interaction.reply({ content: "You need the Manage Server permission to set the feed channel.", ephemeral: true });
+  }
   const channel = interaction.options.getChannel("channel");
   await pool.query(
     `INSERT INTO bot_settings (guild_id, feed_channel_id) VALUES ($1, $2)
@@ -374,7 +380,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
     if (focused.name === "build") {
       const r = await pool.query(
         "SELECT id, name FROM spb_builds WHERE name ILIKE $1 ORDER BY name LIMIT 20", [`%${q.replace(/[%_\\]/g, "\\$&")}%`]);
-      return await interaction.respond(r.rows.map((b: any) => ({ name: String(b.name).slice(0, 100), value: b.id })));
+      return await interaction.respond(r.rows.map((b: any) => ({ name: String(b.name).slice(0, 100) || b.id, value: b.id })));
     }
     if (!/^[A-Za-z0-9_]{1,16}$/.test(q)) return await interaction.respond([]);
     const r = await pool.query(
@@ -422,7 +428,7 @@ async function postRecord(client: Client, r: RecordBroken) {
     const channel = await client.channels.fetch(s.feed_channel_id).catch(() => null);
     if (!channel?.isTextBased() || !("send" in channel)) continue;
     const e = embed("🏁 New Speed Builders world record").setURL(site(`/speed-builders/${r.build}`))
-      .setDescription(`**${r.holder}** built **${r.buildName}** in **${secs(r.timeMs)}**, beating ${r.previousHolder ? `**${r.previousHolder}**'s` : "their own"} ${secs(r.previousMs)} by ${secs(r.previousMs - r.timeMs)}.`);
+      .setDescription(`**${r.holder}** built **${md(r.buildName)}** in **${secs(r.timeMs)}**, beating ${r.previousHolder ? `**${r.previousHolder}**'s` : "their own"} ${secs(r.previousMs)} by ${secs(r.previousMs - r.timeMs)}.`);
     await channel.send({ embeds: [e], components: [linkRow(["Leaderboard", site(`/speed-builders/${r.build}`)])] }).catch(() => {});
   }
 }

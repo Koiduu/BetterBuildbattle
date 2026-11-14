@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fail, Raw, Router } from "../http";
+import { rateLimit } from "../plugins/auth";
 import { jarFor, latestRelease, type Asset, type Loader } from "../services/modRelease";
 
 const NOTES_TTL_MS = 60_000;
@@ -62,13 +63,14 @@ export function downloadRoutes(api: Router, downloads: Router) {
     };
   });
 
-  downloads.get("/download/:loader", async ({ params }) => {
+  // A jar is ~14 MB read from disk and hashed, so downloads are limited per address.
+  downloads.get("/download/:loader", [rateLimit(12, 60_000, "/download")], async ({ params }) => {
     const loader = params.loader;
     if (loader !== "fabric" && loader !== "forge") return fail(404, "not_found");
     const jar = await jarFor(loader);
     if (!jar) return fail(503, "download_unavailable");
     return new Raw(jar.body, "application/java-archive", {
-      "content-disposition": `attachment; filename="${jar.file}"`,
+      "content-disposition": `attachment; filename="${jar.file.replace(/[^A-Za-z0-9._+-]/g, "_")}"`,
       "x-checksum-sha256": jar.sha256,
       "cache-control": "no-cache",
     });

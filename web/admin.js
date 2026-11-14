@@ -1,0 +1,123 @@
+// The admin page's script. Kept in its own file so the site's Content-Security-Policy can forbid inline scripts.
+const COLORS = {
+  super_poop: "#8a3b2a", poop: "#b5651d", meh: "#7d7489", ok: "#7ab8ff",
+  good: "#7ee08a", epic: "#c78bff", legendary: "#ffcc4d",
+};
+const LABELS = {
+  super_poop: "Super Poop", poop: "Poop", meh: "Meh", ok: "OK",
+  good: "Good", epic: "Epic", legendary: "Legendary",
+};
+const app = document.getElementById("app");
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const num = (n) => Number(n).toLocaleString("en-US");
+
+let token = "";
+try { token = localStorage.getItem("bb_admin") || ""; } catch {}
+
+async function get(path) {
+  const res = await fetch("/bb/v1" + path, { headers: { "x-admin-token": token } });
+  if (res.status === 404) throw new Error("locked");
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+function keys() {
+  return `<div class="keys">${Object.keys(LABELS).map((k) => `<span><i style="background:${COLORS[k]}"></i>${LABELS[k]}</span>`).join("")}</div>`;
+}
+
+function bar(counts, total) {
+  return `<div class="votebar">${Object.keys(LABELS).map((k) =>
+    counts[k] ? `<span style="width:${(100 * counts[k] / total).toFixed(2)}%;background:${COLORS[k]}" title="${LABELS[k]}: ${counts[k]}"></span>` : "").join("")}</div>`;
+}
+
+function login(message) {
+  app.innerHTML = `
+    <section class="card">
+      <h2>Admin key</h2>
+      <p class="muted">${esc(message || "This page is only for the site owner. Enter the ADMIN_TOKEN from your .env file.")}</p>
+      <form class="login" id="login">
+        <label class="sr-only" for="key">Admin key</label>
+        <input id="key" type="password" autocomplete="off" placeholder="Admin key">
+        <button class="btn primary">Unlock</button>
+      </form>
+    </section>`;
+  document.getElementById("login").addEventListener("submit", (e) => {
+    e.preventDefault();
+    token = document.getElementById("key").value.trim();
+    try { localStorage.setItem("bb_admin", token); } catch {}
+    overview();
+  });
+}
+
+async function overview() {
+  if (!token) return login();
+  let players;
+  try {
+    players = await get("/admin/votes");
+  } catch (e) {
+    return login(e.message === "locked" ? "That key didn't work." : "Couldn't load votes.");
+  }
+  const totals = Object.fromEntries(Object.keys(LABELS).map((k) => [k, 0]));
+  let all = 0;
+  for (const p of players) for (const k in totals) { totals[k] += p.counts[k]; all += p.counts[k]; }
+
+  app.innerHTML = `
+    <section class="card">
+      <div class="card-head">
+        <div><h2>How everyone votes</h2><p class="sub">${num(all)} vote${all === 1 ? "" : "s"} from ${num(players.length)} player${players.length === 1 ? "" : "s"} using the mod. Click a player for details.</p></div>
+        <button class="btn" id="lock">Lock</button>
+      </div>
+      ${all ? bar(totals, all) : ""}
+      ${keys()}
+      ${players.length ? `
+      <div class="table-scroll"><table>
+        <thead><tr><th>Player</th><th class="right">Votes</th><th>Spread</th><th class="right">Average (1-7)</th><th class="right">Legendary</th><th class="right">Super Poop</th></tr></thead>
+        <tbody>${players.map((p) => `
+          <tr data-name="${esc(p.name)}">
+            <td><b>${esc(p.name)}</b></td>
+            <td class="right">${num(p.total)}</td>
+            <td>${bar(p.counts, p.total)}</td>
+            <td class="right num">${p.average == null ? "–" : p.average.toFixed(2)}</td>
+            <td class="right">${(100 * p.counts.legendary / p.total).toFixed(0)}%</td>
+            <td class="right">${(100 * p.counts.super_poop / p.total).toFixed(0)}%</td>
+          </tr>`).join("")}</tbody>
+      </table></div>` : `<p class="empty">No votes yet. They show up after mod users play and sync.</p>`}
+    </section>`;
+  document.getElementById("lock").addEventListener("click", () => {
+    token = "";
+    try { localStorage.removeItem("bb_admin"); } catch {}
+    login();
+  });
+  for (const row of app.querySelectorAll("tr[data-name]")) row.addEventListener("click", () => player(row.dataset.name));
+}
+
+async function player(name) {
+  const d = await get("/admin/votes/" + encodeURIComponent(name));
+  app.innerHTML = `
+    <section class="card">
+      <div class="card-head">
+        <div><h2>${esc(d.name)}</h2><p class="sub">Who they vote for, and their latest votes</p></div>
+        <button class="btn" id="back">Back</button>
+      </div>
+      <div class="cols">
+        <div>
+          <h2 style="margin-bottom:10px">Most-voted builders</h2>
+          ${d.byBuilder.length ? `<div class="table-scroll"><table>
+            <thead><tr><th>Builder</th><th class="right">Times</th><th class="right">Average (1-7)</th></tr></thead>
+            <tbody>${d.byBuilder.map((b) => `<tr><td>${esc(b.builder)}</td><td class="right">${num(b.n)}</td><td class="right num">${b.average.toFixed(2)}</td></tr>`).join("")}</tbody>
+          </table></div>` : `<p class="muted">Builder names weren't shown on any of their votes yet.</p>`}
+        </div>
+        <div>
+          <h2 style="margin-bottom:10px">Latest votes</h2>
+          <div class="list">${d.recent.map((v) => `
+            <div class="row-item">
+              <div class="badge" style="background:${COLORS[v.vote]};width:12px;height:36px"></div>
+              <div class="row-text"><b>${LABELS[v.vote]}</b><span>${esc(v.builder ?? "unknown builder")} · ${esc(v.theme ?? "no theme")} · ${new Date(v.voted_at).toLocaleString()}</span></div>
+            </div>`).join("")}</div>
+        </div>
+      </div>
+    </section>`;
+  document.getElementById("back").addEventListener("click", overview);
+}
+
+overview();

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { Router, fail, type Req } from "../http";
 import { pool } from "../db/pool";
+import { noteFailure, tooManyFailures } from "../plugins/auth";
 import { announcePlanChange } from "../services/stripe";
 
 const VOTES = ["super_poop", "poop", "meh", "ok", "good", "epic", "legendary"] as const;
@@ -12,7 +13,13 @@ function requireAdmin(req: Req) {
   const given = String(req.headers["x-admin-token"] ?? "");
   const ok = expected.length >= 16 && given.length === expected.length &&
     crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-  if (!ok) fail(404, "not_found");
+  // Ten wrong tokens from one address and that address is ignored for 15 minutes.
+  const subject = "admin:" + req.ip;
+  if (tooManyFailures(subject, 10)) fail(404, "not_found");
+  if (!ok) {
+    noteFailure(subject, 15 * 60_000);
+    fail(404, "not_found");
+  }
 }
 
 export function adminRoutes(app: Router) {

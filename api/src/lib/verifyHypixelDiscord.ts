@@ -1,4 +1,5 @@
 import { fail } from "../http";
+import { takeOnDemandLookup } from "../jobs/crawler";
 import { dashUuid, HYPIXEL_API, MOJANG_API } from "./upstream";
 
 type HypixelPlayer = {
@@ -10,6 +11,8 @@ export function normalizeDiscordName(value: string) {
 }
 
 export async function verifyHypixelDiscord(name: string, discordName: string) {
+  if (!/^[A-Za-z0-9_]{1,16}$/.test(name)) return fail(404, "not_found");
+  if (!takeOnDemandLookup()) return fail(503, "hypixel_unavailable");
   let uuid = "";
   let mcName = name;
   try {

@@ -75,11 +75,33 @@ export async function requireModToken(req: Req) {
   req.user = { id: r.rows[0].id, mcUuid: r.rows[0].mc_uuid };
 }
 
-/** Hook factory: fixed-window rate limit per token (or IP) per route. */
+/**
+ * A secret that exists only inside this process. The Discord bot runs in the same process and calls the
+ * API over localhost; it proves that with this value, so its requests can be limited per Discord user
+ * instead of all sharing one address.
+ */
+export const INTERNAL_KEY = crypto.randomBytes(24).toString("hex");
+
+/** Who a rate limit counts against: the logged-in user if a login hook already ran, else the address. */
+function limitKey(req: Req) {
+  if (req.user?.id) return `user:${req.user.id}`;
+  const internal = req.headers["x-bb-internal"];
+  const caller = req.headers["x-bb-caller"];
+  if (typeof internal === "string" && typeof caller === "string" && internal.length === INTERNAL_KEY.length
+      && crypto.timingSafeEqual(Buffer.from(internal), Buffer.from(INTERNAL_KEY))) {
+    return `internal:${caller.slice(0, 64)}`;
+  }
+  return `ip:${req.ip}`;
+}
+
+/**
+ * Hook factory: fixed-window rate limit per user (or address) per route.
+ * The key never comes from anything the caller can simply make up, such as an Authorization header.
+ */
 const hits = new Map<string, { n: number; reset: number }>();
 export function rateLimit(max: number, windowMs: number, route?: string) {
   return (req: Req) => {
-    const key = (req.headers.authorization ?? req.ip) + " " + req.method + " " + (route ?? req.path.replace(/\/[^/]+$/, "/:x"));
+    const key = limitKey(req) + " " + req.method + " " + (route ?? req.path.replace(/\/[^/]+$/, "/:x"));
     const now = Date.now();
     const h = hits.get(key);
     if (!h || h.reset < now) { hits.set(key, { n: 1, reset: now + windowMs }); return; }
@@ -87,3 +109,22 @@ export function rateLimit(max: number, windowMs: number, route?: string) {
   };
 }
 setInterval(() => { const now = Date.now(); for (const [k, v] of hits) if (v.reset < now) hits.delete(k); }, 60_000).unref();
+
+/**
+ * Counts things that went wrong for a subject (failed logins for an email, say) and says when to stop
+ * listening for a while. Separate from rateLimit so that guessing one account's password from many
+ * addresses is slowed just the same.
+ */
+const failures = new Map<string, { n: number; reset: number }>();
+export function tooManyFailures(subject: string, max: number) {
+  const f = failures.get(subject);
+  return !!f && f.reset > Date.now() && f.n >= max;
+}
+export function noteFailure(subject: string, windowMs: number) {
+  const now = Date.now();
+  const f = failures.get(subject);
+  if (!f || f.reset < now) failures.set(subject, { n: 1, reset: now + windowMs });
+  else f.n++;
+}
+export const clearFailures = (subject: string) => { failures.delete(subject); };
+setInterval(() => { const now = Date.now(); for (const [k, v] of failures) if (v.reset < now) failures.delete(k); }, 60_000).unref();

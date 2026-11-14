@@ -35,6 +35,18 @@ export async function queuePlayers(uuids: string[], source: string, priority = f
 
 export class HypixelKeyError extends Error {}
 
+/**
+ * Lookups that a visitor can cause (searching an unknown name, claiming a profile) share one small
+ * budget, so no number of visitors or addresses can use up the API key the crawler depends on.
+ */
+const ON_DEMAND_PER_MINUTE = Number(process.env.HYPIXEL_ON_DEMAND_RATE ?? 30);
+let onDemand = { n: 0, reset: 0 };
+export function takeOnDemandLookup() {
+  const now = Date.now();
+  if (onDemand.reset < now) onDemand = { n: 0, reset: now + 60_000 };
+  return ++onDemand.n <= ON_DEMAND_PER_MINUTE;
+}
+
 export async function refreshOne(uuid: string) {
   const res = await fetch(`${HYPIXEL_API}/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
   if (res.status === 429) throw new Error("rate_limited");

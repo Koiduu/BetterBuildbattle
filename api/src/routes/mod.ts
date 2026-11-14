@@ -3,6 +3,7 @@ import { Router, fail } from "../http";
 import { z } from "zod";
 import crypto from "node:crypto";
 import { pool } from "../db/pool";
+import { redis } from "../db/redis";
 import { xpForMatch, levelForXp } from "../services/level";
 import { evaluateAchievements, catalog } from "../services/achievementEngine";
 import { rateLimit, requireModToken } from "../plugins/auth";
@@ -14,6 +15,15 @@ import { updateProgressBoards } from "../services/boards";
 import { recordBroken, type RecordBroken } from "../lib/events";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
+const MIN_SPB_TIME_MS = 2000;
+
+/** "Chicken Coop" → "chicken_coop": the same rule as the mod's SpbTracker.buildId. */
+const buildSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48);
+/** A build's display name, only if it is what Hypixel would show for that id; else one made from the id. */
+function buildName(id: string, name: string | null) {
+  if (name && /^[A-Za-z0-9 '&.-]{1,48}$/.test(name) && buildSlug(name) === id) return name.trim();
+  return id.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 const MatchIn = z.object({
   nonce: z.string().uuid(),
@@ -68,6 +78,7 @@ export function modRoutes(app: Router) {
   // ---- 1. Handshake: issue a random serverId ----
   app.post("/auth/mod/challenge", [rateLimit(10, 60_000)], async () => {
     const serverId = crypto.randomBytes(16).toString("hex");
+    await pool.query("DELETE FROM mod_challenges WHERE expires_at < now() - interval '1 hour'");
     await pool.query(
       "INSERT INTO mod_challenges (server_id, expires_at) VALUES ($1, now() + interval '2 minutes')",
       [serverId],
@@ -208,7 +219,15 @@ export function modRoutes(app: Router) {
         for (const b of broken) recordBroken(b);
 
         // Lobby rosters → discovery queue for the global ranking.
-        await queuePlayers(body.seenPlayers, "lobby");
+        // One account can add at most 5,000 new players a day to the crawl queue. A real player sees a few
+        // hundred; without a cap, made-up UUIDs would waste the crawler's Hypixel budget for days.
+        if (body.seenPlayers.length) {
+          const key = `seen:${userId}:${new Date().toISOString().slice(0, 10)}`;
+          const used = await redis.incrby(key, body.seenPlayers.length);
+          if (used === body.seenPlayers.length) await redis.expire(key, 2 * 86_400);
+          const room = Math.max(0, 5000 - (used - body.seenPlayers.length));
+          await queuePlayers(body.seenPlayers.slice(0, room), "lobby");
+        }
 
         // Global rank = Hypixel Build Battle score among ALL tracked players (crawler keeps it fresh).
         const uuid = (await pool.query("SELECT mc_uuid FROM users WHERE id = $1", [userId])).rows[0].mc_uuid;
@@ -247,14 +266,14 @@ async function saveSpeedBuildersBests(client: any, userId: number, m: z.infer<ty
     const me = await client.query("SELECT mc_name, flagged FROM users WHERE id = $1", [userId]);
     if (wr.rowCount && r.timeMs < wr.rows[0].time_ms && !me.rows[0]?.flagged) {
       broken.push({
-        build: r.build, buildName: r.name ?? r.build.replace(/_/g, " "), holder: me.rows[0]?.mc_name ?? "Someone",
+        build: r.build, buildName: buildName(r.build, r.name), holder: me.rows[0]?.mc_name ?? "Someone",
         timeMs: r.timeMs, previousMs: wr.rows[0].time_ms,
         previousHolder: wr.rows[0].id === userId ? null : wr.rows[0].mc_name,
       });
     }
     await client.query(
       "INSERT INTO spb_builds (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
-      [r.build, r.name ?? r.build.replace(/_/g, " ")]);
+      [r.build, buildName(r.build, r.name)]);
     await client.query(
       `INSERT INTO spb_personal_bests (user_id, build_id, time_ms, accuracy, set_at) VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id, build_id) DO UPDATE SET time_ms = EXCLUDED.time_ms, accuracy = EXCLUDED.accuracy,
@@ -269,6 +288,8 @@ async function sanityCheck(client: any, m: z.infer<typeof MatchIn>): Promise<str
   if (new Date(m.playedAt).getTime() > Date.now() + 5 * 60_000) return "future_timestamp";
   for (const r of m.spbRounds ?? []) {
     if (r.timeMs === null) continue;
+    // Nobody places a whole build in under 2 seconds. Stops trivially faked world records.
+    if (r.timeMs < MIN_SPB_TIME_MS) return "impossible_spb_time";
     const b = await client.query("SELECT min_time_ms FROM spb_builds WHERE id = $1", [r.build]);
     if (b.rowCount && r.timeMs < b.rows[0].min_time_ms) return "impossible_spb_time";
   }

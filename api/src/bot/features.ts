@@ -14,6 +14,7 @@ import {
   type Guild,
 } from "discord.js";
 import { pool } from "../db/pool";
+import { INTERNAL_KEY } from "../plugins/auth";
 import { HttpError } from "../http";
 import { siteOrigin } from "../lib/site";
 import { verifyHypixelDiscord } from "../lib/verifyHypixelDiscord";
@@ -153,7 +154,7 @@ async function stats(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
   const port = Number(process.env.PORT ?? 4000);
   const response = await fetch(`http://127.0.0.1:${port}/bb/v1/players/${encodeURIComponent(name)}`, {
-    headers: { authorization: `discord:${interaction.user.id}` },
+    headers: { "x-bb-internal": INTERNAL_KEY, "x-bb-caller": `discord:${interaction.user.id}` },
     signal: AbortSignal.timeout(12_000),
   });
   const data = await response.json() as StatsCardData | { error?: string; name?: string };

@@ -5,7 +5,10 @@ import { pool } from "../db/pool";
 import { fail, Redirect, Router, type Req } from "../http";
 import { DISCORD_API } from "../lib/upstream";
 import { verifyHypixelDiscord } from "../lib/verifyHypixelDiscord";
-import { endWebSession, rateLimit, readWebSession, requireModToken, requireWebSession, startWebSession } from "../plugins/auth";
+import {
+  clearFailures, endWebSession, noteFailure, rateLimit, readWebSession, requireModToken, requireWebSession,
+  startWebSession, tooManyFailures,
+} from "../plugins/auth";
 import { queuePlayers } from "../jobs/crawler";
 import { PLANS, limit, planOf } from "../lib/plans";
 import { cancelSubscriptionNow, stripeConfigured } from "../services/stripe";
@@ -163,12 +166,19 @@ export function accountRoutes(app: Router) {
 
   app.post("/auth/login", [rateLimit(10, 60_000, "/auth/login")], async (req) => {
     const { email, password } = z.object({ email: EMAIL, password: LOGIN_PASSWORD }).parse(req.body);
+    // After 8 wrong passwords for one email, nobody can try that email for 15 minutes, from any address.
+    const subject = "login:" + email.toLowerCase();
+    if (tooManyFailures(subject, 8)) return fail(429, "too_many_attempts");
     const result = await pool.query("SELECT id, password_hash FROM users WHERE email = $1", [email]);
     const row = result.rows[0] as { id: number; password_hash: string | null } | undefined;
     const valid = row?.password_hash
       ? await verify(row.password_hash, password)
       : await verify(dummyHash, password);
-    if (!row || !row.password_hash || !valid) return fail(401, "wrong_login");
+    if (!row || !row.password_hash || !valid) {
+      noteFailure(subject, 15 * 60_000);
+      return fail(401, "wrong_login");
+    }
+    clearFailures(subject);
     await startWebSession(req, row.id);
     return getMe(row.id);
   });
@@ -346,7 +356,7 @@ export function accountRoutes(app: Router) {
     return getMe(req.user.id);
   });
 
-  app.post("/me/link-code", [requireWebSession], async (req) => {
+  app.post("/me/link-code", [requireWebSession, rateLimit(10, 60_000, "/me/link-code")], async (req) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -382,7 +392,8 @@ export function accountRoutes(app: Router) {
     return { ok: true, account: account.rows[0].email ?? account.rows[0].discord_name };
   });
 
-  app.post("/me/claim/hypixel", [requireWebSession], async (req) => {
+  // Each try costs a Mojang and a Hypixel request, so it is tightly limited per account.
+  app.post("/me/claim/hypixel", [requireWebSession, rateLimit(5, 60_000, "/me/claim/hypixel")], async (req) => {
     const { name } = z.object({ name: z.string().trim().min(1).max(16) }).parse(req.body);
     const account = await pool.query("SELECT discord_name FROM users WHERE id = $1", [req.user.id]);
     const discordName = account.rows[0]?.discord_name as string | undefined;
