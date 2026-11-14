@@ -76,6 +76,62 @@ rotate_backups() {
   fi
 }
 
+read_backup_copy_dir() {
+  local line value first last
+  [[ -r .env ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*BACKUP_COPY_DIR[[:space:]]*= ]] || continue
+    value="${line#*=}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    if (( ${#value} >= 2 )); then
+      first="${value:0:1}"
+      last="${value: -1}"
+      if [[ ( "$first" == '"' && "$last" == '"' ) || ( "$first" == "'" && "$last" == "'" ) ]]; then
+        value="${value:1:${#value}-2}"
+      fi
+    fi
+    printf '%s' "$value"
+    return 0
+  done < .env
+  return 0
+}
+
+rotate_offsite_backups() {
+  local directory="$1" old
+  local -a dumps
+  shopt -s nullglob
+  dumps=("$directory"/betterbattle-*.dump)
+  shopt -u nullglob
+  if (( ${#dumps[@]} > 14 )); then
+    while IFS= read -r old; do
+      if ! rm -f "$old"; then
+        echo "Warning: could not rotate old off-PC backup $old." >&2
+      fi
+    done < <(ls -t -- "${dumps[@]}" | tail -n +15)
+  fi
+}
+
+copy_backup_offsite() {
+  local source="$1" copy_dir copy_path
+  copy_dir="$(read_backup_copy_dir)"
+  [[ -n "$copy_dir" ]] || return 0
+  if ! mkdir -p "$copy_dir"; then
+    echo "Warning: could not create off-PC backup directory $copy_dir; local backup is still available." >&2
+    return 0
+  fi
+  copy_path="${copy_dir%/}/$(basename "$source")"
+  if ! cp "$source" "$copy_path"; then
+    echo "Warning: could not copy $source to $copy_dir; local backup is still available." >&2
+    return 0
+  fi
+  if ! chmod 600 "$copy_path"; then
+    echo "Warning: could not restrict permissions on off-PC backup $copy_path." >&2
+  fi
+  rotate_offsite_backups "$copy_dir"
+}
+
 backup_database() {
   check_database || return 1
   mkdir -p backups || { echo "Could not create the backups directory." >&2; return 1; }
@@ -103,9 +159,32 @@ backup_database() {
     echo "Warning: backup was copied, but $temp_dump could not be removed from the database container." >&2
   fi
   rotate_backups
+  if ! copy_backup_offsite "$destination"; then
+    echo "Warning: off-PC backup handling failed; the local backup is still available." >&2
+  fi
   size="$(wc -c < "$destination" | tr -d '[:space:]')"
   BACKUP_PATH="$destination"
   printf 'Backup saved to %s (%s bytes).\n' "$destination" "$size"
+}
+
+update_code() {
+  if ! command -v git >/dev/null 2>&1; then
+    echo "Warning: Git is not installed; code was not updated." >&2
+  elif [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null || true)" != "true" ]]; then
+    echo "Warning: this folder is not a git checkout; code was not updated." >&2
+  else
+    if ! git pull --ff-only; then
+      echo "Couldn't get the latest code: git pull --ff-only failed. Nothing was rebuilt." >&2
+      return 1
+    fi
+    local commit
+    if ! commit="$(git log -1 --format='%h %s')"; then
+      echo "Couldn't read the current commit. Nothing was rebuilt." >&2
+      return 1
+    fi
+    printf 'Now on commit %s.\n' "$commit"
+  fi
+  docker compose up -d --build
 }
 
 restore_failure() {
@@ -224,7 +303,7 @@ case "$CMD" in
   status)   docker compose ps ;;
   seed)     docker compose exec app npm run seed-guild -- "${2:-Aspiring}" ;;
   snapshot) docker compose exec app npm run snapshot ;;
-  update)   docker compose up -d --build ;;
+  update)   update_code ;;
   backup)   backup_database ;;
   restore)  restore_database "${2:-}" ;;
   reset)

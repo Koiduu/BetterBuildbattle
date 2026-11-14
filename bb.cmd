@@ -10,7 +10,7 @@ rem    bb logs             follow the app's logs (Ctrl+C to exit)
 rem    bb status           show what's running
 rem    bb seed [guild]     add a guild to the ranking (default: Aspiring)
 rem    bb snapshot         record today's ranks now
-rem    bb update           rebuild after downloading new code
+rem    bb update           pull latest code, then rebuild
 rem    bb backup           save a compressed database dump (keeps 14)
 rem    bb restore <file>   replace the database from a dump (asks first)
 rem    bb backup-daily     schedule a backup every day at 04:00
@@ -35,7 +35,7 @@ if /i "%CMD%"=="log"      ( docker compose logs -f --tail 100 app & goto :done )
 if /i "%CMD%"=="status"   ( docker compose ps & goto :done )
 if /i "%CMD%"=="seed"     goto :seed
 if /i "%CMD%"=="snapshot" ( docker compose exec app npm run snapshot & goto :done )
-if /i "%CMD%"=="update"   ( docker compose up -d --build & goto :done )
+if /i "%CMD%"=="update"   goto :update
 if /i "%CMD%"=="backup"   goto :backup
 if /i "%CMD%"=="restore"  goto :restore
 if /i "%CMD%"=="reset"    goto :reset
@@ -66,6 +66,33 @@ goto :done
 set "GUILD=%~2"
 if "%GUILD%"=="" set "GUILD=Aspiring"
 docker compose exec app npm run seed-guild -- "%GUILD%"
+goto :done
+
+:update
+where git >nul 2>&1
+if errorlevel 1 (
+  echo Warning: Git is not installed; code was not updated.
+  goto :update_rebuild
+)
+set "IN_GIT_WORKTREE="
+for /f "delims=" %%G in ('git rev-parse --is-inside-work-tree 2^>nul') do set "IN_GIT_WORKTREE=%%G"
+if /i not "!IN_GIT_WORKTREE!"=="true" (
+  echo Warning: this folder is not a Git checkout; code was not updated.
+  goto :update_rebuild
+)
+git pull --ff-only
+if errorlevel 1 (
+  echo Couldn't get the latest code: git pull --ff-only failed. Nothing was rebuilt.
+  goto :fail
+)
+git log -1 --format="%%h %%s"
+if errorlevel 1 (
+  echo Couldn't read the current commit. Nothing was rebuilt.
+  goto :fail
+)
+:update_rebuild
+docker compose up -d --build
+if errorlevel 1 goto :fail
 goto :done
 
 :backup_daily
@@ -134,7 +161,45 @@ for %%F in ("!DUMP!") do (
   set "FULL_DUMP=%%~fF"
   set "SIZE=%%~zF"
 )
+call :copy_backup_offsite
 echo  Backup saved to !FULL_DUMP! (!SIZE! bytes).
+exit /b 0
+
+:copy_backup_offsite
+setlocal DisableDelayedExpansion
+set "OFFSITE_SOURCE=%FULL_DUMP%"
+set "BACKUP_COPY_DIR="
+for /f "usebackq tokens=1,* delims==" %%A in (".env") do for /f "tokens=1" %%K in ("%%A") do if /i "%%K"=="BACKUP_COPY_DIR" set "BACKUP_COPY_DIR=%%B"
+if not defined BACKUP_COPY_DIR goto :offsite_copy_done
+set "BB_BACKUP_COPY_VALUE=%BACKUP_COPY_DIR%"
+for /f "delims=" %%V in ('powershell -NoProfile -Command "$v = $env:BB_BACKUP_COPY_VALUE.Trim(); $v = $v.Trim([char]34).Trim([char]39).Trim(); [Console]::Write($v)"') do set "BACKUP_COPY_DIR=%%V"
+set "BB_BACKUP_COPY_VALUE="
+if not defined BACKUP_COPY_DIR goto :offsite_copy_done
+if not exist "%BACKUP_COPY_DIR%" (
+  mkdir "%BACKUP_COPY_DIR%" 2>nul
+  if errorlevel 1 goto :offsite_copy_warning
+)
+for %%F in ("%OFFSITE_SOURCE%") do set "COPY_DUMP_NAME=%%~nxF"
+copy /y "%OFFSITE_SOURCE%" "%BACKUP_COPY_DIR%\%COPY_DUMP_NAME%" >nul
+if errorlevel 1 goto :offsite_copy_warning
+set "COPY_COUNT=0"
+for /f "delims=" %%F in ('dir /b /a-d /o-d "%BACKUP_COPY_DIR%\betterbattle-*.dump" 2^>nul') do call :rotate_copy_entry "%%F"
+goto :offsite_copy_done
+
+:offsite_copy_warning
+echo Warning: off-PC backup copy failed; the local backup is still available.
+goto :offsite_copy_done
+
+:offsite_copy_done
+endlocal
+exit /b 0
+
+:rotate_copy_entry
+set /a COPY_COUNT+=1
+if %COPY_COUNT% GTR 14 (
+  del /q "%BACKUP_COPY_DIR%\%~1" >nul 2>&1
+  if errorlevel 1 echo Warning: could not rotate old off-PC backup "%~1".
+)
 exit /b 0
 
 :restore
