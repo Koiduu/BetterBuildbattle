@@ -120,7 +120,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                 .then(ClientCommands.literal("achievements").executes(c -> open(() -> new AchievementsScreen(null))))
                 .then(ClientCommands.literal("recap").executes(c -> open(() -> new TextPageScreen(null, core.lastGamePage()))))
                 .then(ClientCommands.literal("weekly").executes(c -> open(() -> new TextPageScreen(null, core.weeklyPage()))))
-                .then(ClientCommands.literal("news").executes(c -> open(() -> new TextPageScreen(null, Pages.whatsNew()))))
+                .then(ClientCommands.literal("news").executes(c -> open(() -> new TextPageScreen(null, BetterBattle.get().whatsNewPage()))))
                 .then(ClientCommands.literal("settings").executes(c -> open(() -> new SettingsScreen(null))))
                 .then(ClientCommands.literal("credits").executes(c -> open(() -> new CreditsScreen(null))))
                 .then(ClientCommands.literal("sync").executes(c -> {
@@ -158,7 +158,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     /** The B menu, or What's New on the first press after an update (Back goes to the menu). */
     private Screen menu() {
         MenuScreen menu = new MenuScreen(null);
-        return core.takeWhatsNew() ? new TextPageScreen(menu, Pages.whatsNew()) : menu;
+        return core.takeWhatsNew() ? new TextPageScreen(menu, BetterBattle.get().whatsNewPage()) : menu;
     }
 
     private int open(Supplier<Screen> screen) {

@@ -38,6 +38,8 @@ public final class Config {
     public boolean whatsNew = true;
     /** Say in chat when you finish a weekly challenge. */
     public boolean weeklyAlerts = true;
+    /** Say in chat when a newer version of the mod is out. Nothing is ever downloaded automatically. */
+    public boolean updateNotices = true;
     /** The version whose What's New page was last shown. */
     public String lastSeenVersion = "";
 
@@ -82,6 +84,7 @@ public final class Config {
         new Toggle("chatMessages", "Chat messages", "Achievement and sync messages in chat"),
         new Toggle("weeklyAlerts", "Weekly challenge alerts", "Tell me when I finish a weekly challenge"),
         new Toggle("whatsNew", "What's New after updates", "Show the patch notes once after the mod updates"),
+        new Toggle("updateNotices", "Update notices", "Tell me in chat when a newer version is out"),
         new Toggle("shareVotes", "Save my votes", "Keep the votes you cast for Build Battle Wrapped")));
 
     private transient File file;

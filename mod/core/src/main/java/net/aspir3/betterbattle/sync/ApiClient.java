@@ -19,6 +19,13 @@ public interface ApiClient {
 
     SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception;
 
+    /** The newest released mod for this Minecraft version, or null if the server has none. No login needed. */
+    Latest latest() throws Exception;
+
+    final class Latest {
+        public String version, sha256, notes;
+    }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 

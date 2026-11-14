@@ -95,7 +95,7 @@ public class BetterBattleForge implements Platform {
     /** The B menu, or What's New on the first press after an update (Back goes to the menu). */
     GuiScreen menu() {
         MenuScreen menu = new MenuScreen(null);
-        return core.takeWhatsNew() ? new TextPageScreen(menu, Pages.whatsNew()) : menu;
+        return core.takeWhatsNew() ? new TextPageScreen(menu, BetterBattle.get().whatsNewPage()) : menu;
     }
 
     /** Opens on the next tick, after the chat box has closed. */

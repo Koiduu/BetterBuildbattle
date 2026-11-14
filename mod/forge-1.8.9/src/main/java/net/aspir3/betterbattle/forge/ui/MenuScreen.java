@@ -110,7 +110,7 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
                 mc.displayGuiScreen(new CreditsScreen(this));
                 break;
             case WHATS_NEW:
-                mc.displayGuiScreen(new TextPageScreen(this, Pages.whatsNew()));
+                mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().whatsNewPage()));
                 break;
             case LAST_GAME:
                 mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().lastGamePage()));

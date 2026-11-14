@@ -28,12 +28,27 @@ public final class SyncService {
         void synced(ApiClient.SyncResult result);
         void achievementConfirmed(String id);
         void achievementRevoked(String id);
+        /** The server's newest mod version (checked now and then; it may be the one already installed). */
+        void latestVersion(ApiClient.Latest latest);
         /** New weekly challenges or world records arrived. */
         void bootstrapped(ApiClient.Bootstrap b);
     }
 
     private static final long BOOTSTRAP_EVERY_MS = 30L * 60L * 1000L;
     private long lastBootstrapAt;
+    private static final long VERSION_CHECK_EVERY_MS = 6L * 60L * 60L * 1000L;
+    private long lastVersionCheckAt;
+
+    /** Asks for the newest version. Needs no login, and never gets in the way of a sync. */
+    private void checkVersion() {
+        if (System.currentTimeMillis() - lastVersionCheckAt < VERSION_CHECK_EVERY_MS) return;
+        lastVersionCheckAt = System.currentTimeMillis();
+        try {
+            ApiClient.Latest latest = api.latest();
+            if (latest != null && latest.version != null) listener.latestVersion(latest);
+        } catch (Exception ignored) {
+        }
+    }
 
     private final LocalDatabase db;
     private final ApiClient api;
@@ -125,6 +140,7 @@ public final class SyncService {
     }
 
     private synchronized void tick(boolean force) {
+        checkVersion();
         if (!force && System.currentTimeMillis() < nextAttemptAt) return;
         try {
             ensureToken();

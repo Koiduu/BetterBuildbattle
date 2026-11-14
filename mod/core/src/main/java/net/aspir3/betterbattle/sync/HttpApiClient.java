@@ -67,6 +67,16 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(post("/mod/sync", gson.toJson(body)), SyncResult.class);
     }
 
+    public Latest latest() throws Exception {
+        String loader = "1.8.9".equals(mcVersion) ? "forge" : "fabric";
+        try {
+            return gson.fromJson(request("GET", "/mod/latest?loader=" + loader + "&mc=" + mcVersion, null), Latest.class);
+        } catch (Exception e) {
+            if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) return null;   // older server, or no release yet
+            throw e;
+        }
+    }
+
     public Bootstrap bootstrap() throws Exception {
         return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
     }

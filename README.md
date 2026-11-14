@@ -158,6 +158,10 @@ Every feature can be switched off in game under **Settings** (B menu), or in `co
 | `recap` | `true` | Short summary in chat after each game |
 | `whatsNew` | `true` | Open What's New once after the mod updates |
 | `weeklyAlerts` | `true` | Chat message when you finish a weekly challenge |
+| `updateNotices` | `true` | Chat message when a newer version is out (it never downloads anything) |
+
+The mod asks `GET /mod/latest?loader=fabric|forge&mc=<version>` for `{ "version", "sha256"?, "notes"? }` when you join
+and every 6 hours. A 404 means no notice. The link it shows is always `<website>/install`, never one from the response.
 
 Settings live in `config/betterbattle/config.json`:
 

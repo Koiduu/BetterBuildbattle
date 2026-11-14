@@ -64,7 +64,7 @@ final class BbCommand extends CommandBase {
         } else if (sub.equals("weekly")) {
             mod.openLater(new TextPageScreen(null, core.weeklyPage()));
         } else if (sub.equals("news")) {
-            mod.openLater(new TextPageScreen(null, Pages.whatsNew()));
+            mod.openLater(new TextPageScreen(null, BetterBattle.get().whatsNewPage()));
         } else if (sub.equals("settings")) {
             mod.openLater(new SettingsScreen(null));
         } else if (sub.equals("credits")) {

@@ -54,6 +54,8 @@ public final class BetterBattle {
     private List<String> lastSidebar = new ArrayList<String>();
     private PrintWriter debugLog;
     private boolean whatsNewDue, whatsNewAnnounced;
+    private volatile ApiClient.Latest newer;      // a version newer than this one, once the server reports it
+    private boolean newerAnnounced;
     private long joinedAt;
 
     private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
@@ -126,6 +128,7 @@ public final class BetterBattle {
         game = null;
         debugLog = null;
         seenThisSession.clear();
+        newerAnnounced = false;
         lastSidebarTitle = "";
         lastSidebar = new ArrayList<String>();
     }
@@ -193,6 +196,36 @@ public final class BetterBattle {
         if (!whatsNewDue || whatsNewAnnounced || System.currentTimeMillis() - joinedAt < 5000) return;
         whatsNewAnnounced = true;
         platform.chat("§d§lBetter Battle §8» §7Updated to §f" + modVersion + "§7. Press §fB §7to see what's new.");
+    }
+
+    /** True if version a is newer than b. Compares the numbers ("0.10.0" > "0.9.2"); anything without numbers never is. */
+    static boolean isNewer(String a, String b) {
+        if (a == null || b == null || !a.matches("\\d+(\\.\\d+)*") || !b.matches("\\d+(\\.\\d+)*.*")) return false;
+        String[] x = a.split("\\."), y = b.replaceAll("[^0-9.].*$", "").split("\\.");
+        for (int i = 0; i < Math.max(x.length, y.length); i++) {
+            long xi = i < x.length ? Long.parseLong(x[i]) : 0, yi = i < y.length && !y[i].isEmpty() ? Long.parseLong(y[i]) : 0;
+            if (xi != yi) return xi > yi;
+        }
+        return false;
+    }
+
+    /** Where to get the mod. Always this site's own install page, never an address the server sent. */
+    private String installUrl() {
+        return config.website.replaceAll("/+$", "") + "/install";
+    }
+
+    /** What's New, with a line on top when a newer version is out. */
+    public Pages.Page whatsNewPage() {
+        Pages.Page page = Pages.whatsNew();
+        ApiClient.Latest n = newer;
+        if (n == null) return page;
+        List<String> lines = new ArrayList<String>();
+        lines.add("§a§lUpdate available: §f" + n.version + " §7(you have " + modVersion + ")");
+        if (n.notes != null && !n.notes.trim().isEmpty()) lines.add("§7" + n.notes.trim().replace('§', ' '));
+        lines.add("§7Download it at §b" + installUrl());
+        lines.add("");
+        lines.addAll(page.lines);
+        return new Pages.Page(page.title, lines);
     }
 
     public Pages.Page lastGamePage() {
@@ -399,6 +432,19 @@ public final class BetterBattle {
             // Unlocked on the server first, e.g. from Hypixel stats. Shown together after the sync.
             Catalog.Entry entry = Catalog.get(id);
             if (entry != null) fromServer.add(entry);
+        }
+
+        public void latestVersion(final ApiClient.Latest latest) {
+            if (!isNewer(latest.version, modVersion)) return;
+            newer = latest;
+            if (!config.updateNotices || newerAnnounced) return;
+            newerAnnounced = true;   // once per time you join, not on every check
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    platform.chat("§d§lBetter Battle §8» §aVersion " + latest.version + " is out §7(you have " + modVersion
+                        + "). Get it at §b" + installUrl());
+                }
+            });
         }
 
         public void bootstrapped(ApiClient.Bootstrap b) {
