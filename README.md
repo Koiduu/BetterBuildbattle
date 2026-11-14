@@ -45,6 +45,15 @@ mod/
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
 
+## Plans, payments and the Discord bot
+
+Three plans: Builder (free), Architect and Master Builder. Nothing inside a game is paid; plans add profile style and
+deeper stats on the website and in Discord. `api/src/lib/plans.ts` decides every gate. Payments go through Stripe
+Checkout; setup is in [`docs/plans-setup.md`](docs/plans-setup.md), and until it is done the Plans page says "Coming soon".
+
+Bot commands: `/stats`, `/leaderboards`, `/top`, `/compare`, `/records`, `/weekly`, `/recent`, `/plans`, `/help`,
+`/verify`, `/download`, `/feed`, plus the moderation and ticket commands.
+
 ## Build metrics (instead of a vague "accuracy")
 
 | Metric | Formula | Where the data comes from |

@@ -24,7 +24,7 @@ export const FEATURES = {
   // Master Builder
   themeAnalytics: "master",
   spbAnalysis: "master",
-  fullHistory: "master",             // every game ever, and CSV/JSON export
+  fullHistory: "master",             // every game ever, and CSV export
   compareMany: "master",             // compare up to 4 players
   wrapped: "master",                 // Build Battle Wrapped at any time
   privateBoards: "master",           // create private leaderboards (anyone can join one)
@@ -73,7 +73,7 @@ export const PERKS: Record<Plan, string[]> = {
     "Build Battle Wrapped whenever you like",
     "Theme analytics: your best and worst themes",
     "Speed Builders analysis: time history and trend for every build",
-    "Your full game history, with CSV and JSON export",
+    "Your full game history, with a spreadsheet (CSV) export",
     "Compare up to 4 players at once",
     "Private leaderboards for your guild or friends, with a weekly race",
   ],

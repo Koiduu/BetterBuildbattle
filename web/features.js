@@ -1,8 +1,10 @@
 // The Speed Builders update on the website: patch notes, Speed Builders leaderboards, comparing
 // two players, and the profile's weekly challenges, achievement rarity, best times and share card.
 // Kept apart from app.js so the two can change independently; app.js imports these.
-import { app, esc, num, percent, title, avatar, get, go, NAME_RE } from "./app.js";
+import { app, esc, num, percent, title, avatar, get, go, meReady, NAME_RE } from "./app.js";
 import { drawCard, CARD_W, CARD_H } from "./card.js";
+import { CARD_THEMES } from "./style-options.js";
+import { has } from "./plans.js";
 
 // Where the jars are. CI replaces the "dev" pre-release on every push to main; switch this to a
 // versioned release (or Modrinth) once there is one.
@@ -200,8 +202,63 @@ export async function speedBuildPage(id) {
 
 // ---------------------------------------------------------------- Compare
 
-export async function comparePage(a, b) {
+/** Three or four players: one table. A Master Builder perk. */
+async function compareMany(names) {
+  await meReady;
+  if (!has("master")) {
+    app.innerHTML = `
+      <section class="card">
+        <h2>Compare up to 4 players</h2>
+        <div class="upsell"><div><b>More than two at once</b><p>Line up your whole friend group in one table. Included with Master Builder.</p></div>
+          <a class="btn primary" href="/plans" data-link>See plans</a></div>
+        <p class="muted" style="margin-top:10px"><a href="/compare/${esc(names[0])}/${esc(names[1])}" data-link>Compare just ${esc(names[0])} and ${esc(names[1])}</a></p>
+      </section>`;
+    return;
+  }
+  app.innerHTML = `<div class="loading" style="height:420px"></div>`;
+  let players;
+  try {
+    players = await Promise.all([...new Set(names.map((n) => n.toLowerCase()))].map((n) => get("/players/" + encodeURIComponent(n))));
+  } catch {
+    app.innerHTML = `<div class="card empty">Couldn't find one of those players. <a href="/compare" data-link>Try again</a></div>`;
+    return;
+  }
+  document.title = `${players.map((p) => p.name).join(" vs ")} · Better Battle`;
+  const rows = [
+    ["Global rank", (p) => p.rank, false, (v) => (v ? "#" + num(v) : "–")],
+    ["Build Battle score", (p) => p.score, true],
+    ["Wins", (p) => p.hypixel.wins, true],
+    ["Games played", (p) => p.hypixel.gamesPlayed, true],
+    ["Solo wins", (p) => p.hypixel.modeWins.solo, true],
+    ["Teams wins", (p) => p.hypixel.modeWins.teams, true],
+    ["Pro wins", (p) => p.hypixel.modeWins.pro, true],
+    ["Guess the Build wins", (p) => p.hypixel.modeWins.gtb, true],
+    ["Speed Builders wins", (p) => p.hypixel.modeWins.speedBuilders, true],
+    ["Aspiring Level", (p) => p.betterBattle?.level, true],
+    ["Aspiring Points", (p) => p.betterBattle?.ap, true],
+    ["Crowd score", (p) => p.betterBattle?.crowdScore, true, (v) => percent(v)],
+  ];
+  app.innerHTML = `
+    <section class="card">
+      <h2>${players.map((p) => esc(p.name)).join(` <span class="muted">vs</span> `)}</h2>
+      <div class="table-scroll" style="margin-top:12px"><table class="cmp">
+        <thead><tr><th></th>${players.map((p) => `<th class="right"><a class="player" href="/p/${esc(p.name)}" data-link>
+          <img src="${avatar(p.uuid, 32)}" alt="" width="24" height="24">${esc(p.name)}</a></th>`).join("")}</tr></thead>
+        <tbody>${rows.map(([label, pick, higher, fmt]) => {
+          const values = players.map(pick);
+          const known = values.filter((v) => v != null);
+          const best = known.length ? (higher ? Math.max(...known) : Math.min(...known)) : null;
+          const single = known.filter((v) => v === best).length === 1;
+          return `<tr><td>${esc(label)}</td>${values.map((v) =>
+            `<td class="right num${v != null && v === best && single ? " better" : ""}">${fmt ? fmt(v) : num(v)}</td>`).join("")}</tr>`;
+        }).join("")}</tbody>
+      </table></div>
+    </section>`;
+}
+
+export async function comparePage(a, b, c, d) {
   document.title = "Compare · Better Battle";
+  if (c) return compareMany([a, b, c, d].filter(Boolean));
   if (!b) {
     app.innerHTML = `
       <section class="card">
@@ -314,7 +371,18 @@ export async function comparePage(a, b) {
           ${cell(s.l.timeMs, s.r.timeMs, false, secs)}${cell(s.r.timeMs, s.l.timeMs, false, secs)}</tr>`).join("")}</tbody>
       </table></div>
     </section>` : ""}
+    <form class="inline-form" id="add-third">
+      <label class="sr-only" for="third">Add a third player</label>
+      <input id="third" placeholder="Add a third player" maxlength="16" autocomplete="off" spellcheck="false">
+      <button class="btn" type="submit">Add</button>
+      <span class="muted">Up to 4 with Master Builder</span>
+    </form>
     <p class="muted"><a href="/compare/${esc(L.name)}" data-link>Compare ${esc(L.name)} with someone else</a></p>`;
+  document.getElementById("add-third").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const third = document.getElementById("third").value.trim();
+    if (NAME_RE.test(third)) go(`/compare/${L.name}/${R.name}/${third}`);
+  });
 }
 
 // ---------------------------------------------------------------- Profile: weekly challenges
@@ -471,10 +539,11 @@ async function cardCanvas(p, achievementCount) {
     level: bb ? bb.level : null,
     stats: cardStats(p, achievementCount),
     url: `${location.host}/p/${p.name}`,
+    supporter: p.style?.supporter ?? null,
   }, await loadImage(avatar(p.uuid, 160)), {
     display: "'Pixelify Sans', 'Courier New', monospace",
     body: "Verdana, sans-serif",
-  });
+  }, CARD_THEMES[p.style?.cardTheme] ?? undefined);
   return c;
 }
 

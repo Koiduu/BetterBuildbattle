@@ -217,6 +217,11 @@ const server = http.createServer((req, res) => {
       { id: "w_crowd_85", text: "Get 85%+ crowd score 3 times", xp: 250 },
       { id: "w_spb_precision", text: "Finish 5 SPB rounds at 100% precision", xp: 300 },
       { id: "w_palette", text: "Win with a /bb palette roll", xp: 400 }]);
+    if (route === "/billing/plans") return json(res, 200, { configured: false, plans: [
+      { id: "free", name: "Builder", tagline: "Everything you need to play", perks: ["The mod, with every achievement and challenge", "Speed Builders timer, bests and world records", "Your full profile, global rank and share card"], price: { amount: 0, currency: "usd", interval: "month" } },
+      { id: "architect", name: "Architect", tagline: "Make your profile yours", perks: ["Supporter badge", "Profile accent colour and banner", "Your position on every Build Battle leaderboard"], price: null },
+      { id: "master", name: "Master Builder", tagline: "Every statistic, as deep as it goes", perks: ["Everything in Architect", "Build Battle Wrapped whenever you like", "Theme analytics", "Private leaderboards"], price: null }] });
+    if (route === "/boards") return json(res, 200, [{ id: "score", name: "Build Battle score", short: "Score", group: "Overall" }]);
     if (route === "/spb/builds") return json(res, 200, SPB_BUILDS.map((b) => ({ ...b, ...spbBoard(b)[0], players: spbBoard(b).length })));
     const spb = route.match(/^\/spb\/builds\/([a-z0-9_]+)$/);
     if (spb) {
@@ -235,6 +240,9 @@ const server = http.createServer((req, res) => {
       const sub = m[2];
       if (!sub) return json(res, 200, profile(pl));
       if (sub === "/rank-history") return json(res, 200, rankHistory(pl, Number(url.searchParams.get("days") ?? 90)));
+      if (sub === "/leaderboards") return json(res, 200, { name: pl.name, locked: true, requires: "architect",
+        boards: [{ id: "score", name: "Build Battle score", short: "Score", group: "Overall", rank: players.indexOf(pl) + 1, of: 412806, value: pl.score, top: 0.01 }],
+        lockedBoards: ["Total wins", "Tokens", "Solo wins", "Speed Builders wins"].map((name, i) => ({ id: "b" + i, name, group: "Overall" })) });
       if (!pl.usesMod) return json(res, 200, sub === "/achievements" ? { unlocked: [], total: 0 } : []);
       if (sub === "/matches") return json(res, 200, matches(url.searchParams.get("mode")));
       if (sub === "/heatmap") return json(res, 200, heatmap());
