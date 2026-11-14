@@ -487,16 +487,14 @@ public final class AchievementRules {
         }
     }
 
-    /** Win with a perfect build in under 15 seconds in every round. */
+    /** Win with a perfect build in every round, each time with more than half the round's clock left. */
     public static final class Speedrunner implements Rule {
-        public static final int LIMIT_MS = 15000;
-
         public String id() { return "spb_speedrunner"; }
 
         public boolean onMatch(MatchRecord m, LocalDatabase db) {
             if (!spbWin(m) || m.spbRounds.size() < 3) return false;
             for (SpbTracker.Round r : m.spbRounds) {
-                if (!r.perfect || r.timeMs == null || r.timeMs >= LIMIT_MS) return false;
+                if (!r.perfect || r.timeMs == null || r.limitMs == null || r.timeMs * 2 >= r.limitMs) return false;
             }
             return true;
         }

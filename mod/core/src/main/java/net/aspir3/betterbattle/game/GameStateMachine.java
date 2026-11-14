@@ -38,6 +38,7 @@ public final class GameStateMachine {
     private int voteRound = -1;
     private String roundBuilder;
     private SpbTracker spb;
+    private Integer podiumPlace;
     private SpbTracker.Records spbRecords;
 
     public GameStateMachine(ChatParser parser, Listener listener, String mcVersion, String playerName) {
@@ -86,6 +87,9 @@ public final class GameStateMachine {
         boolean timer = false;
         String theme = null;
         String builder = null;
+        Integer spbRound = null, spbTimeLeft = null, spbPlayersLeft = null;
+        String spbTheme = null, spbDifficulty = null;
+        boolean spbGameOver = false;
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             String m = parser.mode(line);
@@ -94,8 +98,18 @@ public final class GameStateMachine {
             // The lobby keeps shrinking as people leave; the count when voting starts is what matters.
             if (p != null && state != State.VOTING) players = p;
             if (parser.isBuildTimer(line)) timer = true;
-            Integer left = parser.secondsLeft(line);
-            if (left != null && spb != null) spb.onSecondsLeft(left, System.currentTimeMillis());
+            // Speed Builders shows the round, the build ("Theme") and the build clock in the sidebar
+            Integer r = parser.sidebarInt("SPB_ROUND", line);
+            if (r != null) spbRound = r;
+            String t = parser.sidebar("SPB_THEME", line);
+            if (t != null) spbTheme = t;
+            String d = parser.sidebar("SPB_DIFFICULTY", line);
+            if (d != null) spbDifficulty = d;
+            Integer left = parser.sidebarClock("SPB_TIME_LEFT", line);
+            if (left != null) spbTimeLeft = left;
+            Integer alive = parser.sidebarInt("SPB_PLAYERS_LEFT", line);
+            if (alive != null) spbPlayersLeft = alive;
+            if (parser.sidebar("SPB_GAME_OVER", line) != null) spbGameOver = true;
             if (i + 1 < lines.size()) {
                 String next = lines.get(i + 1);
                 if (line.equals("Theme:") && !next.isEmpty() && !next.equals("Vote Now!")) theme = next;
@@ -109,6 +123,27 @@ public final class GameStateMachine {
         // Backup for the chat announcement, e.g. if the mod was turned on mid-game.
         if (state == State.LOBBY && timer && theme != null && !speedBuilders()) startBuilding(theme);
         if (builder != null) startGtbRound(builder);
+        if (spbRound != null && spbPlayersLeft != null) {
+            onSpeedBuildersSidebar(spbRound, spbTheme, spbDifficulty, spbTimeLeft, spbPlayersLeft, spbGameOver);
+        }
+    }
+
+    /** One read of the in-game Speed Builders sidebar. Only that sidebar has "Round:" and "Players Left:". */
+    private void onSpeedBuildersSidebar(int round, String theme, String difficulty, Integer timeLeft, int playersLeft, boolean gameOver) {
+        long now = System.currentTimeMillis();
+        if (state == State.LOBBY && !gameOver) {
+            mode = "speed_builders";   // also covers the mod being switched on mid-game
+            startBuilding(null);
+        }
+        if (spb == null || current == null) return;
+        // The lobby count is "8/8", so the players in the game are whoever is left when it starts.
+        if (players == null || playersLeft > players) players = playersLeft;
+        if (theme != null) {
+            spb.onRound(round, theme, difficulty, playersLeft, now);
+            if (current.theme == null) current.theme = theme;   // the game is filed under its first build
+        }
+        if (timeLeft != null) spb.onBuildClock(timeLeft, now);
+        if (gameOver) finish();
     }
 
     // ---- chat
@@ -116,6 +151,11 @@ public final class GameStateMachine {
     /** One chat line, cleaned. Multi-line messages are split by the caller. */
     public void onChat(String line) {
         if (state == State.IDLE) return;
+        // The end-of-game podium is a place ("1st - 7") and then, on its own line, that player's name.
+        if (podiumPlace != null) {
+            if (current != null && current.placement == null && line.equalsIgnoreCase(playerName)) current.placement = podiumPlace;
+            podiumPlace = null;
+        }
         Event e = parser.parse(line);
         if (e == null) return;
         switch (e.type) {
@@ -145,15 +185,17 @@ public final class GameStateMachine {
             case GAME_END:
                 finish();
                 break;
-            case SPB_BUILD:
-                if (state == State.LOBBY && speedBuilders()) startBuilding(null);
-                if (spb != null) {
-                    spb.onBuild(e.text, System.currentTimeMillis());
-                    if (current.theme == null) current.theme = e.text;
-                }
+            case TOKENS_PLACEMENT:
+                if (current != null && spb != null) current.placement = Integer.valueOf(e.text);
                 break;
-            case SPB_START:
-                if (spb != null) spb.onStart(System.currentTimeMillis());
+            case PODIUM:
+                podiumPlace = Integer.valueOf(e.text);
+                break;
+            case SPB_ELIMINATED:
+                if (spb != null) {
+                    Integer place = spb.onEliminated();
+                    if (current.placement == null) current.placement = place;
+                }
                 break;
             case SPB_PERFECT:
                 if (spb != null) spb.onPerfect(e.text, e.text2, System.currentTimeMillis());
@@ -294,6 +336,7 @@ public final class GameStateMachine {
     private void reset() {
         current = null;
         spb = null;
+        podiumPlace = null;
         gtbLastBuilder = null;
         gtbRoundStartedAt = 0;
         gtbCorrectInRound = false;

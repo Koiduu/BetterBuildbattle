@@ -23,7 +23,7 @@
             "Assembly Line: win placing one block type at a time",
             "Photo Finish: a Perfect Build with less than a second left",
             "From the Bottom: win after the slowest Perfect Build in round 1",
-            "Speedrunner: win with every round under 15 seconds",
+            "Speedrunner: win with more than half the clock left in every round",
             "Measure Twice now works: win without breaking a single block"
           ]
         },

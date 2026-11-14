@@ -28,8 +28,12 @@ public final class SpbTracker {
 
     /** One round. Serialised as-is into the match's spb_rounds JSON. */
     public static final class Round {
-        public String build;               // build id, e.g. "pagoda"
-        public String name;                // as Hypixel shows it, e.g. "Pagoda"
+        public int number;                 // round number, from 1
+        public String build;               // build id, e.g. "chicken_coop"
+        public String name;                // as Hypixel shows it, e.g. "Chicken Coop"
+        public String difficulty;          // Simple, Easy, Medium, Hard, Insane
+        public Integer limitMs;            // the round's time limit
+        public int playersAtStart;         // players left when the round began
         public Integer timeMs;             // your perfect time; null if you didn't get a perfect build
         public Double accuracy;            // 1.0 for perfect, else what Hypixel reported, null if unknown
         public Double precision;           // needed / touched blocks, for perfect rounds
@@ -54,9 +58,8 @@ public final class SpbTracker {
     private final List<Round> rounds = new ArrayList<Round>();
     private Records records;
     private Round current;
-    private Integer secondsLeft;
-    private long secondsLeftAt;
     private long finishedAt;
+    private boolean eliminated;
 
     public SpbTracker(String playerName, Records records) {
         this.playerName = playerName;
@@ -71,13 +74,20 @@ public final class SpbTracker {
 
     // ---- events
 
-    /** A new round's build was announced. Closes the round before it. */
-    public void onBuild(String name, long now) {
+    /**
+     * The sidebar shows a round and its build ("Round: 3", "Theme: Mineshaft"). Called on every sidebar
+     * read; only the first call for a round number starts it. The build is on show at this point: the
+     * clock starts with onBuildClock.
+     */
+    public void onRound(int number, String name, String difficulty, int playersLeft, long now) {
+        if (eliminated || (current != null && current.number == number)) return;
         closeRound();
         Round r = new Round();
+        r.number = number;
         r.name = name;
         r.build = buildId(name);
-        r.startedAt = now;
+        r.difficulty = difficulty;
+        r.playersAtStart = playersLeft;
         if (records != null) {
             r.pbBeforeMs = records.personalBest(r.build);
             r.wrMs = records.worldRecord(r.build);
@@ -87,9 +97,21 @@ public final class SpbTracker {
         finishedAt = 0;
     }
 
-    /** The "go" signal, if Hypixel sends one after showing the build. Restarts the clock. */
-    public void onStart(long now) {
-        if (current != null && current.placed == 0 && current.broken == 0 && !current.perfect) current.startedAt = now;
+    /**
+     * The sidebar's "Time Left" clock, in seconds. Its first value in a round is the round's time limit
+     * (30s on Simple up to 2 minutes on Insane) and marks the moment building starts.
+     */
+    public void onBuildClock(int secondsLeft, long now) {
+        if (current == null || current.startedAt != 0) return;
+        current.limitMs = secondsLeft * 1000;
+        // The sidebar is read twice a second, so on average building began a quarter second ago.
+        current.startedAt = now - 250;
+    }
+
+    /** "You were eliminated": no more rounds are yours. Returns the place that gives you. */
+    public Integer onEliminated() {
+        eliminated = true;
+        return current == null || current.playersAtStart <= 0 ? null : Integer.valueOf(current.playersAtStart);
     }
 
     /** Someone got a perfect build. name is null for "You ...". seconds is null if the line had no time. */
@@ -104,7 +126,7 @@ public final class SpbTracker {
         current.perfect = true;
         current.accuracy = 1.0;
         current.othersPerfectBefore = current.othersPerfect;
-        long ms = now - current.startedAt;
+        long ms = current.startedAt == 0 ? 0 : now - current.startedAt;
         if (seconds != null) {
             try {
                 ms = Math.round(Double.parseDouble(seconds) * 1000.0);
@@ -112,9 +134,7 @@ public final class SpbTracker {
             }
         }
         current.timeMs = (int) Math.max(1, Math.min(Integer.MAX_VALUE, ms));
-        if (secondsLeft != null) {
-            current.remainingMs = (int) Math.max(0, secondsLeft * 1000L - (now - secondsLeftAt));
-        }
+        if (current.limitMs != null) current.remainingMs = Math.max(0, current.limitMs - current.timeMs);
         int touched = current.placed + current.broken;
         current.precision = touched == 0 ? 1.0 : Math.max(0, current.placed - current.broken) / (double) touched;
         finishedAt = now;
@@ -146,14 +166,6 @@ public final class SpbTracker {
         if (current != null && !current.perfect) current.broken++;
     }
 
-    /** The sidebar clock, read every half second. */
-    public void onSecondsLeft(int seconds, long now) {
-        if (secondsLeft == null || seconds != secondsLeft) {
-            secondsLeft = seconds;
-            secondsLeftAt = now;
-        }
-    }
-
     /** Ends the last round and returns them all. */
     public List<Round> finish() {
         closeRound();
@@ -161,9 +173,9 @@ public final class SpbTracker {
     }
 
     private void closeRound() {
-        if (current != null && (current.placed > 0 || current.perfect)) rounds.add(current);
+        // A round counts once its build clock started, even if you placed nothing.
+        if (current != null && (current.startedAt != 0 || current.perfect)) rounds.add(current);
         current = null;
-        secondsLeft = null;
     }
 
     // ---- the timer overlay
@@ -174,8 +186,16 @@ public final class SpbTracker {
         Round r = current;
         if (r == null) return out;
         if (r.perfect && now - finishedAt > 6000) return out;   // fade out a few seconds after finishing
+        out.add("§6" + r.name + (r.difficulty == null ? "" : " §8" + r.difficulty));
+        if (!r.perfect && r.startedAt == 0) {
+            // The build is on show; the clock hasn't started
+            out.add("§7Memorise it");
+            if (r.pbBeforeMs != null) out.add("§7Best §f" + seconds(r.pbBeforeMs));
+            if (showWorldRecord && r.wrMs != null) out.add("§7Record §f" + seconds(r.wrMs) + (r.wrHolder == null ? "" : " §8" + r.wrHolder));
+            return out;
+        }
         long ms = r.perfect ? r.timeMs : now - r.startedAt;
-        out.add("§6" + r.name);
+        if (!r.perfect && r.limitMs != null && ms > r.limitMs + 1500) return new ArrayList<String>();   // time's up: judging
         out.add((r.perfect ? "§a" : "§f") + seconds(ms) + (r.perfect && r.newPb ? " §d§lNEW BEST" : ""));
         if (r.pbBeforeMs != null) out.add("§7Best §f" + seconds(r.pbBeforeMs) + "  " + delta(ms - r.pbBeforeMs, r.perfect));
         if (showWorldRecord && r.wrMs != null) {

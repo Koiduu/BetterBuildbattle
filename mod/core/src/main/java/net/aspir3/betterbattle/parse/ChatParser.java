@@ -17,8 +17,12 @@ import java.util.regex.Pattern;
 public final class ChatParser {
     public enum Type {
         THEME, VOTING_START, BUILDER, VOTE, SCORE, PLACEMENT, GAME_END, GTB_CORRECT_GUESS,
-        // Speed Builders. Wording not yet confirmed from a real game: check with /bb debug.
-        SPB_BUILD, SPB_START, SPB_PERFECT, SPB_ACCURACY
+        // Speed Builders (from a real game, Nov 2026)
+        SPB_PERFECT, SPB_ACCURACY, SPB_ELIMINATED,
+        /** "+120 tokens! (2nd Place)" */
+        TOKENS_PLACEMENT,
+        /** "1st - 7": the next chat line is that player's name. */
+        PODIUM
     }
 
     public static final class Event {
@@ -37,6 +41,7 @@ public final class ChatParser {
     private static final class Spec {
         int version;
         String title;
+        List<String> titles;
         Map<String, String> modes;
         Map<String, String> sidebar;
         Map<String, String> chat;
@@ -53,7 +58,8 @@ public final class ChatParser {
     }
 
     private final int version;
-    private final String title;
+    private final List<String> titles = new ArrayList<String>();
+    private final Map<String, Pattern> sidebarExtra = new java.util.HashMap<String, Pattern>();
     private final Map<String, String> modes;
     private final Pattern sidebarMode, sidebarPlayers, sidebarTime;
     private static final Pattern CLOCK = Pattern.compile("(\\d+):(\\d{2})\\s*$");
@@ -62,7 +68,11 @@ public final class ChatParser {
     public ChatParser(Reader json) {
         Spec s = new Gson().fromJson(json, Spec.class);
         version = s.version;
-        title = s.title.toUpperCase(Locale.ROOT);
+        if (s.title != null) titles.add(s.title.toUpperCase(Locale.ROOT));
+        if (s.titles != null) for (String t : s.titles) if (!titles.contains(t.toUpperCase(Locale.ROOT))) titles.add(t.toUpperCase(Locale.ROOT));
+        for (Map.Entry<String, String> e : s.sidebar.entrySet()) {
+            if (!e.getKey().startsWith("_")) sidebarExtra.put(e.getKey(), Pattern.compile(e.getValue()));
+        }
         modes = s.modes;
         sidebarMode = Pattern.compile(s.sidebar.get("MODE"));
         sidebarPlayers = Pattern.compile(s.sidebar.get("PLAYERS"));
@@ -87,7 +97,9 @@ public final class ChatParser {
     }
 
     public boolean isBuildBattle(String sidebarTitle) {
-        return clean(sidebarTitle).toUpperCase(Locale.ROOT).contains(title);
+        String t = clean(sidebarTitle).toUpperCase(Locale.ROOT);
+        for (String title : titles) if (t.contains(title)) return true;
+        return false;
     }
 
     /** "Mode: Solo" → "solo". Null if the line isn't a mode line or the mode is unknown. */
@@ -104,6 +116,36 @@ public final class ChatParser {
     /** True for the build countdown line, which only shows while building. */
     public boolean isBuildTimer(String line) {
         return sidebarTime.matcher(line).find();
+    }
+
+    /**
+     * A named sidebar pattern from patterns.json (e.g. "SPB_THEME"): its first group, the whole line
+     * if it has no groups, or null if the line doesn't match or this patterns file doesn't have it.
+     */
+    public String sidebar(String key, String line) {
+        Pattern p = sidebarExtra.get(key);
+        if (p == null) return null;
+        Matcher m = p.matcher(line);
+        if (!m.find()) return null;
+        return m.groupCount() >= 1 ? m.group(1).trim() : line;
+    }
+
+    public Integer sidebarInt(String key, String line) {
+        String v = sidebar(key, line);
+        try {
+            return v == null ? null : Integer.valueOf(v);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** A "mm:ss" sidebar pattern with two groups, as seconds. */
+    public Integer sidebarClock(String key, String line) {
+        Pattern p = sidebarExtra.get(key);
+        if (p == null) return null;
+        Matcher m = p.matcher(line);
+        if (!m.find() || m.groupCount() < 2) return null;
+        return Integer.parseInt(m.group(1)) * 60 + Integer.parseInt(m.group(2));
     }
 
     /** Seconds left on the sidebar's build clock ("Time: 0:42" → 42), or null for any other line. */

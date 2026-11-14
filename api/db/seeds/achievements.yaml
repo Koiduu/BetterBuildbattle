@@ -7,7 +7,7 @@
 # one_offs: unlocked by a rule class in mod/core/.../achieve (rule: <ClassName>).
 # secret: hidden in the menu until unlocked.
 
-catalog_version: 3
+catalog_version: 4
 
 tracks:
   # ---------------- Build Battle, from Hypixel totals (retroactive) ----------------
@@ -351,7 +351,7 @@ one_offs:
     rule: FromTheBottom
   - id: spb_speedrunner
     name: "Speedrunner"
-    description: "Win a Speed Builders game with a Perfect Build in under 15 seconds every round"
+    description: "Win a Speed Builders game with a Perfect Build every round, each with more than half the clock left"
     category: speed_builders
     points: 50
     rule: Speedrunner

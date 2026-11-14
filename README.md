@@ -31,14 +31,14 @@ mod/
 
 ## What's not finished
 
-- `patterns.json` matches a real Solo game (Nov 2026). Teams, Pro, Guess the Build and Speed Builders still need a
+- `patterns.json` matches real Solo and Speed Builders games (Nov 2026). Teams, Pro and Guess the Build still need a
   `/bb debug` log each to confirm their wording.
 - The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
-- Speed Builders: the timer, personal bests, world records and round tracking are built, but the chat wording in
-  `patterns.json` (`SPB_BUILD`, `SPB_START`, `SPB_PERFECT`, `SPB_ACCURACY`) is a guess. Play one game with `/bb debug`
-  on and fix those four lines. Ghost replays (showing where the record holder placed blocks) are left out on purpose:
-  that kind of build help could break Hypixel's allowed-mods rules.
+- Speed Builders tracking is checked against a real game (Nov 2026): rounds, builds and the clock come from the
+  sidebar, perfect builds and accuracy from chat. `mod/core/src/test/Replay.java` replays a `debug.log` through it.
+  Ghost replays (showing where the record holder placed blocks) are left out on purpose: that kind of build help
+  could break Hypixel's allowed-mods rules.
 - Block breaks come from left clicks on a block. Check on 1.8.9 that Forge fires `LEFT_CLICK_BLOCK` on the client in
   Speed Builders; if not, Measure Twice and precision will be too generous there.
 - Every one-off challenge has a detector. The Guess the Build chat pattern is a guess to check with `/bb debug`.

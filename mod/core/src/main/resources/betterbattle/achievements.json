@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 4,
  "achievements": [
   {
    "id": "bb_wins_t1",
@@ -1096,7 +1096,7 @@
   {
    "id": "spb_speedrunner",
    "name": "Speedrunner",
-   "description": "Win a Speed Builders game with a Perfect Build in under 15 seconds every round",
+   "description": "Win a Speed Builders game with a Perfect Build every round, each with more than half the clock left",
    "category": "speed_builders",
    "points": 50,
    "secret": false
