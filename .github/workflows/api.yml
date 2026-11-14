@@ -81,6 +81,13 @@ jobs:
       - name: Install API dependencies
         working-directory: api
         run: npm install
+      - name: Apply initial database migrations
+        shell: bash
+        run: |
+          export LC_ALL=C
+          for f in api/db/migrations/*.sql; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
       - name: Start API and wait for health
         working-directory: api
         shell: bash
