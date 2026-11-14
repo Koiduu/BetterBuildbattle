@@ -47,10 +47,10 @@ function panel(ctx: ReturnType<ReturnType<typeof createCanvas>["getContext"]>, x
   ctx.stroke();
 }
 
-function fitText(ctx: any, text: string, x: number, y: number, maxWidth: number, size: number, color: string, family = display, weight = 600) {
+function fitText(ctx: any, text: string, x: number, y: number, maxWidth: number, size: number, color: string, family = display, weight = 600, minSize = 18) {
   let current = size;
   ctx.font = `${weight} ${current}px ${family}`;
-  while (ctx.measureText(text).width > maxWidth && current > 18) {
+  while (ctx.measureText(text).width > maxWidth && current > minSize) {
     current -= 1;
     ctx.font = `${weight} ${current}px ${family}`;
   }
@@ -63,7 +63,7 @@ function number(value: number | null | undefined) {
 }
 
 function label(ctx: any, text: string, x: number, y: number) {
-  ctx.font = `600 16px ${display}`;
+  ctx.font = `700 17px ${body}`;
   ctx.fillStyle = colors.gold;
   ctx.fillText(text, x, y);
 }
@@ -86,28 +86,28 @@ export async function renderStatsCard(data: StatsCardData): Promise<Buffer> {
   panel(ctx, 20, 20, W - 40, H - 40);
 
   const avatar = await avatarFor(data.uuid);
-  panel(ctx, 46, 46, 142, 142, colors.panel2);
-  if (avatar) ctx.drawImage(avatar, 59, 59, 116, 116);
+  panel(ctx, 46, 42, 130, 130, colors.panel2);
+  if (avatar) ctx.drawImage(avatar, 58, 54, 106, 106);
   else {
     ctx.fillStyle = "#35353d";
-    ctx.fillRect(59, 59, 116, 116);
+    ctx.fillRect(58, 54, 106, 106);
     ctx.fillStyle = colors.muted;
-    ctx.fillRect(94, 82, 46, 46);
-    ctx.fillRect(82, 132, 70, 34);
+    ctx.fillRect(88, 75, 44, 44);
+    ctx.fillRect(78, 122, 64, 30);
   }
 
-  fitText(ctx, data.name, 212, 98, 640, 52, colors.text);
+  fitText(ctx, data.name, 200, 88, 640, 52, colors.text, display, 600, 40);
   const title = data.title.current;
-  fitText(ctx, title.name, 214, 132, 580, 25, title.hex, display, title.bold ? 700 : 500);
-  ctx.font = `15px ${body}`;
+  fitText(ctx, title.name, 202, 120, 580, 22, title.hex, body, title.bold ? 700 : 500);
+  ctx.font = `14px ${body}`;
   ctx.fillStyle = colors.soft;
   const progressText = data.title.next
     ? `${number(data.title.into)} / ${number(data.title.span)} to ${data.title.next.name}`
     : "Maximum title";
-  ctx.fillText(progressText, 214, 164);
-  panel(ctx, 214, 174, 570, 14, colors.panel2);
+  ctx.fillText(progressText, 202, 146);
+  panel(ctx, 202, 155, 570, 14, colors.panel2);
   ctx.fillStyle = colors.pink;
-  ctx.fillRect(220, 179, Math.max(0, Math.min(1, data.title.pct)) * 558, 4);
+  ctx.fillRect(208, 159, Math.max(0, Math.min(1, data.title.pct)) * 558, 6);
 
   const wins = data.hypixel.wins;
   const games = data.hypixel.gamesPlayed;
@@ -120,17 +120,21 @@ export async function renderStatsCard(data: StatsCardData): Promise<Buffer> {
     ["Win rate", winRate],
   ];
   const statX = 46;
-  const statY = 218;
+  const statY = 188;
   const statGap = 12;
   const statW = 212;
   for (let i = 0; i < stats.length; i++) {
     const x = statX + i * (statW + statGap);
-    panel(ctx, x, statY, statW, 94, colors.panel2);
-    label(ctx, stats[i][0], x + 14, statY + 29);
-    fitText(ctx, stats[i][1], x + 14, statY + 70, statW - 28, 27, colors.text, display);
+    panel(ctx, x, statY, statW, 86, colors.panel2);
+    label(ctx, stats[i][0], x + 14, statY + 27);
+    if (i === 1) {
+      fitText(ctx, stats[i][1], x + 14, statY + 66, statW - 28, 21, colors.text, body, 700);
+    } else {
+      fitText(ctx, stats[i][1], x + 14, statY + 68, statW - 28, 40, colors.text, display, 600, 40);
+    }
   }
 
-  label(ctx, "MODE WINS", 48, 350);
+  label(ctx, "MODE WINS", 48, 302);
   const modes: [string, number | null][] = [
     ["Solo", data.hypixel.modeWins.solo], ["Teams", data.hypixel.modeWins.teams],
     ["Pro", data.hypixel.modeWins.pro], ["Guess the Build", data.hypixel.modeWins.gtb],
@@ -139,39 +143,47 @@ export async function renderStatsCard(data: StatsCardData): Promise<Buffer> {
   const modeW = 212;
   for (let i = 0; i < modes.length; i++) {
     const x = statX + i * (modeW + statGap);
-    panel(ctx, x, 364, modeW, 82, colors.panel2);
-    fitText(ctx, modes[i][0], x + 13, 393, modeW - 26, 16, colors.soft, body, 600);
-    fitText(ctx, number(modes[i][1]), x + 13, 427, modeW - 26, 25, colors.text);
+    panel(ctx, x, 314, modeW, 78, colors.panel2);
+    fitText(ctx, modes[i][0], x + 13, 342, modeW - 26, 16, colors.soft, body, 700);
+    fitText(ctx, number(modes[i][1]), x + 13, 377, modeW - 26, 24, colors.text, body, 700);
   }
   ctx.font = `15px ${body}`;
   ctx.fillStyle = colors.soft;
-  ctx.fillText(`Correct guesses: ${number(data.hypixel.correctGuesses)}`, 48, 471);
+  ctx.fillText(`Correct guesses: ${number(data.hypixel.correctGuesses)}`, 48, 412);
 
-  panel(ctx, 46, 490, 1108, 86, colors.panel2);
+  panel(ctx, 46, 425, 1108, 130, colors.panel2);
   if (data.betterBattle) {
     const bb = data.betterBattle;
-    label(ctx, "BETTER BATTLE", 64, 518);
-    ctx.font = `18px ${display}`;
+    label(ctx, "BETTER BATTLE", 64, 451);
+    ctx.font = `700 20px ${body}`;
     ctx.fillStyle = colors.text;
-    ctx.fillText(`Level ${number(bb.level)}`, 64, 552);
+    ctx.fillText(`Level ${number(bb.level)}`, 64, 482);
     ctx.fillStyle = colors.muted;
-    ctx.font = `13px ${body}`;
-    ctx.fillText(`${number(bb.xpIntoLevel)} / ${number(bb.xpForNext)} XP`, 64, 568);
-    panel(ctx, 230, 538, 330, 18, colors.bg);
+    ctx.font = `15px ${body}`;
+    ctx.fillText(`${number(bb.xpIntoLevel)} / ${number(bb.xpForNext)} XP`, 64, 506);
+    panel(ctx, 64, 516, 350, 14, colors.bg);
     ctx.fillStyle = colors.pink;
-    ctx.fillRect(237, 544, Math.max(0, Math.min(1, bb.xpForNext ? bb.xpIntoLevel / bb.xpForNext : 0)) * 316, 6);
+    ctx.fillRect(70, 520, Math.max(0, Math.min(1, bb.xpForNext ? bb.xpIntoLevel / bb.xpForNext : 0)) * 338, 6);
     const crowd = bb.crowdScore === null ? "–" : `${(bb.crowdScore * 100).toFixed(1)}%`;
-    fitText(ctx, `Crowd ${crowd}`, 595, 552, 155, 17, colors.soft, body, 600);
-    fitText(ctx, `SS ${number(bb.grades.SS)}   S ${number(bb.grades.S)}   A ${number(bb.grades.A)}`, 760, 548, 270, 17, colors.soft, body, 600);
-    fitText(ctx, `Themes ${number(bb.themesBuilt)}`, 760, 570, 250, 15, colors.muted, body, 500);
+    ctx.strokeStyle = colors.line;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(454, 442); ctx.lineTo(454, 538);
+    ctx.moveTo(700, 442); ctx.lineTo(700, 538);
+    ctx.stroke();
+    label(ctx, "CROWD SCORE", 482, 451);
+    fitText(ctx, crowd, 482, 492, 190, 28, colors.soft, body, 700);
+    label(ctx, "GRADES", 730, 451);
+    fitText(ctx, `SS ${number(bb.grades.SS)}   S ${number(bb.grades.S)}   A ${number(bb.grades.A)}`, 730, 482, 392, 20, colors.soft, body, 700);
+    fitText(ctx, `Themes built: ${number(bb.themesBuilt)}`, 730, 520, 392, 17, colors.muted, body, 600);
   } else {
     ctx.font = `18px ${body}`;
     ctx.fillStyle = colors.soft;
-    ctx.fillText("Get the mod at battle.aspir3.net for levels and grades", 64, 540);
+    ctx.fillText("Get the mod at battle.aspir3.net for levels and grades", 64, 494);
   }
 
   ctx.font = `14px ${body}`;
   ctx.fillStyle = colors.muted;
-  ctx.fillText(`battle.aspir3.net/p/${data.name}`, 48, 606);
+  ctx.fillText(`battle.aspir3.net/p/${data.name}`, 48, 588);
   return canvas.toBuffer("image/png");
 }
