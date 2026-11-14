@@ -186,9 +186,9 @@ exit /b 0
 setlocal DisableDelayedExpansion
 set "OFFSITE_SOURCE=%FULL_DUMP%"
 set "BACKUP_COPY_DIR="
-for /f "usebackq tokens=1,* delims==" %%A in (".env") do for /f "tokens=1" %%K in ("%%A") do if /i "%%K"=="BACKUP_COPY_DIR" set "BACKUP_COPY_DIR=%%B"
-if not defined BACKUP_COPY_DIR goto :offsite_copy_done
-set "BB_BACKUP_COPY_VALUE=%BACKUP_COPY_DIR%"
+set "BB_BACKUP_COPY_VALUE="
+for /f "usebackq tokens=1,* delims==" %%A in (".env") do for /f "tokens=1" %%K in ("%%A") do if /i "%%K"=="BACKUP_COPY_DIR" set "BB_BACKUP_COPY_VALUE=%%B"
+if not defined BB_BACKUP_COPY_VALUE goto :offsite_copy_done
 for /f "delims=" %%V in ('powershell -NoProfile -Command "$v = $env:BB_BACKUP_COPY_VALUE.Trim(); if (-not $v.StartsWith([string][char]34) -and -not $v.StartsWith([string][char]39)) { $v = ($v -replace '\s+#.*$','') }; $v = $v.Trim().Trim([char]34).Trim([char]39).Trim(); [Console]::Write($v)"') do set "BACKUP_COPY_DIR=%%V"
 set "BB_BACKUP_COPY_VALUE="
 if not defined BACKUP_COPY_DIR goto :offsite_copy_done
