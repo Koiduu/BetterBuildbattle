@@ -33,3 +33,20 @@ ALTER TABLE pinned_matches ADD CONSTRAINT pinned_matches_position_check CHECK (p
 
 -- Discord: a channel for automatic posts (new Speed Builders world records).
 ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS feed_channel_id TEXT;
+
+-- Private leaderboards ("groups"): a Master Builder creates one, anyone with the invite code can join.
+CREATE TABLE IF NOT EXISTS groups (
+  id          BIGSERIAL PRIMARY KEY,
+  slug        TEXT UNIQUE NOT NULL,
+  name        TEXT NOT NULL CHECK (length(name) BETWEEN 2 AND 40),
+  owner_id    BIGINT NOT NULL REFERENCES users ON DELETE CASCADE,
+  invite_code TEXT UNIQUE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS group_members (
+  group_id  BIGINT NOT NULL REFERENCES groups ON DELETE CASCADE,
+  user_id   BIGINT NOT NULL REFERENCES users ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (group_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS group_members_user_idx ON group_members (user_id);

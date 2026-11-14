@@ -7,5 +7,6 @@ export interface CardData {
   level: number | null;
   stats: [string, string | number][];
   url: string;
+  supporter?: string | null;
 }
-export function drawCard(g: unknown, data: CardData, face: unknown, fonts: { display: string; body: string }): void;
+export function drawCard(g: unknown, data: CardData, face: unknown, fonts: { display: string; body: string }, theme?: Partial<import("./style-options.js").CardTheme>): void;

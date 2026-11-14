@@ -396,20 +396,27 @@ export function accountRoutes(app: Router) {
   app.get("/me/matches", [requireWebSession], async (req) => {
     const { before } = z.object({ before: z.string().datetime().optional() }).parse(req.query);
     if (!req.user.mcUuid) return [];
+    // Everyone sees their latest games; the complete history is a Master Builder perk.
+    const owner = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [req.user.id]);
+    const cap = limit(planOf(owner.rows[0]), "historyGames");
     return (await pool.query(
       `SELECT id, played_at, mode, theme, placement, players, score, grade, crowd_score, xp_earned
-       FROM matches WHERE user_id = $1 AND ($2::timestamptz IS NULL OR played_at < $2)
-       ORDER BY played_at DESC LIMIT 25`, [req.user.id, before ?? null])).rows;
+       FROM (SELECT * FROM matches WHERE user_id = $1 ORDER BY played_at DESC LIMIT $3) recent
+       WHERE ($2::timestamptz IS NULL OR played_at < $2)
+       ORDER BY played_at DESC LIMIT 25`, [req.user.id, before ?? null, Number.isFinite(cap) ? cap : null])).rows;
   });
 
   app.get("/me/pins", [requireWebSession], async (req) => getPins(req.user.id));
 
   app.put("/me/pins", [requireWebSession], async (req) => {
     const { matchIds } = z.object({
-      matchIds: z.array(z.string().uuid()).max(10)
+      matchIds: z.array(z.string().uuid()).max(20)
         .refine((ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length),
     }).parse(req.body);
     if (!req.user.mcUuid) fail(400, "no_minecraft");
+    const owner = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [req.user.id]);
+    const maxPins = limit(planOf(owner.rows[0]), "pins");
+    if (matchIds.length > maxPins) fail(402, "plan_required", { feature: "pins", limit: maxPins, requires: "architect", requiresName: PLANS.architect.name });
     const matches = await pool.query(
       "SELECT id, played_at FROM matches WHERE user_id = $1 AND id = ANY($2::uuid[])",
       [req.user.id, matchIds]);

@@ -3,6 +3,8 @@
 // Reads only what's already in the database: a crawler can never trigger a Hypixel or Mojang call.
 import { pool } from "../db/pool";
 import { titleProgress } from "./titles";
+import { can, planOf } from "./plans";
+import { RESERVED } from "./style";
 
 const SITE = "Better Battle";
 const DEFAULT = {
@@ -18,7 +20,14 @@ const fmt = (n: number | null | undefined) => (n == null ? "–" : Number(n).toL
 /** Preview text for a path, or null to keep the defaults. Never throws. */
 export async function metaFor(pathname: string): Promise<PageMeta | null> {
   try {
-    const profile = pathname.match(/^\/p\/([A-Za-z0-9_]{1,16})\/?$/);
+    let profile = pathname.match(/^\/p\/([A-Za-z0-9_]{1,16})\/?$/);
+    // A vanity link (battle.aspir3.net/<name>) previews as the profile it points to.
+    const slug = pathname.match(/^\/([a-z0-9][a-z0-9_-]{2,19})\/?$/i);
+    if (!profile && slug && !RESERVED.has(slug[1].toLowerCase())) {
+      const v = await pool.query(
+        "SELECT mc_name, plan, plan_until, plan_comped FROM users WHERE vanity = $1 AND mc_name IS NOT NULL", [slug[1].toLowerCase()]);
+      if (v.rowCount && can(planOf(v.rows[0]), "vanity")) profile = ["", v.rows[0].mc_name] as unknown as RegExpMatchArray;
+    }
     if (profile) {
       const r = await pool.query(
         `SELECT t.mc_name, t.mc_uuid, t.bb_score, t.bb_wins, p.level, p.ap

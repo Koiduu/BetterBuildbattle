@@ -8,6 +8,7 @@ import { modRoutes } from "./routes/mod";
 import { publicRoutes } from "./routes/public";
 import { adminRoutes } from "./routes/admin";
 import { billingRoutes } from "./routes/billing";
+import { perkRoutes } from "./routes/perks";
 import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
@@ -24,6 +25,7 @@ modRoutes(api);
 publicRoutes(api);
 adminRoutes(api);
 billingRoutes(api);
+perkRoutes(api);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
   return { ok: true };

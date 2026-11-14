@@ -8,6 +8,7 @@ import { drawCard, CARD_W, CARD_H } from "../../../web/card.js";
 import { pool } from "../db/pool";
 import { globalRank } from "../jobs/crawler";
 import { titleProgress } from "../lib/titles";
+import { CARD_THEMES, publicStyle } from "../lib/style";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB = process.env.WEB_DIR ?? path.resolve(here, "../../../web");
@@ -37,7 +38,8 @@ export async function profileCard(name: string, origin: string): Promise<Buffer 
 
   const r = await pool.query(
     `SELECT t.mc_name, t.mc_uuid, t.bb_score, t.bb_wins, t.bb_games, t.hypixel_bb,
-            p.level, p.ap, u.id AS user_id
+            p.level, p.ap, u.id AS user_id, u.plan, u.plan_until, u.plan_comped, u.card_theme, u.accent, u.banner,
+            u.featured_achievement, u.vanity
      FROM tracked_players t
      LEFT JOIN users u ON u.mc_uuid = t.mc_uuid
      LEFT JOIN user_progress p ON p.user_id = u.id
@@ -77,6 +79,7 @@ export async function profileCard(name: string, origin: string): Promise<Buffer 
   if (!fontReady) {
     fontReady = GlobalFonts.registerFromPath(path.join(WEB, "fonts/PixelifySans-Variable.ttf"), FONT) != null;
   }
+  const style = publicStyle(p);
   const canvas = createCanvas(CARD_W, CARD_H);
   drawCard(canvas.getContext("2d"), {
     name: p.mc_name,
@@ -84,7 +87,9 @@ export async function profileCard(name: string, origin: string): Promise<Buffer 
     level: p.level,
     stats,
     url: `${new URL(origin).host}/p/${p.mc_name}`,
-  }, await face(p.mc_uuid), { display: `'${FONT}', sans-serif`, body: `'${FONT}', sans-serif` });
+    supporter: style.supporter,
+  }, await face(p.mc_uuid), { display: `'${FONT}', sans-serif`, body: `'${FONT}', sans-serif` },
+  style.cardTheme ? CARD_THEMES[style.cardTheme] : undefined);
   const png = await canvas.encode("png");
 
   if (cache.size > 500) cache.delete(cache.keys().next().value!);

@@ -4,7 +4,8 @@ import { Router, Raw, fail, type Req } from "../http";
 import { profileCard } from "../services/card";
 import { siteOrigin } from "../lib/site";
 import { BOARDS, boardById, boardPage, positions } from "../services/boards";
-import { FEATURES, can, planOf, type Plan } from "../lib/plans";
+import { FEATURES, can, limit, planOf, type Plan } from "../lib/plans";
+import { publicStyle } from "../lib/style";
 import { readWebSession } from "../plugins/auth";
 
 /** The plan of whoever is looking (free if logged out). */
@@ -172,6 +173,7 @@ export function publicRoutes(app: Router) {
 
     const u = await pool.query(
       `SELECT u.id, u.bio, u.created_at, u.claimed, p.user_id IS NOT NULL AS has_progress,
+              u.plan, u.plan_until, u.plan_comped, u.accent, u.banner, u.card_theme, u.featured_achievement, u.vanity,
               p.xp, p.ap, p.level, p.best_win_streak
        FROM users u LEFT JOIN user_progress p ON p.user_id = u.id WHERE u.mc_uuid = $1`, [p.mc_uuid]);
     let betterBattle = null;
@@ -221,6 +223,7 @@ export function publicRoutes(app: Router) {
       lastChecked: p.last_checked,
       bio,
       claimed,
+      style: publicStyle(u.rows[0]),
       hypixel: {
         wins: hyp.wins ?? p.bb_wins ?? 0,
         gamesPlayed: hyp.games_played ?? p.bb_games ?? 0,
@@ -265,11 +268,14 @@ export function publicRoutes(app: Router) {
     }).parse(req.query);
     const id = await userIdFor(name);
     if (!id) return [];
+    // The latest games for everyone; the complete history shows when the profile's owner is a Master Builder.
+    const owner = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [id]);
+    const cap = limit(planOf(owner.rows[0]), "historyGames");
     const r = await pool.query(
       `SELECT id, played_at, mode, theme, placement, players, score, grade, crowd_score, xp_earned
-       FROM matches WHERE user_id = $1 AND ($2::bb_mode IS NULL OR mode = $2)
-         AND ($3::timestamptz IS NULL OR played_at < $3)
-       ORDER BY played_at DESC LIMIT 25`, [id, q.mode ?? null, q.before ?? null]);
+       FROM (SELECT * FROM matches WHERE user_id = $1 ORDER BY played_at DESC LIMIT $4) recent
+       WHERE ($2::bb_mode IS NULL OR mode = $2) AND ($3::timestamptz IS NULL OR played_at < $3)
+       ORDER BY played_at DESC LIMIT 25`, [id, q.mode ?? null, q.before ?? null, Number.isFinite(cap) ? cap : null]);
     return r.rows;
   });
 
