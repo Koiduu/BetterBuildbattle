@@ -98,7 +98,7 @@ async function releaseLinks() {
   try {
     const response = await fetch("https://api.github.com/repos/Koiduu/BetterBuildbattle/releases?per_page=5", {
       headers: { "user-agent": "BetterBattleDiscordBot", accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
     const releases = await response.json() as Release[];
@@ -118,6 +118,7 @@ async function releaseLinks() {
 }
 
 async function download(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
   const links = await releaseLinks();
   const embed = new EmbedBuilder()
     .setColor(0xffaa00)
@@ -131,7 +132,7 @@ async function download(interaction: ChatInputCommandInteraction) {
     new ButtonBuilder().setLabel("Fabric 26.3").setStyle(ButtonStyle.Link).setURL(links.fabric),
     new ButtonBuilder().setLabel("Forge 1.8.9").setStyle(ButtonStyle.Link).setURL(links.forge),
   );
-  return interaction.reply({ embeds: [embed], components: [row] });
+  return interaction.editReply({ embeds: [embed], components: [row] });
 }
 
 function verifyLimited(userId: string) {
