@@ -103,6 +103,7 @@ export async function plansPage() {
         <li>Cancel any time from your Account page. You keep your plan until the end of the period you paid for.</li>
         <li>If a plan ends, nothing is deleted: your style and private leaderboards come back if you return.</li>
         <li>Under 18? Ask a parent or guardian before paying. See the <a href="/terms" data-link>Terms</a> for refunds.</li>
+        <li>Billing question? Email <a href="mailto:KoiduSupport@gmail.com">KoiduSupport@gmail.com</a>.</li>
         <li>Discord perks follow the Discord account connected on your <a href="/account" data-link>Account page</a>.</li>
       </ul>
     </section>`;

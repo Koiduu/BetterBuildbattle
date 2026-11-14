@@ -9,7 +9,7 @@ import {
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
-const SUPPORT = { email: null, discord: "https://discord.gg/zgQcwWpkrq" };
+const SUPPORT = { email: "KoiduSupport@gmail.com", discord: "https://discord.gg/zgQcwWpkrq" };
 let flashNotice = null;
 
 const MODES = {
@@ -156,7 +156,7 @@ function legalPage(name, content, showLastUpdated = true) {
     <article class="card legal-page">
       <header class="legal-head">
         <h1>${name}</h1>
-        ${showLastUpdated ? `<p class="sub">Last updated 13 November 2026</p>` : ""}
+        ${showLastUpdated ? `<p class="sub">Last updated 14 November 2026</p>` : ""}
       </header>
       ${content}
     </article>`;
@@ -188,8 +188,8 @@ function privacyPage() {
     <section><h2>How long data stays</h2>
       <p>Your Better Battle account data stays until you delete your account. Deleting removes your Better Battle data immediately. Public Hypixel stats in the global ranking stay unless you ask support to remove them. Login sessions expire after 30 days.</p></section>
     <section><h2>Your choices and age</h2>
-      <p>You can delete your account or download a copy of your data from the Account page. To request a correction or removal of account data, contact us on Discord using the link below. Public Hypixel stats can also be removed on request.</p>
-      <p>You must be at least 13, or older if your country requires it, to make an account. If we learn that an account belongs to someone under 13, we delete it. Parents or guardians can ask us to do so on Discord.</p>
+      <p>You can delete your account or download a copy of your data from the Account page. To request a correction or removal of account data, email us at <a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a> or contact us on Discord using the link below. Public Hypixel stats can also be removed on request.</p>
+      <p>You must be at least 13, or older if your country requires it, to make an account. If we learn that an account belongs to someone under 13, we delete it. Parents or guardians can ask us to do so by email at <a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a> or on Discord.</p>
       <p class="contact-block">${supportContact()}</p></section>`);
 }
 
@@ -208,7 +208,7 @@ function termsPage() {
     <section><h2>Paid plans</h2>
       <p>The mod, achievements and rankings are free. Architect and Master Builder are optional monthly subscriptions that add cosmetic and statistics features on this website and in Discord. They never change anything inside a game and give no advantage in Build Battle.</p>
       <p>Payments are taken by Stripe. Better Battle never sees or stores your card details. A subscription renews every month until you cancel it, which you can do at any time from your Account page; you keep the plan until the end of the period you have paid for.</p>
-      <p>If you are under 18, you need a parent's or guardian's permission to buy a plan. If you bought one by mistake, contact us on Discord within 14 days and we will refund it. Where the law gives you a right to cancel within 14 days, that right applies.</p>
+      <p>If you are under 18, you need a parent's or guardian's permission to buy a plan. If you bought one by mistake, email us at <a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a> within 14 days and we will refund it. Where the law gives you a right to cancel within 14 days, that right applies.</p>
       <p>Features can change over time. If a paid feature you rely on is removed, you can cancel and ask for a refund of the current period. If the service shuts down, subscriptions are cancelled and the unused part of the current period is refunded.</p>
       <p>Deleting your account cancels your subscription immediately. Accounts that break these terms can lose their plan without a refund.</p></section>
     <section><h2>Changes</h2>
@@ -236,13 +236,13 @@ function supportPage() {
     <section><h2>Stats are not updating</h2>
       <p>Hypixel totals refresh every few days.</p></section>
     <section><h2>Getting a copy of your data</h2>
-      <p>Sign in and use Download my data on the Account page. For help, corrections or removal requests, contact us on Discord.</p></section>
+      <p>Sign in and use Download my data on the Account page. For help, corrections or removal requests, email us at <a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a> or contact us on Discord.</p></section>
     <section><h2>Using the Discord bot</h2>
       <p>Use the Better Battle bot: <code>/download</code>, <code>/stats</code>, <code>/verify</code>, and the Open a ticket button in the support channel.</p></section>
     <section><h2>Deleting your account</h2>
       <p>Use the Delete account section at the bottom of the Account page. If your account has no password, type <code>DELETE</code> to confirm.</p></section>
     <section><h2>Contact</h2>
-      <p>For account data copies, corrections or removal requests, contact us on Discord.</p>
+      <p>For account data copies, billing questions, corrections or removal requests, email us at <a href="mailto:${esc(SUPPORT.email)}">${esc(SUPPORT.email)}</a> or contact us on Discord.</p>
       <p class="contact-block">${supportContact()}</p></section>`, false);
 }
 

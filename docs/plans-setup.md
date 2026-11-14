@@ -13,6 +13,9 @@ add things on the website and in Discord.
    application* on the [Hypixel Developer Dashboard](https://developer.hypixel.net), and the monetisation must not be
    "unfair". Register it and describe the plans. One perk depends on Hypixel data: the all-leaderboards position list.
    If Hypixel objects, move `leaderboardPositions` to `"free"` in `plans.ts` (one line).
+   **Say so in the application.** It must list this honestly: top lists for every leaderboard are free for
+   everyone, and so is a player's score rank; the *combined* list of one player's position on all 14 boards
+   (the profile card and the bot's `/leaderboards`) is a paid perk. Don't write "every rank is free".
 2. **Mojang.** The Minecraft EULA says mods can't be sold. That is why no plan changes the mod. Keep it that way, keep
    "Minecraft" out of the product's name, and keep the "not an official Minecraft product" line in the footer.
    Read the current [Usage Guidelines](https://www.minecraft.net/usage-guidelines) yourself before launch.
