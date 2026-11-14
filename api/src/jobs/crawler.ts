@@ -29,6 +29,7 @@ export async function queuePlayers(uuids: string[], source: string, priority = f
      ON CONFLICT (mc_uuid) DO UPDATE
        SET next_check = LEAST(tracked_players.next_check, EXCLUDED.next_check)
        WHERE tracked_players.last_checked < now() - $4::interval
+         AND tracked_players.check_failures = 0
      RETURNING (xmax = 0) AS inserted`,
     [uuids, source, priority, staleAfter],
   );
