@@ -99,7 +99,11 @@ async function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<u
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { return fail(400, "invalid_json"); }
 }
 
-export function createServer(routers: Router[], opts: { staticDir?: string; apiPrefix: string; log?: (msg: string) => void }) {
+export function createServer(routers: Router[], opts: {
+  staticDir?: string; apiPrefix: string; log?: (msg: string) => void;
+  /** Rewrites index.html for a path (link preview tags). Must not throw. */
+  page?: (html: string, pathname: string) => Promise<string>;
+}) {
   const log = opts.log ?? ((m) => console.log(m));
   const staticRoot = opts.staticDir ? path.resolve(opts.staticDir) : null;
 
@@ -148,6 +152,10 @@ export function createServer(routers: Router[], opts: { staticDir?: string; apiP
           "cache-control": file.endsWith("index.html") ? "no-cache" : "public, max-age=300",
         });
         if (method === "HEAD") return res.end();
+        if (opts.page && file.endsWith("index.html")) {
+          res.end(await opts.page(await fs.promises.readFile(file, "utf8"), url.pathname));
+          return;
+        }
         fs.createReadStream(file).pipe(res);
         return;
       }
