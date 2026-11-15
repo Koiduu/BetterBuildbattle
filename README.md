@@ -183,6 +183,16 @@ Turn on `/bb debug`, play a game or two, and the log shows the real lines to fix
 Set `ADMIN_TOKEN` in `.env` (a long random string), restart, and open `/admin.html`. It shows how every mod user
 votes and who they vote for. Only votes cast by people running the mod are known: Hypixel never reveals other players' votes.
 
+## AspireBot sightings
+
+AspireBot (the Aspiring guild bot) can add everyone it sees in a game lobby to the global ranking. When a guild
+member parties it and queues, it stays in the lobby for about 2.5 seconds, reads the tab list and sends the
+players to `POST /bb/v1/sightings`. They go into the same discovery queue as the mod's lobby sightings, so anyone
+already checked in the last 7 days isn't looked up again.
+
+Set `SIGHTINGS_TOKEN` in `.env` (a long random string) and `bb restart`. Put the same value in AspireBot's `.env`
+as `BB_SIGHTINGS_TOKEN`. Without the token the route doesn't exist.
+
 ## Design docs
 ## Testing the mod
 
