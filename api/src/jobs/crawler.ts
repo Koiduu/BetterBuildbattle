@@ -4,12 +4,13 @@
 // Discovery sources:
 //   leaderboard – Hypixel /v2/leaderboards, checked hourly.
 //   lobby       – UUIDs seen in mod users' game lobbies.
+//   aspirebot   – UUIDs AspireBot sees in lobbies it gets partied into (POST /sightings).
 //   search      – players requested by website searches or profiles.
 //   mod_user    – players who log in through the mod.
 //   import      – one-off CSV of names.
 //
 // There are no timed re-checks. A newly discovered player is checked once, then
-// leaderboard or lobby sightings can make them due again after 7 days. Player-driven
+// leaderboard, lobby or AspireBot sightings can make them due again after 7 days. Player-driven
 // lookups refresh cached data after 1 hour. Failed requests use the retry backoff below.
 import { pool } from "../db/pool";
 import { redis } from "../db/redis";

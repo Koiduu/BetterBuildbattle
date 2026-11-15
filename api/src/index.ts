@@ -10,6 +10,7 @@ import { adminRoutes } from "./routes/admin";
 import { billingRoutes } from "./routes/billing";
 import { downloadRoutes } from "./routes/download";
 import { perkRoutes } from "./routes/perks";
+import { sightingRoutes } from "./routes/sightings";
 import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
@@ -28,6 +29,7 @@ publicRoutes(api);
 adminRoutes(api);
 billingRoutes(api);
 perkRoutes(api);
+sightingRoutes(api);
 downloadRoutes(api, downloads);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
