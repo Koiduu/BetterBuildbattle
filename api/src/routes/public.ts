@@ -170,7 +170,7 @@ export function publicRoutes(app: Router) {
     if (p.no_bb_stats) fail(404, "never_played_build_battle", { name: p.mc_name });
 
     const score = p.bb_score ?? 0;
-    const { rank, of } = await globalRank(p.mc_uuid);
+    const { rank, of, official } = await globalRank(p.mc_uuid);
     const hyp = p.hypixel_bb ?? {};
 
     const u = await pool.query(
@@ -221,7 +221,7 @@ export function publicRoutes(app: Router) {
       uuid: p.mc_uuid,
       score,
       title: titleProgress(score),
-      rank, rankedPlayers: of,
+      rank, rankedPlayers: of, rankOfficial: official,
       lastChecked: p.last_checked,
       bio,
       claimed,

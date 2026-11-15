@@ -9,6 +9,8 @@ export type StatsCardData = {
   title: { current: { name: string; hex: string; bold: boolean }; next: { name: string; min: number } | null; into: number; span: number; pct: number };
   rank: number | null;
   rankedPlayers: number | null;
+  /** The rank is the player's real position on Hypixel's leaderboard, so there's no meaningful total. */
+  rankOfficial?: boolean;
   hypixel: {
     wins: number | null;
     gamesPlayed: number | null;
@@ -114,7 +116,7 @@ export async function renderStatsCard(data: StatsCardData): Promise<Buffer> {
   const winRate = wins !== null && games !== null && games > 0 ? `${(wins / games * 100).toFixed(1)}%` : "–";
   const stats = [
     ["Score", number(data.score)],
-    ["Global rank", data.rank && data.rank > 0 ? `#${number(data.rank)} / ${number(data.rankedPlayers)}` : "Unranked"],
+    ["Global rank", data.rank && data.rank > 0 ? `#${number(data.rank)}${data.rankOfficial || !data.rankedPlayers ? "" : ` / ${number(data.rankedPlayers)}`}` : "Unranked"],
     ["Wins", number(wins)],
     ["Games", number(games)],
     ["Win rate", winRate],

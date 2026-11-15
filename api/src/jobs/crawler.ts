@@ -155,10 +155,45 @@ export async function runCrawler(signal: AbortSignal) {
   }
 }
 
-/** Global rank for one UUID, among everyone tracked. */
-export async function globalRank(uuid: string): Promise<{ rank: number | null; of: number }> {
-  const [r, total] = await Promise.all([redis.zrevrank("lb:bb_score", uuid), redis.zcard("lb:bb_score")]);
-  return { rank: r === null ? null : r + 1, of: total };
+/** How long a rank read off the in-game leaderboard is trusted before falling back to our own. */
+const OFFICIAL_RANK_MAX_AGE_DAYS = 30;
+
+/**
+ * Global rank for one UUID. Prefers the player's real position on Hypixel's leaderboard, which
+ * the mod reports from the lobby hologram. Otherwise it's the position among everyone we track,
+ * which is only a lower bound: players we haven't discovered yet are missing from it.
+ */
+export async function globalRank(uuid: string): Promise<{ rank: number | null; of: number; official: boolean }> {
+  const [r, total, reported] = await Promise.all([
+    redis.zrevrank("lb:bb_score", uuid),
+    redis.zcard("lb:bb_score"),
+    pool.query(
+      `SELECT hypixel_rank FROM users WHERE mc_uuid = $1 AND hypixel_rank IS NOT NULL
+         AND hypixel_rank_at > now() - $2 * interval '1 day'`,
+      [uuid, OFFICIAL_RANK_MAX_AGE_DAYS],
+    ),
+  ]);
+  const tracked = r === null ? null : r + 1;
+  const official: number | null = reported.rows[0]?.hypixel_rank ?? null;
+  // Our own rank can never be worse than the true one, so it wins if the reported rank is out of date.
+  if (official !== null && (tracked === null || official >= tracked)) return { rank: official, of: total, official: true };
+  return { rank: tracked, of: total, official: false };
+}
+
+/**
+ * Saves the rank the mod read off Hypixel's Score leaderboard. The score next to it has to match
+ * the player's Build Battle score (Hypixel refreshes the holograms now and then, so allow a little
+ * drift), which also rules out the other lobby boards, like wins.
+ */
+export async function saveOfficialRank(uuid: string, rank: number, score: number): Promise<boolean> {
+  const row = (await pool.query("SELECT bb_score FROM tracked_players WHERE mc_uuid = $1", [uuid])).rows[0];
+  const known = row?.bb_score == null ? null : Number(row.bb_score);
+  if (known === null || score > known * 1.01 + 50 || score < known * 0.95) return false;
+  await pool.query(
+    "UPDATE users SET hypixel_rank = $2, hypixel_rank_score = $3, hypixel_rank_at = now() WHERE mc_uuid = $1",
+    [uuid, rank, score],
+  );
+  return true;
 }
 
 /** Keep only numeric Build Battle fields (drops cosmetics, settings, etc.). */

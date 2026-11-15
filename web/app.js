@@ -477,7 +477,7 @@ async function profilePage(name) {
         </div>
       </div>
       <div class="stats">
-        ${stat("Global rank", p.rank ? "#" + num(p.rank) : "–", `out of ${num(p.rankedPlayers)} players`)}
+        ${stat("Global rank", p.rank ? "#" + num(p.rank) : "–", p.rankOfficial ? "on Hypixel's leaderboard" : `out of ${num(p.rankedPlayers)} players we track`)}
         ${stat("Build Battle score", num(p.score), `${num(p.hypixel.wins)} wins`)}
         ${bb
           ? stat("Crowd score", percent(bb.crowdScore), "average share of max votes")

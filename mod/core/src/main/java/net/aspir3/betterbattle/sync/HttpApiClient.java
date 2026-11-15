@@ -55,7 +55,8 @@ public final class HttpApiClient implements ApiClient {
         post("/mod/link", gson.toJson(body));
     }
 
-    public SyncResult sync(List<MatchRecord> matches, List<String> achievements, List<String> seenPlayers) throws Exception {
+    public SyncResult sync(List<MatchRecord> matches, List<String> achievements, List<String> seenPlayers,
+                           List<long[]> leaderboardLines) throws Exception {
         List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
         for (MatchRecord m : matches) out.add(toJson(m));
         Map<String, Object> body = new LinkedHashMap<String, Object>();
@@ -64,6 +65,16 @@ public final class HttpApiClient implements ApiClient {
         body.put("matches", out);
         body.put("localAchievements", achievements);
         body.put("seenPlayers", seenPlayers);
+        if (leaderboardLines != null && !leaderboardLines.isEmpty()) {
+            List<Map<String, Object>> ranks = new ArrayList<Map<String, Object>>();
+            for (long[] line : leaderboardLines) {
+                Map<String, Object> r = new LinkedHashMap<String, Object>();
+                r.put("rank", line[0]);
+                r.put("score", line[1]);
+                ranks.add(r);
+            }
+            body.put("hypixelRanks", ranks);
+        }
         return gson.fromJson(post("/mod/sync", gson.toJson(body)), SyncResult.class);
     }
 

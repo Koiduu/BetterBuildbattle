@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Sends saved games to the server on its own thread. If the server can't be reached the games
@@ -122,6 +123,13 @@ public final class SyncService {
         return m;
     }
 
+    /** This player's {rank, value} lines from the lobby leaderboards, waiting to go up with the next sync. */
+    private final AtomicReference<List<long[]>> leaderboardLines = new AtomicReference<List<long[]>>();
+
+    public void setLeaderboardLines(List<long[]> lines) {
+        leaderboardLines.set(new ArrayList<long[]>(lines));
+    }
+
     public void addSeenPlayers(List<String> uuids) {
         seenPlayers.addAll(uuids);
     }
@@ -152,14 +160,16 @@ public final class SyncService {
                 synchronized (seenPlayers) {
                     seen = new ArrayList<String>(seenPlayers.subList(0, Math.min(2000, seenPlayers.size())));
                 }
+                List<long[]> lines = leaderboardLines.get();
                 ApiClient.SyncResult res;
                 try {
-                    res = api.sync(batch, db.unlockedIds(), seen);
+                    res = api.sync(batch, db.unlockedIds(), seen, lines);
                 } catch (ApiClient.Unauthorized e) {
                     db.setMeta("token", null);
                     throw e;
                 }
                 synchronized (seenPlayers) { seenPlayers.subList(0, seen.size()).clear(); }
+                if (lines != null) leaderboardLines.compareAndSet(lines, null);
                 db.markSynced(res.accepted);
                 for (ApiClient.Rejection r : res.rejected) db.markRejected(r.nonce, r.reason);
                 for (String id : res.confirmed) {
@@ -172,8 +182,11 @@ public final class SyncService {
                 }
                 if (res.level != null) db.setMeta("level", String.valueOf(res.level));
                 if (res.xp != null) db.setMeta("xp", String.valueOf(res.xp));
-                if (res.globalRank != null) db.setMeta("rank", String.valueOf(res.globalRank));
-                if (res.rankedPlayers != null) db.setMeta("ranked_players", String.valueOf(res.rankedPlayers));
+                if (res.globalRank != null) {
+                    db.setMeta("rank", String.valueOf(res.globalRank));
+                    // No total when the rank comes straight from Hypixel's leaderboard.
+                    db.setMeta("ranked_players", res.rankedPlayers == null ? null : String.valueOf(res.rankedPlayers));
+                }
                 listener.synced(res);
             } while (batch.size() == BATCH && ++rounds < 20);
             db.setMeta("last_sync_at", Long.toString(System.currentTimeMillis()));

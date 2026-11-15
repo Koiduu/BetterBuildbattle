@@ -7,7 +7,7 @@ import { xpForMatch, levelForXp } from "../services/level";
 import { evaluateAchievements, catalog } from "../services/achievementEngine";
 import { rateLimit, requireModToken } from "../plugins/auth";
 import { MOJANG_SESSION, dashUuid } from "../lib/upstream";
-import { queuePlayers, globalRank, refreshOne } from "../jobs/crawler";
+import { queuePlayers, globalRank, refreshOne, saveOfficialRank } from "../jobs/crawler";
 import { weeklyProgress } from "../services/weekly";
 import { worldRecords } from "../services/speedBuilders";
 import { updateProgressBoards } from "../services/boards";
@@ -62,6 +62,12 @@ const SyncBody = z.object({
   localAchievements: z.array(z.string()).max(500).default([]),
   // UUIDs of other players seen in this player's lobbies since last sync (tab list). Feeds the global ranking.
   seenPlayers: z.array(z.string().uuid()).max(2000).default([]),
+  // This player's own lines on the lobby leaderboard holograms, e.g. "382. Name - 82,655".
+  // Several boards can list them; saveOfficialRank keeps the one whose value is their score.
+  hypixelRanks: z.array(z.object({
+    rank: z.number().int().min(1).max(100_000_000),
+    score: z.number().int().min(0),
+  })).max(10).default([]),
 });
 
 export function modRoutes(app: Router) {
@@ -212,11 +218,14 @@ export function modRoutes(app: Router) {
 
         // Global rank = Hypixel Build Battle score among ALL tracked players (crawler keeps it fresh).
         const uuid = (await pool.query("SELECT mc_uuid FROM users WHERE id = $1", [userId])).rows[0].mc_uuid;
-        const { rank, of } = await globalRank(uuid);
+        for (const r of body.hypixelRanks) {
+          if (await saveOfficialRank(uuid, r.rank, r.score).catch(() => false)) break;
+        }
+        const { rank, of, official } = await globalRank(uuid);
         const totals = await pool.query("SELECT xp, ap FROM user_progress WHERE user_id = $1", [userId]);
         await updateProgressBoards(uuid, Number(totals.rows[0]?.xp ?? 0), Number(totals.rows[0]?.ap ?? 0)).catch(() => {});
         return { accepted, rejected, confirmed, revoked, level, xp: Number(prog.rows[0].xp),
-                 globalRank: rank, rankedPlayers: of,
+                 globalRank: rank, rankedPlayers: official ? null : of, rankOfficial: official,
                  weekly: weekly.weekly, weekEndsAt: weekly.weekEndsAt, weeklyCompleted: weekly.completedNow };
       } catch (e) {
         await client.query("ROLLBACK");

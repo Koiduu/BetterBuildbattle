@@ -17,7 +17,9 @@ public interface ApiClient {
     /** Ties this Minecraft account to the website account that made the code. */
     void link(String code) throws Exception;
 
-    SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception;
+    /** leaderboardLines: this player's {rank, value} lines from the lobby leaderboard holograms, or null. */
+    SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers,
+                    List<long[]> leaderboardLines) throws Exception;
 
     /** The newest released mod for this Minecraft version, or null if the server has none. No login needed. */
     Latest latest() throws Exception;
@@ -62,6 +64,8 @@ public interface ApiClient {
         public Long xp;
         public Integer globalRank;
         public Integer rankedPlayers;
+        /** True when globalRank is the player's position on Hypixel's own leaderboard. */
+        public Boolean rankOfficial;
         public List<Weekly> weekly;
         public String weekEndsAt;
         /** Weekly challenges this sync completed. */

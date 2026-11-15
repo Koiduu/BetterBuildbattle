@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
  * Everything version-independent, in one place. Each loader adapter feeds it game events
@@ -128,6 +130,7 @@ public final class BetterBattle {
         game = null;
         debugLog = null;
         seenThisSession.clear();
+        lastLeaderboardLines = "";
         newerAnnounced = false;
         lastSidebarTitle = "";
         lastSidebar = new ArrayList<String>();
@@ -168,6 +171,41 @@ public final class BetterBattle {
             if (!line.matches("(Time|Vote Time): \\d+:\\d+|Starting in \\d+s?")) out.add(line);
         }
         return out;
+    }
+
+    /**
+     * One line of a lobby leaderboard hologram: "382. KPGamer5567 [ASPIRE] - 82,655". The Hypixel
+     * rank before the name and the guild tag after it are optional.
+     */
+    private static final Pattern LEADERBOARD_LINE = Pattern.compile(
+        "^(\\d{1,3}(?:,\\d{3})+|\\d+)\\.\\s+(?:\\[[^\\]]*\\]\\s+)?([A-Za-z0-9_]{1,16})(?:\\s+\\[[^\\]]*\\])?\\s+-\\s+(\\d{1,3}(?:,\\d{3})+|\\d+)$");
+    private String lastLeaderboardLines = "";
+
+    /**
+     * Names of the entities around the player, which is where Hypixel puts its lobby leaderboard
+     * holograms. Picks out this player's own lines so the server can show their real Hypixel rank;
+     * the API has no way to ask for it. The server works out which board is the Score one.
+     */
+    public void onEntityNames(List<String> names) {
+        if (sync == null || playerName == null) return;
+        List<long[]> found = new ArrayList<long[]>();
+        StringBuilder key = new StringBuilder();
+        for (String raw : names) {
+            Matcher m = LEADERBOARD_LINE.matcher(ChatParser.clean(raw));
+            if (!m.matches() || !m.group(2).equalsIgnoreCase(playerName)) continue;
+            try {
+                long rank = Long.parseLong(m.group(1).replace(",", ""));
+                long value = Long.parseLong(m.group(3).replace(",", ""));
+                found.add(new long[] { rank, value });
+                key.append(rank).append(':').append(value).append(';');
+            } catch (NumberFormatException ignored) {
+            }
+            if (found.size() >= 10) break;
+        }
+        if (found.isEmpty() || key.toString().equals(lastLeaderboardLines)) return;
+        lastLeaderboardLines = key.toString();
+        debug("leaderboard lines for " + playerName + ": " + key);
+        sync.setLeaderboardLines(found);
     }
 
     public void onTabList(Collection<UUID> uuids) {

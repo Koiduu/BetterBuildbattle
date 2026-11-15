@@ -39,6 +39,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.DyeColor;
@@ -207,6 +208,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         if (ticks % 10 == 0) readSidebar(client);
         if (!SpbTimerToast.showing() && !core.hudLines().isEmpty()) client.gui.toastManager().addToast(new SpbTimerToast());
         if (ticks % 100 == 0) readTabList(client);
+        if (ticks % 40 == 0 && game.state() == GameStateMachine.State.IDLE) readEntityNames(client);
 
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (client.player.getAbilities().mayfly) game.onCanFly();
@@ -234,6 +236,16 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             lines.add(strip(PlayerTeam.formatNameForTeam(team, Component.literal(entry.owner())).getString()));
         }
         core.onSidebar(strip(objective.getDisplayName().getString()), lines);
+    }
+
+    /** Hologram text in the lobby, for the player's own spot on the leaderboards. */
+    private void readEntityNames(Minecraft client) {
+        List<String> names = new ArrayList<>();
+        for (Entity entity : client.level.entitiesForRendering()) {
+            Component name = entity.getCustomName();
+            if (name != null) names.add(name.getString());
+        }
+        core.onEntityNames(names);
     }
 
     private void readTabList(Minecraft client) {

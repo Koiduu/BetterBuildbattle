@@ -14,6 +14,7 @@ import net.aspir3.betterbattle.legacy.LegacyIds;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.Entity;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.settings.KeyBinding;
@@ -189,6 +190,7 @@ public class BetterBattleForge implements Platform {
 
         if (ticks % 10 == 0) readSidebar(mc);
         if (ticks % 100 == 0) readTabList(mc);
+        if (ticks % 40 == 0 && game.state() == GameStateMachine.State.IDLE) readEntityNames(mc);
 
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (mc.thePlayer.capabilities.allowFlying) game.onCanFly();
@@ -216,6 +218,15 @@ public class BetterBattleForge implements Platform {
             lines.add(strip(ScorePlayerTeam.formatPlayerName(team, owner)));
         }
         core.onSidebar(strip(objective.getDisplayName()), lines);
+    }
+
+    /** Hologram text in the lobby, for the player's own spot on the leaderboards. */
+    private void readEntityNames(Minecraft mc) {
+        List<String> names = new ArrayList<String>();
+        for (Object o : mc.theWorld.loadedEntityList) {
+            if (o instanceof Entity && ((Entity) o).hasCustomName()) names.add(((Entity) o).getCustomNameTag());
+        }
+        core.onEntityNames(names);
     }
 
     private void readTabList(Minecraft mc) {
