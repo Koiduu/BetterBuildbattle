@@ -6,21 +6,26 @@
 <style>
   @font-face { font-family: "Pixelify"; src: url("PixelifySans-Variable.ttf") format("truetype"); font-weight: 400 700; }
   html, body { margin: 0; background: #000; }
+  html.record, html.record body { background: transparent; }
   canvas { display: block; }
 </style>
 </head>
 <body>
 <canvas id="c" width="1920" height="1080"></canvas>
 <script>
-// Better Battle promo. Every frame is drawn from the time alone (renderAt(t)), so the
-// recorder can step through it frame by frame and get the same video every time.
+// Better Battle promo, 30 seconds, built on a 120 BPM grid: every cut is on a bar line
+// (0, 4, 8 ... 24s) and the big hits land on beats (every 0.5s).
+// Every frame is drawn from the time alone (renderAt), so the recorder can step through it.
+//
+// renderAt(t, { alpha })
+//   alpha: false  preview. Feature sections show a stand-in for the footage you record.
+//   alpha: true   master for the editor. Feature sections are transparent where footage goes.
 const W = 1920, H = 1080;
 const ctx = document.getElementById("c").getContext("2d");
 const FONT = '"Pixelify", monospace';
-
 const C = {
   bg: "#111114", bg2: "#17171a", gold: "#ffaa00", pink: "#ff66aa", green: "#55ff55",
-  aqua: "#55ffff", white: "#f0f0f0", soft: "#c6c6c6", muted: "#9d9da6", red: "#ff5555",
+  aqua: "#55ffff", white: "#f0f0f0", soft: "#c6c6c6", muted: "#9d9da6", blurple: "#8ea1ff",
 };
 
 // ---------- helpers
@@ -29,7 +34,6 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const prog = (t, a, b) => clamp((t - a) / (b - a));
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const easeIn = (t) => t * t * t;
-const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeBack = (t) => { const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 function rng(seed) {
   return function () {
@@ -49,44 +53,42 @@ function shade(rgb, k) {
   return `rgb(${m.map((v) => Math.round(clamp(k > 0 ? v + (255 - v) * k : v * (1 + k), 0, 255))).join(",")})`;
 }
 const asRgb = (c) => (c.startsWith("#") ? mix(c, c, 0) : c);
+const rgba = (hex, a) => { const [r, g, b] = hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; };
 
 // A Minecraft-style block: flat face, light top-left edge, dark bottom-right edge, black outline.
 function block(x, y, s, color, { alpha = 1, rot = 0, flash = 0 } = {}) {
-  if (alpha <= 0) return;
+  if (alpha <= 0 || s <= 0) return;
   const base = asRgb(color);
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha *= alpha;
   ctx.translate(x + s / 2, y + s / 2);
   if (rot) ctx.rotate(rot);
-  const h = s / 2, e = Math.max(2, s * 0.16);
+  const h = s / 2, e = Math.min(12, Math.max(2, s * 0.16));
   ctx.fillStyle = "#000"; ctx.fillRect(-h - 2, -h - 2, s + 4, s + 4);
   ctx.fillStyle = base; ctx.fillRect(-h, -h, s, s);
   ctx.fillStyle = shade(base, 0.45); ctx.fillRect(-h, -h, s, e); ctx.fillRect(-h, -h, e, s);
   ctx.fillStyle = shade(base, -0.4); ctx.fillRect(-h, h - e, s, e); ctx.fillRect(h - e, -h, e, s);
-  if (flash > 0) { ctx.globalAlpha = alpha * flash; ctx.fillStyle = "#fff"; ctx.fillRect(-h, -h, s, s); }
+  if (flash > 0) { ctx.globalAlpha *= flash; ctx.fillStyle = "#fff"; ctx.fillRect(-h, -h, s, s); }
   ctx.restore();
 }
-
-function text(str, x, y, { size = 60, color = C.white, align = "center", weight = 700, alpha = 1, shadow = true, base = "middle", spacing = 0 } = {}) {
+function text(str, x, y, { size = 60, color = C.white, align = "center", weight = 700, alpha = 1, shadow = true, base = "middle" } = {}) {
   if (alpha <= 0) return;
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha *= alpha;
   ctx.font = `${weight} ${size}px ${FONT}`;
   ctx.textAlign = align;
   ctx.textBaseline = base;
-  if (spacing) ctx.letterSpacing = spacing + "px";
-  if (shadow) { ctx.fillStyle = "rgba(0,0,0,0.85)"; const d = Math.max(3, size / 14); ctx.fillText(str, x + d, y + d); }
+  if (shadow) { ctx.fillStyle = "rgba(0,0,0,0.9)"; const d = Math.max(3, size / 14); ctx.fillText(str, x + d, y + d); }
   ctx.fillStyle = color;
   ctx.fillText(str, x, y);
   ctx.restore();
 }
 function measure(str, size, weight = 700) { ctx.save(); ctx.font = `${weight} ${size}px ${FONT}`; const w = ctx.measureText(str).width; ctx.restore(); return w; }
-
 // Bevelled panel, like a Minecraft button or inventory slot.
 function panel(x, y, w, h, fill, { alpha = 1, edge = 6 } = {}) {
   if (alpha <= 0) return;
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha *= alpha;
   const base = asRgb(fill);
   ctx.fillStyle = "#000"; ctx.fillRect(x - 4, y - 4, w + 8, h + 8);
   ctx.fillStyle = base; ctx.fillRect(x, y, w, h);
@@ -94,8 +96,23 @@ function panel(x, y, w, h, fill, { alpha = 1, edge = 6 } = {}) {
   ctx.fillStyle = shade(base, -0.45); ctx.fillRect(x, y + h - edge, w, edge); ctx.fillRect(x + w - edge, y, edge, h);
   ctx.restore();
 }
+// A small label that pops in with a bounce.
+function chip(str, cx, cy, t, at, { color = C.gold, bg = "#4a3a10", size = 34 } = {}) {
+  const q = easeBack(prog(t, at, at + 0.22));
+  if (q <= 0) return;
+  const w = measure(str, size) + 44, h = size + 26;
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(q, q);
+  panel(-w / 2, -h / 2, w, h, bg, { edge: 4 });
+  text(str, 0, 2, { size, color });
+  ctx.restore();
+}
+function bar(x, y, w, h, p, color, alpha = 1) {
+  panel(x, y, w, h, "#0b0b0d", { alpha, edge: 4 });
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = color;
+  ctx.fillRect(x + 6, y + 6, (w - 12) * clamp(p), h - 12); ctx.restore();
+}
 
-// ---------- background: dark, a slow drifting block grid, floating dust, vignette
+// ---------- background, shake, flashes, dust
 function background(t, { tint = C.pink, glow = 0.12 } = {}) {
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
   const s = 64, off = (t * 18) % s;
@@ -105,8 +122,7 @@ function background(t, { tint = C.pink, glow = 0.12 } = {}) {
   for (let y = -s + off * 0.5; y < H + s; y += s) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
   ctx.stroke();
   const g = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, 900);
-  const [r, gg, b] = hexToRgb(tint);
-  g.addColorStop(0, `rgba(${r},${gg},${b},${glow})`); g.addColorStop(1, "rgba(0,0,0,0)");
+  g.addColorStop(0, rgba(tint, glow)); g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   const R = rng(7);
   for (let i = 0; i < 40; i++) {
@@ -122,27 +138,26 @@ function vignette() {
   g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.75)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
-// Screen shake that dies away after an impact at time `at`.
-function shake(t, at, power = 18, len = 0.35) {
+function shake(t, at, power = 18, len = 0.3) {
   const p = (t - at) / len;
   if (p < 0 || p > 1) return [0, 0];
   const k = power * Math.pow(1 - p, 2);
   return [Math.sin(t * 95) * k, Math.cos(t * 83) * k];
 }
-function flashOverlay(t, at, len = 0.25, max = 0.8) {
+const shakes = (t, list) => list.reduce((a, [at, pw]) => { const s = shake(t, at, pw); return [a[0] + s[0], a[1] + s[1]]; }, [0, 0]);
+function flashOverlay(t, at, len = 0.22, max = 0.6) {
   const p = (t - at) / len;
   if (p < 0 || p > 1) return;
   ctx.fillStyle = `rgba(255,255,255,${max * (1 - p)})`; ctx.fillRect(0, 0, W, H);
 }
-// Dust kicked up when something lands.
 function burst(t, at, x, y, { n = 26, color = C.white, seed = 1, spread = 520 } = {}) {
   const p = t - at;
-  if (p < 0 || p > 0.9) return;
+  if (p < 0 || p > 0.8) return;
   const R = rng(seed);
   for (let i = 0; i < n; i++) {
     const a = R() * Math.PI * 2, v = spread * (0.3 + R() * 0.7), s = 6 + R() * 12;
-    const px = x + Math.cos(a) * v * easeOut(p / 0.9), py = y + Math.sin(a) * v * easeOut(p / 0.9) + 300 * p * p;
-    block(px, py, s * (1 - p), R() < 0.4 ? C.gold : color, { alpha: 1 - p / 0.9 });
+    const px = x + Math.cos(a) * v * easeOut(p / 0.8), py = y + Math.sin(a) * v * easeOut(p / 0.8) + 300 * p * p;
+    block(px, py, s * (1 - p), R() < 0.4 ? C.gold : color, { alpha: 1 - p / 0.8 });
   }
 }
 
@@ -156,296 +171,337 @@ const GLYPHS = {
   L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
   " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
 };
-const LOGO = "BETTER BATTLE";
-const PITCH = 22, CELL = 21;
-function logoCells(cx, cy, scale = 1) {
-  const cols = LOGO.length * 6 - 1, w = cols * PITCH * scale, h = 7 * PITCH * scale;
-  const x0 = cx - w / 2, y0 = cy - h / 2, out = [];
-  [...LOGO].forEach((ch, li) => {
-    GLYPHS[ch].forEach((row, ry) => [...row].forEach((bit, rx) => {
-      if (bit !== "1") return;
-      const col = li * 6 + rx;
-      out.push({ x: x0 + col * PITCH * scale, y: y0 + ry * PITCH * scale, col, row: ry, cols, s: CELL * scale });
-    }));
-  });
+const LOGO = "BETTER BATTLE", PITCH = 22, CELL = 21;
+function logoCells(cx, cy) {
+  const cols = LOGO.length * 6 - 1, x0 = cx - (cols * PITCH) / 2, y0 = cy - (7 * PITCH) / 2, out = [];
+  [...LOGO].forEach((ch, li) => GLYPHS[ch].forEach((row, ry) => [...row].forEach((bit, rx) => {
+    if (bit === "1") out.push({ x: x0 + (li * 6 + rx) * PITCH, y: y0 + ry * PITCH, col: li * 6 + rx, cols });
+  })));
   return out;
 }
-// from: "box" = fly out of a rectangle (the text before it), "edges" = fly in from off screen.
-function drawLogo(t, start, cx, cy, { from = "edges", box = null, scale = 1, sweepAt = null, seed = 3, alpha = 1 } = {}) {
-  const cells = logoCells(cx, cy, scale), R = rng(seed);
-  for (const c of cells) {
-    let sx, sy;
-    if (from === "box") { sx = box.x + R() * box.w; sy = box.y + R() * box.h; }
-    else { const a = R() * Math.PI * 2, d = 1300 + R() * 400; sx = cx + Math.cos(a) * d; sy = cy + Math.sin(a) * d; }
-    const delay = (c.col / c.cols) * 0.55 + R() * 0.25, dur = 0.55, spin = (R() - 0.5) * 8;
-    const p = clamp((t - start - delay) / dur);
-    if (p <= 0 && from === "edges") continue;
-    const e = easeBack(p);
-    const x = lerp(sx, c.x, e), y = lerp(sy, c.y, e);
-    const landFlash = clamp(1 - (t - start - delay - dur) / 0.25) * (p >= 1 ? 1 : 0);
-    let color = mix(C.gold, C.pink, c.col / c.cols);
-    let flash = landFlash * 0.9;
-    if (sweepAt !== null) { // a bright band crossing the logo
-      const band = (t - sweepAt) * 2200 - 300, d = Math.abs((c.x - (cx - 800)) + c.y * 0.6 - band);
+// The blocks fly out of `box` (the words that were there a moment ago) and lock into the logo.
+function drawLogo(t, start, cx, cy, { box, sweepAt = null, seed = 3, k = 1 }) {
+  const R = rng(seed);
+  for (const c of logoCells(cx, cy)) {
+    const sx = box.x + R() * box.w, sy = box.y + R() * box.h;
+    const delay = ((c.col / c.cols) * 0.5 + R() * 0.2) * k, dur = 0.45 * k, spin = (R() - 0.5) * 8;
+    const p = clamp((t - start - delay) / dur), e = easeBack(p);
+    const land = p >= 1 ? clamp(1 - (t - start - delay - dur) / 0.2) : 0;
+    let flash = land * 0.9;
+    if (sweepAt !== null) {
+      const band = (t - sweepAt) * 2600 - 300, d = Math.abs(c.x - (cx - 800) + c.y * 0.6 - band);
       flash = Math.max(flash, clamp(1 - d / 110) * 0.85);
     }
-    block(x, y, c.s * (p < 1 ? lerp(0.6, 1, p) : 1), color, { rot: spin * (1 - e), flash, alpha: alpha * (from === "box" ? clamp(p * 4) : 1) });
+    block(lerp(sx, c.x, e), lerp(sy, c.y, e), CELL * (p < 1 ? lerp(0.6, 1, p) : 1), mix(C.gold, C.pink, c.col / c.cols),
+      { rot: spin * (1 - e), flash, alpha: clamp(p * 5) });
   }
-  return cells;
 }
 function ribbon(str, cx, cy, t, at, { color = C.pink, size = 46, textColor = "#fff" } = {}) {
-  const p = prog(t, at, at + 0.35);
+  const p = prog(t, at, at + 0.25);
   if (p <= 0) return;
   const w = measure(str, size) + 90, h = size + 40, e = easeBack(p);
   ctx.save();
   ctx.translate(cx, cy); ctx.scale(lerp(0.2, 1, e), lerp(1.6, 1, e));
   panel(-w / 2, -h / 2, w, h, color, { edge: 6 });
-  text(str, 0, 3, { size, color: textColor, shadow: true });
+  text(str, 0, 3, { size, color: textColor });
+  ctx.restore();
+}
+// Text that slams in: big to normal, with a flash of white.
+function slam(str, cx, cy, t, at, { size = 120, color = C.white, align = "center" } = {}) {
+  const p = prog(t, at, at + 0.12);
+  if (p <= 0) return;
+  const sc = lerp(1.7, 1, easeOut(p));
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
+  text(str, 0, 0, { size, color: p < 0.6 ? "#fff" : color, align, alpha: clamp(p * 3) });
   ctx.restore();
 }
 
-// ---------- scenes. Each draws itself from its own local time.
+// ================= HOOK (0-4s) =================
+// 0.00 block drops   0.28 lands   0.35-1.40 types   1.75 glitch   2.00 slam   2.50 breaks into the logo   3.00 ribbon
 function sceneHook(t) {
-  background(t, { tint: C.gold, glow: t < 4.3 ? 0.04 : 0.14 });
-  const [sx, sy] = (() => {
-    const a = shake(t, 0.5, 14), b = shake(t, 3.35, 22), c = shake(t, 5.2, 16);
-    return [a[0] + b[0] + c[0], a[1] + b[1] + c[1]];
-  })();
+  background(t, { tint: C.gold, glow: t < 2.5 ? 0.04 : 0.15 });
+  const [sx, sy] = shakes(t, [[0.28, 14], [2.0, 26], [3.0, 14]]);
   ctx.save(); ctx.translate(sx, sy);
-
-  // 1. One block drops and lands.
-  const line1 = "Build Battle's been waiting for an update.";
-  const size1 = 64, w1 = measure(line1, size1), x1 = W / 2 - w1 / 2;
-  const typeP = prog(t, 0.75, 2.35), shown = Math.floor(line1.length * typeP);
-  const typed = line1.slice(0, shown);
+  const line1 = "Build Battle needed an update.", size1 = 72;
+  const w1 = measure(line1, size1), x1 = W / 2 - w1 / 2;
+  const typed = line1.slice(0, Math.floor(line1.length * prog(t, 0.35, 1.4)));
   const cursorX = x1 + measure(typed, size1) + 14;
-  if (t < 0.75) {
-    const p = easeIn(prog(t, 0, 0.5));
-    block(W / 2 - 30, lerp(-120, H / 2 - 30, p), 60, C.gold);
-  } else if (t < 3.0) {
-    // 2. The block becomes the typing cursor.
-    const m = easeOut(prog(t, 0.75, 0.95));
-    const bx = lerp(W / 2 - 30, cursorX, m), by = lerp(H / 2 - 30, H / 2 - 22, m), bs = lerp(60, 44, m);
-    text(typed, x1, H / 2 + 4, { size: size1, align: "left", color: C.white });
-    if (t < 2.35 || Math.floor(t * 4) % 2 === 0) block(bx, by, bs, C.gold);
+  if (t < 0.35) {
+    block(W / 2 - 32, lerp(-140, H / 2 - 32, easeIn(prog(t, 0, 0.28))), 64, C.gold);
+  } else if (t < 1.75) {
+    const m = easeOut(prog(t, 0.35, 0.5));
+    text(typed, x1, H / 2 + 4, { size: size1, align: "left" });
+    if (t < 1.4 || Math.floor(t * 6) % 2 === 0) block(lerp(W / 2 - 32, cursorX, m), lerp(H / 2 - 32, H / 2 - 24, m), lerp(64, 48, m), C.gold);
   }
-  burst(t, 0.5, W / 2, H / 2 + 30, { n: 22, seed: 4, spread: 380 });
-
-  // 3. It glitches away.
-  if (t >= 3.0 && t < 3.3) {
-    const R = rng(Math.floor(t * 60));
+  burst(t, 0.28, W / 2, H / 2 + 30, { n: 22, seed: 4, spread: 380 });
+  if (t >= 1.75 && t < 2.0) {     // the line tears itself apart
+    const R = rng(Math.floor(t * 60)), k = prog(t, 1.75, 2.0);
     for (let i = 0; i < 9; i++) {
       ctx.save();
-      const sy0 = H / 2 - 40 + i * 10;
-      ctx.beginPath(); ctx.rect(0, sy0, W, 10); ctx.clip();
-      const dx = (R() - 0.5) * 140 * prog(t, 3.0, 3.3);
-      text(line1, x1 + dx - 6, H / 2 + 4, { size: size1, align: "left", color: "rgba(255,80,80,0.7)", shadow: false });
-      text(line1, x1 + dx + 6, H / 2 + 4, { size: size1, align: "left", color: "rgba(80,220,255,0.7)", shadow: false });
-      text(line1, x1 + dx, H / 2 + 4, { size: size1, align: "left", alpha: 1 - prog(t, 3.1, 3.3) });
+      ctx.beginPath(); ctx.rect(0, H / 2 - 45 + i * 10, W, 10); ctx.clip();
+      const dx = (R() - 0.5) * 200 * k;
+      text(line1, x1 + dx - 8, H / 2 + 4, { size: size1, align: "left", color: "rgba(255,80,80,0.7)", shadow: false });
+      text(line1, x1 + dx + 8, H / 2 + 4, { size: size1, align: "left", color: "rgba(80,220,255,0.7)", shadow: false });
+      text(line1, x1 + dx, H / 2 + 4, { size: size1, align: "left", alpha: 1 - k * 0.6 });
       ctx.restore();
     }
   }
-
-  // 4. The answer slams in, then breaks into the blocks that build the logo.
-  const line2 = "We stopped waiting.", size2 = 120;
-  const w2 = measure(line2, size2);
-  if (t >= 3.3 && t < 4.75) {
-    const p = prog(t, 3.3, 3.45);
-    const sc = lerp(1.6, 1, easeOut(p));
-    ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(sc, sc);
-    text(line2, 0, 0, { size: size2, color: C.gold, alpha: p * (1 - prog(t, 4.45, 4.75)) });
+  const line2 = "So we built one.", size2 = 150, w2 = measure(line2, size2);
+  if (t >= 2.0 && t < 2.75) {
+    ctx.save(); ctx.globalAlpha = 1 - prog(t, 2.5, 2.7);
+    slam(line2, W / 2, H / 2, t, 2.0, { size: size2, color: C.gold });
     ctx.restore();
   }
-  flashOverlay(t, 3.33, 0.22, 0.5);
-  if (t >= 4.45) {
-    drawLogo(t, 4.45, W / 2, H / 2 - 70, {
-      from: "box", box: { x: W / 2 - w2 / 2, y: H / 2 - 60, w: w2, h: 120 }, sweepAt: 6.1, seed: 11,
-    });
-    ribbon("THE SPEED BUILDERS UPDATE", W / 2, H / 2 + 110, t, 5.2, { color: C.pink });
-    text("A free mod for Build Battle", W / 2, H / 2 + 210, { size: 38, color: C.soft, alpha: prog(t, 5.7, 6.1) });
+  if (t >= 2.5) {
+    drawLogo(t, 2.5, W / 2, H / 2 - 70, { box: { x: W / 2 - w2 / 2, y: H / 2 - 70, w: w2, h: 140 }, sweepAt: 3.35, seed: 11, k: 0.75 });
+    ribbon("THE SPEED BUILDERS UPDATE", W / 2, H / 2 + 110, t, 3.0);
+    text("A free mod for Build Battle", W / 2, H / 2 + 210, { size: 38, color: C.soft, alpha: prog(t, 3.25, 3.45) });
   }
-  burst(t, 5.2, W / 2, H / 2 + 110, { n: 30, seed: 9, color: C.pink, spread: 700 });
+  burst(t, 3.0, W / 2, H / 2 + 110, { n: 30, seed: 9, color: C.pink, spread: 700 });
   ctx.restore();
+  flashOverlay(t, 2.0, 0.2, 0.55);
   vignette();
 }
 
-// A short punchy title card between clips: icon on the left, two-line title on the right.
-function stinger(t, { kicker, l1, l2, color, art, seed }) {
-  background(t, { tint: color, glow: 0.18 });
-  const [sx, sy] = shake(t, 0.12, 16);
-  ctx.save(); ctx.translate(sx, sy);
-  // Block wipe in: columns of blocks fall away to reveal the card.
-  art(t);
-  const tx = 1000;
-  const p1 = easeOut(prog(t, 0.05, 0.3)), p2 = easeOut(prog(t, 0.15, 0.4));
-  const kw = measure(kicker, 30) + 50;
-  panel(tx, 300, kw, 56, color, { alpha: prog(t, 0, 0.15) });
-  text(kicker, tx + kw / 2, 330, { size: 30, alpha: prog(t, 0, 0.15) });
-  text(l1, lerp(tx + 200, tx, p1), 450, { size: 110, align: "left", alpha: p1 });
-  text(l2, lerp(tx + 260, tx, p2), 580, { size: 110, align: "left", color, alpha: p2 });
-  ctx.restore();
-  wipe(t, seed);
-  vignette();
-}
-// Blocks cover the screen for the first few frames and drop away.
-function wipe(t, seed) {
-  if (t > 0.45) return;
-  const R = rng(seed), s = 120;
-  for (let x = 0; x < W; x += s) for (let y = 0; y < H; y += s) {
-    const d = (x / W) * 0.2 + R() * 0.08, p = prog(t, d, d + 0.18);
-    if (p >= 1) continue;
-    const yy = y + easeIn(p) * 900;
-    block(x, yy, s, mix(C.bg2, "#2a2a30", R()), { alpha: 1, rot: p * (R() - 0.5) * 2 });
-  }
-}
-
+// ================= FEATURES (4s each) =================
+// The art for each feature is drawn inside an 800x640 card on the right.
 function artGrade(t) {
-  const p = prog(t, 0.2, 0.42), sc = lerp(2.4, 1, easeOut(p));
-  ctx.save(); ctx.translate(560, 470); ctx.scale(sc, sc);
-  panel(-200, -200, 400, 400, "#2a2a30", { alpha: p, edge: 10 });
-  text("SS", 0, 18, { size: 260, color: C.gold, alpha: p });
+  const p = prog(t, 1.0, 1.12), sc = lerp(2.2, 1, easeOut(p));
+  ctx.save(); ctx.translate(170, 170); ctx.scale(sc, sc);
+  panel(-130, -130, 260, 260, "#2a2a30", { alpha: p, edge: 8 });
+  text("SS", 0, 12, { size: 170, color: C.gold, alpha: p });
   ctx.restore();
-  burst(t, 0.42, 560, 470, { n: 30, seed: 21, color: C.gold, spread: 600 });
-  // crowd score bar
-  const bp = easeOut(prog(t, 0.6, 1.4)), pct = Math.round(94 * bp);
-  text("Crowd score", 360, 760, { size: 40, align: "left", color: C.soft, alpha: prog(t, 0.5, 0.7) });
-  text(pct + "%", 760, 760, { size: 40, align: "right", color: C.green, alpha: prog(t, 0.5, 0.7) });
-  panel(360, 800, 400, 34, "#0b0b0d", { alpha: prog(t, 0.5, 0.7), edge: 4 });
-  ctx.fillStyle = C.green; ctx.fillRect(366, 806, 388 * bp * 0.94, 22);
-  ["1st place", "+120 XP"].forEach((s, i) => {
-    const q = easeBack(prog(t, 1.0 + i * 0.15, 1.3 + i * 0.15));
-    if (q <= 0) return;
-    const w = measure(s, 32) + 40;
-    ctx.save(); ctx.translate(360 + i * 220 + w / 2, 890); ctx.scale(q, q);
-    panel(-w / 2, -26, w, 52, i ? "#2a5a2a" : "#5a4410", { edge: 4 });
-    text(s, 0, 2, { size: 32, color: i ? C.green : C.gold });
-    ctx.restore();
-  });
+  burst(t, 1.0, 170, 170, { n: 22, seed: 21, color: C.gold, spread: 360 });
+  text("Solo", 340, 80, { size: 44, align: "left", color: C.soft, alpha: prog(t, 0.6, 0.75) });
+  text("1st of 16", 340, 150, { size: 64, align: "left", alpha: prog(t, 0.7, 0.85) });
+  chip("+120 XP", 420, 240, t, 1.5, { color: C.green, bg: "#1d3d1d" });
+  chip("NEW BEST", 640, 240, t, 1.65);
+  const a = prog(t, 0.8, 0.95), cp = easeOut(prog(t, 1.2, 1.9));
+  text("Crowd score", 40, 380, { size: 36, align: "left", color: C.soft, alpha: a });
+  text(Math.round(94 * cp) + "%", 760, 380, { size: 36, align: "right", color: C.green, alpha: a });
+  bar(40, 410, 720, 36, 0.94 * cp, C.green, a);
+  const lp = easeOut(prog(t, 1.5, 2.3));
+  text("Level 4", 40, 510, { size: 36, align: "left", color: C.soft, alpha: a });
+  text(lp >= 1 ? "LEVEL UP!" : Math.round(lerp(640, 900, lp)) + " / 900 XP", 760, 510, { size: 36, align: "right", color: lp >= 1 ? C.gold : C.aqua, alpha: a });
+  bar(40, 540, 720, 36, lerp(0.71, 1, lp), C.aqua, a);
 }
 function artTimer(t) {
-  const run = prog(t, 0.2, 1.1), ms = Math.round(7430 * easeOut(run));
-  const s = Math.floor(ms / 1000), cs = Math.floor((ms % 1000) / 10);
-  const str = `0:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
-  panel(130, 330, 760, 260, "#1f1f24", { alpha: prog(t, 0.1, 0.25), edge: 10 });
-  text(str, 510, 470, { size: 190, color: run < 1 ? C.white : C.aqua, alpha: prog(t, 0.1, 0.25) });
-  if (run >= 1) flashOverlay(t, 1.1, 0.2, 0.25);
-  [["PB  -0.82s", C.green, "#1d3d1d"], ["WORLD RECORD", C.gold, "#4a3a10"]].forEach(([s, col, bg], i) => {
-    const q = easeBack(prog(t, 1.15 + i * 0.2, 1.45 + i * 0.2));
+  const run = prog(t, 0.6, 1.5), ms = Math.round(7430 * run);
+  const str = `0:${String(Math.floor(ms / 1000)).padStart(2, "0")}.${String(Math.floor((ms % 1000) / 10)).padStart(2, "0")}`;
+  panel(40, 30, 720, 210, "#141416", { alpha: prog(t, 0.5, 0.6), edge: 8 });
+  text(str, 400, 142, { size: 160, color: run < 1 ? C.white : C.aqua, alpha: prog(t, 0.5, 0.6) });
+  chip("PB  -0.82s", 190, 300, t, 1.5, { color: C.green, bg: "#1d3d1d", size: 38 });
+  chip("WORLD RECORD", 580, 300, t, 2.0, { size: 38 });
+  burst(t, 2.0, 580, 300, { n: 22, seed: 31, color: C.gold, spread: 380 });
+  [["Round 1", "0:07.43", "PB", C.green], ["Round 2", "0:09.10", "", C.white], ["Round 3", "0:11.87", "WR", C.gold]].forEach(([n, v, tag, col], i) => {
+    const q = easeOut(prog(t, 1.7 + i * 0.15, 1.95 + i * 0.15));
     if (q <= 0) return;
-    const w = measure(s, 40) + 50;
-    ctx.save(); ctx.translate(i ? 890 - w / 2 : 130 + w / 2, 680); ctx.scale(q, q);
-    panel(-w / 2, -32, w, 64, bg, { edge: 5 });
-    text(s, 0, 2, { size: 40, color: col });
+    const y = 370 + i * 84;
+    ctx.save(); ctx.globalAlpha = q; ctx.translate((1 - q) * 80, 0);
+    panel(40, y, 720, 68, "#202026", { edge: 4 });
+    text(n, 66, y + 36, { size: 34, align: "left", color: C.soft });
+    text(v, 560, y + 36, { size: 38, align: "right", color: col });
+    if (tag) text(tag, 730, y + 36, { size: 32, align: "right", color: col });
     ctx.restore();
   });
-  burst(t, 1.35, 760, 680, { n: 24, seed: 31, color: C.gold, spread: 500 });
 }
-function artAchievements(t) {
-  const n = Math.round(124 * easeOut(prog(t, 0.15, 1.0)));
-  text(String(n), 560, 360, { size: 230, color: C.pink, alpha: prog(t, 0.1, 0.2) });
-  const toasts = [["One Block Wonder", "+40 AP"], ["Speedrunner", "+50 AP"], ["Photo Finish", "+20 AP"]];
-  toasts.forEach(([name, ap], i) => {
-    const q = easeOut(prog(t, 0.5 + i * 0.22, 0.8 + i * 0.22));
+function artAch(t) {
+  const n = Math.round(124 * easeOut(prog(t, 0.5, 1.2)));
+  text(String(n), 220, 110, { size: 170, color: C.pink, align: "center", alpha: prog(t, 0.5, 0.6) });
+  text("achievements", 400, 80, { size: 44, align: "left", color: C.white, alpha: prog(t, 0.6, 0.75) });
+  text("+ new challenges weekly", 400, 140, { size: 30, align: "left", color: C.muted, alpha: prog(t, 0.7, 0.85) });
+  [["One Block Wonder", "+40 AP", C.gold], ["Speedrunner", "+50 AP", C.aqua], ["Photo Finish", "+20 AP", C.pink]].forEach(([name, ap, col], i) => {
+    const at = 1.5 + i * 0.25, q = easeBack(prog(t, at, at + 0.25));
     if (q <= 0) return;
-    const x = lerp(-700, 160, q), y = 560 + i * 120;
-    panel(x, y, 800, 100, "#202026", { edge: 6 });
-    block(x + 22, y + 22, 56, [C.gold, C.aqua, C.pink][i]);
-    text("Achievement unlocked", x + 104, y + 32, { size: 24, align: "left", color: C.muted, shadow: false });
-    text(name, x + 104, y + 68, { size: 38, align: "left", color: C.white });
-    text(ap, x + 770, y + 52, { size: 36, align: "right", color: C.gold });
+    const y = 240 + i * 128;
+    ctx.save(); ctx.translate((1 - q) * 900, 0);
+    panel(40, y, 720, 104, "#202026", { edge: 6 });
+    block(62, y + 24, 56, col, { flash: clamp(1 - (t - at - 0.25) / 0.2) * (t > at + 0.25 ? 1 : 0) });
+    text("Achievement unlocked", 144, y + 34, { size: 24, align: "left", color: C.muted, shadow: false });
+    text(name, 144, y + 70, { size: 38, align: "left" });
+    text(ap, 734, y + 54, { size: 38, align: "right", color: C.gold });
+    ctx.restore();
   });
 }
-function artRank(t) {
-  const p = easeOut(prog(t, 0.15, 1.1)), rank = Math.round(lerp(9999, 382, p));
-  text("GLOBAL RANK", 560, 300, { size: 44, color: C.soft, alpha: prog(t, 0.1, 0.25) });
-  text("#" + rank.toLocaleString("en-US"), 560, 430, { size: 210, color: C.gold, alpha: prog(t, 0.1, 0.25) });
-  text("on Hypixel's leaderboard", 560, 560, { size: 36, color: C.muted, alpha: prog(t, 1.1, 1.3) });
-  const bp = easeOut(prog(t, 0.9, 1.7));
-  text("Master", 260, 680, { size: 40, align: "left", color: C.gold, alpha: prog(t, 0.8, 1.0) });
-  text("Legend", 860, 680, { size: 40, align: "right", color: C.green, alpha: prog(t, 0.8, 1.0) });
-  panel(260, 720, 600, 34, "#0b0b0d", { alpha: prog(t, 0.8, 1.0), edge: 4 });
-  ctx.fillStyle = C.green; ctx.fillRect(266, 726, 588 * 0.31 * bp + 588 * 0.0, 22);
-  text("battle.aspir3.net", 560, 840, { size: 46, color: C.pink, alpha: prog(t, 1.3, 1.5) });
+function artProfile(t) {
+  // a share card, with a border that pulses between pink and gold
+  const a = prog(t, 0.5, 0.65), pulse = 0.5 + 0.5 * Math.sin(t * 6);
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.shadowColor = mix(C.pink, C.gold, pulse); ctx.shadowBlur = 40 + 30 * pulse;
+  ctx.fillStyle = mix(C.pink, C.gold, pulse); ctx.fillRect(34, 24, 732, 452);
+  ctx.restore();
+  panel(40, 30, 720, 440, "#1f1f24", { alpha: a, edge: 6 });
+  ctx.save(); ctx.globalAlpha = a;
+  block(70, 60, 130, "#b98f6a");                                   // a pixel face
+  ctx.fillStyle = "#6b4a2f"; ctx.fillRect(70, 60, 130, 36);
+  ctx.fillStyle = "#fff"; ctx.fillRect(92, 120, 32, 16); ctx.fillRect(146, 120, 32, 16);
+  ctx.fillStyle = "#3b5bd6"; ctx.fillRect(108, 120, 16, 16); ctx.fillRect(146, 120, 16, 16);
+  ctx.restore();
+  text("YourName", 232, 92, { size: 62, align: "left", alpha: a });
+  chip("Master", 296, 162, t, 0.9, { size: 28 });
+  chip("Better Battle", 500, 162, t, 1.0, { size: 28, color: C.pink, bg: "#3a2030" });
+  const rp = easeOut(prog(t, 1.0, 1.7));
+  [["Global rank", "#" + Math.round(lerp(2400, 382, rp)), C.gold], ["Score", Math.round(82655 * rp).toLocaleString("en-US"), C.white], ["Wins", Math.round(1362 * rp).toLocaleString("en-US"), C.white]].forEach(([k, v, col], i) => {
+    const x = 70 + i * 232;
+    text(k, x, 258, { size: 26, align: "left", color: C.muted, alpha: a, shadow: false });
+    text(v, x, 306, { size: 52, align: "left", color: col, alpha: a });
+  });
+  text("Level 4", 70, 372, { size: 28, align: "left", color: C.soft, alpha: a });
+  bar(70, 396, 660, 30, 0.98 * easeOut(prog(t, 1.2, 1.9)), C.green, a);
+  // the shutter: a white flash over the card, then the link is copied
+  const f = (t - 2.0) / 0.25;
+  if (f >= 0 && f <= 1) { ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - f)})`; ctx.fillRect(40, 30, 720, 440); }
+  chip("Share card", 230, 550, t, 1.6, { color: "#fff", bg: "#3a3a42", size: 36 });
+  chip("Link copied", 560, 550, t, 2.5, { color: C.green, bg: "#1d3d1d", size: 36 });
+  burst(t, 2.5, 560, 550, { n: 16, seed: 51, color: C.green, spread: 260 });
+}
+function artDiscord(t) {
+  const a = prog(t, 0.5, 0.65);
+  panel(40, 30, 720, 84, "#2a2c36", { alpha: a, edge: 4 });
+  const cmd = "/stats YourName", typed = cmd.slice(0, Math.floor(cmd.length * prog(t, 0.7, 1.4)));
+  text(typed + (t < 1.5 && Math.floor(t * 6) % 2 ? "_" : ""), 70, 74, { size: 40, align: "left", color: C.blurple, alpha: a });
+  const q = easeBack(prog(t, 1.5, 1.8));
+  if (q > 0) {
+    ctx.save(); ctx.translate(0, (1 - q) * 300); ctx.globalAlpha = clamp(q * 2);
+    panel(40, 150, 720, 330, "#202229", { edge: 4 });
+    ctx.fillStyle = C.pink; ctx.fillRect(40, 150, 10, 330);
+    block(76, 180, 64, C.gold);
+    text("Better Battle", 160, 196, { size: 28, align: "left", color: C.pink, shadow: false });
+    text("YourName  |  Master", 160, 234, { size: 38, align: "left" });
+    [["Global rank", "#382", C.gold], ["Wins", "1,362", C.white], ["Level", "4", C.aqua]].forEach(([k, v, col], i) => {
+      const x = 76 + i * 226;
+      text(k, x, 320, { size: 26, align: "left", color: C.muted, shadow: false });
+      text(v, x, 370, { size: 54, align: "left", color: col });
+    });
+    text("Best board: Speed Builders wins", 76, 440, { size: 28, align: "left", color: C.soft, shadow: false });
+    ctx.restore();
+  }
+  ["/compare", "/records", "/weekly"].forEach((s, i) => chip(s, 170 + i * 230, 560, t, 2.3 + i * 0.15, { color: C.blurple, bg: "#262a44", size: 34 }));
 }
 
-function sceneEnd(t) {
-  background(t, { tint: C.pink, glow: 0.16 });
-  const [sx, sy] = shake(t, 1.25, 14);
-  ctx.save(); ctx.translate(sx, sy);
-  drawLogo(t, 0.0, W / 2, 330, { from: "edges", sweepAt: 1.6, seed: 5, scale: 1 });
-  ribbon("DOWNLOAD FREE", W / 2, 520, t, 1.3, { color: C.green, textColor: "#0b0b0d", size: 54 });
-  text("battle.aspir3.net", W / 2, 680, { size: 96, color: C.pink, alpha: prog(t, 1.7, 2.0) });
-  text("Forge 1.8.9   |   Fabric 26.3", W / 2, 790, { size: 42, color: C.soft, alpha: prog(t, 2.0, 2.3) });
-  text("Nothing in a game is ever paid.", W / 2, 860, { size: 34, color: C.muted, alpha: prog(t, 2.3, 2.6) });
+const FEATURES = [
+  { id: "A", kicker: "STATS + LEVELS", l1: "EVERY BUILD,", l2: "GRADED.", color: C.gold, art: artGrade,
+    shot: "End of a Solo game: the recap shows in chat", vo: "Every build graded. Every win ranked." },
+  { id: "B", kicker: "SPEED BUILDERS", l1: "EVERY SECOND,", l2: "TIMED.", color: C.aqua, art: artTimer,
+    shot: "Speed Builders round with the timer on screen", vo: "Speed Builders, with a real timer, personal bests and world records." },
+  { id: "C", kicker: "ACHIEVEMENTS", l1: "EVERY GAME,", l2: "COUNTS.", color: C.pink, art: artAch,
+    shot: "An achievement pops, then the Achievements screen", vo: "A hundred and twenty-four achievements, plus weekly challenges." },
+  { id: "D", kicker: "YOUR PROFILE", l1: "EVERY STAT,", l2: "SHAREABLE.", color: C.green, art: artProfile,
+    shot: "Your profile on battle.aspir3.net, click Share card", vo: "Your whole career on one profile. Share it anywhere." },
+  { id: "E", kicker: "DISCORD BOT", l1: "EVERY FRIEND,", l2: "CHALLENGED.", color: C.blurple, art: artDiscord,
+    shot: "Run /stats in the Better Battle Discord", vo: "Flex it in Discord, or call out a friend." },
+];
+// 0.25 line one slams   0.50 line two slams   0.35 card slides in   3.70 everything leaves
+function sceneFeature(t, f, alpha) {
+  if (!alpha) {           // preview: a stand-in for your footage
+    ctx.fillStyle = "#0b0b0d"; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.setLineDash([24, 16]); ctx.lineDashOffset = -t * 60;
+    ctx.strokeStyle = rgba(f.color, 0.6); ctx.lineWidth = 4; ctx.strokeRect(40, 40, W - 80, H - 80); ctx.restore();
+    text("YOUR CLIP " + f.id, 520, 250, { size: 50, color: f.color });
+    text(f.shot, 520, 320, { size: 30, color: C.white, weight: 500 });
+    text('VO: "' + f.vo + '"', 520, 400, { size: 26, color: C.muted, weight: 500 });
+  }
+  const out = easeIn(prog(t, 3.7, 3.95)), vis = prog(t, 0.1, 0.3) * (1 - out);
+  // dark plates so the words read over any footage
+  let g = ctx.createRadialGradient(0, 900, 100, 0, 900, 1100);
+  g.addColorStop(0, `rgba(6,6,8,${0.85 * vis})`); g.addColorStop(1, "rgba(6,6,8,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1100, H);
+  g = ctx.createLinearGradient(0, 480, 0, 1080);
+  g.addColorStop(0, "rgba(6,6,8,0)"); g.addColorStop(1, `rgba(6,6,8,${0.7 * vis})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 480, W, 600);
+
+  const [sx, sy] = shakes(t, [[0.25, 14], [0.5, 18]]);
+  ctx.save(); ctx.translate(sx - out * 500, sy); ctx.globalAlpha = 1 - out;
+  const kw = measure(f.kicker, 32) + 50, kq = easeBack(prog(t, 0.15, 0.35));
+  if (kq > 0) { ctx.save(); ctx.translate(100, 690); ctx.scale(kq, kq); panel(0, 0, kw, 60, f.color); text(f.kicker, kw / 2, 32, { size: 32, color: "#0b0b0d", shadow: false }); ctx.restore(); }
+  ctx.save(); ctx.translate(100, 830); slam(f.l1, 0, 0, t, 0.25, { size: 112, align: "left" }); ctx.restore();
+  ctx.save(); ctx.translate(100, 955); slam(f.l2, 0, 0, t, 0.5, { size: 112, align: "left", color: f.color }); ctx.restore();
+  // the gold block from the hook, riding along as a bullet
+  block(40, lerp(-80, 800, easeOut(prog(t, 0.05, 0.25))), 36, C.gold, { rot: (1 - prog(t, 0.05, 0.25)) * 6 });
   ctx.restore();
-  text("Better Battle is a fan-made mod. Not affiliated with Hypixel.", W / 2, 1030, { size: 22, color: "#6a6a72", shadow: false, weight: 400, alpha: prog(t, 2.6, 3.0) });
+
+  const cq = easeBack(prog(t, 0.35, 0.7));
+  if (cq > 0) {
+    ctx.save();
+    ctx.translate(1050 + (1 - cq) * 950 + out * 950, 110 + Math.sin(t * 1.6) * 6);
+    ctx.rotate((1 - cq) * 0.12);
+    ctx.fillStyle = "#000"; ctx.fillRect(-6, -6, 812, 652);
+    ctx.fillStyle = "rgba(20,20,24,0.92)"; ctx.fillRect(0, 0, 800, 640);
+    ctx.fillStyle = f.color; ctx.fillRect(0, 0, 800, 8);
+    f.art(t);
+    ctx.restore();
+  }
+}
+
+// ================= END (24-30s) =================
+// 0.5 BUILD.  1.0 BATTLE.  1.5 BETTER.  2.0 the words break into the logo  3.0 download  3.5 site
+function sceneEnd(t) {
+  background(t, { tint: C.pink, glow: t < 2 ? 0.05 : 0.17 });
+  const [sx, sy] = shakes(t, [[0.5, 16], [1.0, 20], [1.5, 28], [3.0, 16]]);
+  ctx.save(); ctx.translate(sx, sy);
+  const words = [["BUILD.", C.white], ["BATTLE.", C.white], ["BETTER.", C.gold]], size = 140, gap = 50;
+  const widths = words.map(([w]) => measure(w, size)), total = widths.reduce((a, b) => a + b, 0) + gap * 2;
+  if (t < 2.25) {
+    ctx.save(); ctx.globalAlpha = 1 - prog(t, 2.0, 2.2);
+    let x = W / 2 - total / 2;
+    words.forEach(([w, col], i) => { slam(w, x + widths[i] / 2, 400, t, 0.5 + i * 0.5, { size, color: col }); x += widths[i] + gap; });
+    ctx.restore();
+  }
+  if (t >= 2.0) {
+    drawLogo(t, 2.0, W / 2, 330, { box: { x: W / 2 - total / 2, y: 330, w: total, h: 140 }, sweepAt: 3.1, seed: 5, k: 0.8 });
+    ribbon("DOWNLOAD FREE", W / 2, 520, t, 3.0, { color: C.green, textColor: "#0b0b0d", size: 54 });
+    slam("battle.aspir3.net", W / 2, 680, t, 3.5, { size: 96, color: C.pink });
+    text("Forge 1.8.9   |   Fabric 26.3", W / 2, 790, { size: 42, color: C.soft, alpha: prog(t, 4.0, 4.2) });
+    text("Nothing in a game is ever paid.", W / 2, 860, { size: 34, color: C.muted, alpha: prog(t, 4.3, 4.5) });
+  }
+  burst(t, 3.0, W / 2, 520, { n: 30, seed: 9, color: C.green, spread: 700 });
+  ctx.restore();
+  flashOverlay(t, 1.5, 0.18, 0.4);
+  text("Better Battle is a fan-made mod. Not affiliated with Hypixel.", W / 2, 1030, { size: 22, color: "#6a6a72", shadow: false, weight: 400, alpha: prog(t, 4.5, 4.8) });
   vignette();
 }
 
-// Stand-in for footage you record. Shows what to capture and the voice-over line.
-function sceneClip(t, { id, shot, vo, color }) {
-  ctx.fillStyle = "#0b0b0d"; ctx.fillRect(0, 0, W, H);
-  ctx.save();
-  ctx.setLineDash([24, 16]); ctx.lineDashOffset = -t * 60;
-  ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(80, 80, W - 160, H - 160);
-  ctx.restore();
-  text("YOUR CLIP " + id, W / 2, 330, { size: 54, color });
-  text(shot, W / 2, 440, { size: 44, color: C.white, weight: 500 });
-  text("Voice-over", W / 2, 640, { size: 30, color: C.muted, weight: 500 });
-  text('"' + vo + '"', W / 2, 700, { size: 38, color: C.soft, weight: 500 });
+// ================= the wipe on every cut =================
+// Blocks pop in to cover the screen (0.2s before the cut), then drop away (0.3s after).
+function wipe(d, seed) {
+  if (d < -0.2 || d > 0.32) return;
+  const R = rng(seed), s = 160;
+  for (let x = 0; x < W; x += s) for (let y = 0; y < H + s; y += s) {
+    const lag = (x / W) * 0.08 + R() * 0.05, tint = R(), spin = R() - 0.5;
+    const col = tint > 0.93 ? C.gold : tint > 0.88 ? C.pink : mix(C.bg2, "#2e2e36", R());
+    if (d < 0) {
+      const p = easeOut(prog(d, -0.2 + lag, -0.03));
+      block(x + (s * (1 - p)) / 2, y + (s * (1 - p)) / 2, (s + 2) * p, col);
+    } else {
+      const p = prog(d, lag, lag + 0.2);
+      if (p < 1) block(x, y + easeIn(p) * 1000, s + 2, col, { rot: p * spin * 2 });
+    }
+  }
 }
 
 // ---------- timeline
-const STINGERS = {
-  grade: { kicker: "NEW", l1: "EVERY BUILD,", l2: "GRADED.", color: C.gold, art: artGrade, seed: 41 },
-  timer: { kicker: "SPEED BUILDERS", l1: "EVERY SECOND,", l2: "TIMED.", color: C.aqua, art: artTimer, seed: 42 },
-  ach: { kicker: "124 TO UNLOCK", l1: "EVERY GAME,", l2: "COUNTS.", color: C.pink, art: artAchievements, seed: 43 },
-  rank: { kicker: "YOUR PROFILE", l1: "EVERY PLAYER,", l2: "RANKED.", color: C.green, art: artRank, seed: 44 },
-};
-const TIMELINE = [
-  { name: "01_hook", dur: 7.0, draw: sceneHook },
-  { name: "clip_A", dur: 4.0, clip: { id: "A", shot: "In the lobby: press B, the Better Battle menu opens", vo: "This is Better Battle. A free mod that turns every game into progress.", color: C.gold } },
-  { name: "02_graded", dur: 2.2, draw: (t) => stinger(t, STINGERS.grade) },
-  { name: "clip_B", dur: 5.0, clip: { id: "B", shot: "Win (or finish) a Solo game: the recap pops up in chat", vo: "Every build gets a grade, a crowd score and XP the second it ends.", color: C.gold } },
-  { name: "03_timed", dur: 2.2, draw: (t) => stinger(t, STINGERS.timer) },
-  { name: "clip_C", dur: 5.0, clip: { id: "C", shot: "Speed Builders round with the timer on screen, beat your PB", vo: "Speed Builders gets a real timer, personal bests and world records.", color: C.aqua } },
-  { name: "04_counts", dur: 2.2, draw: (t) => stinger(t, STINGERS.ach) },
-  { name: "clip_D", dur: 5.0, clip: { id: "D", shot: "An achievement toast pops, then scroll the Achievements screen", vo: "Over a hundred achievements, and new challenges every week.", color: C.pink } },
-  { name: "05_ranked", dur: 2.2, draw: (t) => stinger(t, STINGERS.rank) },
-  { name: "clip_E", dur: 4.0, clip: { id: "E", shot: "Your profile on battle.aspir3.net (screen recording)", vo: "And your profile, with your real rank, lives on the website.", color: C.green } },
-  { name: "06_end", dur: 5.0, draw: sceneEnd },
-];
-let acc = 0;
-for (const s of TIMELINE) { s.start = acc; acc += s.dur; }
-const TOTAL = acc;
-
-// mode "animatic" plays everything in order; mode "graphics" leaves the clip slots out.
-function renderAt(t, mode = "animatic") {
-  const list = mode === "graphics" ? TIMELINE.filter((s) => !s.clip) : TIMELINE;
-  let start = 0;
-  for (const s of list) {
-    if (t < start + s.dur || s === list[list.length - 1]) {
-      const local = Math.min(t - start, s.dur - 1e-6);
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalAlpha = 1;
-      if (s.clip) sceneClip(local, s.clip); else s.draw(local);
-      return s.name;
-    }
-    start += s.dur;
-  }
+const CUTS = [4, 8, 12, 16, 20, 24], TOTAL = 30;
+function renderAt(t, { alpha = false } = {}) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, W, H);
+  t = clamp(t, 0, TOTAL - 1e-6);
+  if (t < 4) sceneHook(t);
+  else if (t < 24) { const i = Math.floor((t - 4) / 4); sceneFeature(t - 4 - i * 4, FEATURES[i], alpha); }
+  else sceneEnd(t - 24);
+  CUTS.forEach((c, i) => wipe(t - c, 40 + i));
 }
-window.TIMELINE = TIMELINE;
 window.TOTAL = TOTAL;
 window.renderAt = renderAt;
 window.ready = document.fonts.load(`700 60px ${FONT}`).then(() => document.fonts.load(`500 60px ${FONT}`)).then(() => { renderAt(0); return true; });
 
-// Opened in a browser: just play it on a loop.
-if (!new URLSearchParams(location.search).has("record")) {
-  window.ready.then(() => {
-    const t0 = performance.now();
-    (function frame() { renderAt(((performance.now() - t0) / 1000) % TOTAL); requestAnimationFrame(frame); })();
-  });
-}
+// Opened in a browser: play it on a loop. Add ?alpha to see the transparent master.
+const params = new URLSearchParams(location.search);
+if (params.has("record")) document.documentElement.classList.add("record");
+else window.ready.then(() => {
+  const t0 = performance.now();
+  (function frame() { renderAt(((performance.now() - t0) / 1000) % TOTAL, { alpha: params.has("alpha") }); requestAnimationFrame(frame); })();
+});
 </script>
 </body>
 </html>

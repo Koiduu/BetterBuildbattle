@@ -1,0 +1,68 @@
+TITLE: Better Battle markers
+FCM: NON-DROP FRAME
+
+001  001      V     C        01:00:00:00 01:00:00:01 01:00:00:00 01:00:00:01  
+ |C:ResolveColorBlue |M:HOOK: 01_hook.mp4 |D:1
+
+002  001      V     C        01:00:02:00 01:00:02:01 01:00:02:00 01:00:02:01  
+ |C:ResolveColorRed |M:hit: SO WE BUILT ONE |D:1
+
+003  001      V     C        01:00:04:00 01:00:04:01 01:00:04:00 01:00:04:01  
+ |C:ResolveColorBlue |M:CUT: clip A graded + overlay |D:1
+
+004  001      V     C        01:00:04:30 01:00:04:31 01:00:04:30 01:00:04:31  
+ |C:ResolveColorYellow |M:hit: title lands |D:1
+
+005  001      V     C        01:00:04:42 01:00:04:43 01:00:04:42 01:00:04:43  
+ |C:ResolveColorGreen |M:stat card in place |D:1
+
+006  001      V     C        01:00:08:00 01:00:08:01 01:00:08:00 01:00:08:01  
+ |C:ResolveColorBlue |M:CUT: clip B timed + overlay |D:1
+
+007  001      V     C        01:00:08:30 01:00:08:31 01:00:08:30 01:00:08:31  
+ |C:ResolveColorYellow |M:hit: title lands |D:1
+
+008  001      V     C        01:00:08:42 01:00:08:43 01:00:08:42 01:00:08:43  
+ |C:ResolveColorGreen |M:stat card in place |D:1
+
+009  001      V     C        01:00:12:00 01:00:12:01 01:00:12:00 01:00:12:01  
+ |C:ResolveColorBlue |M:CUT: clip C achievements + overlay |D:1
+
+010  001      V     C        01:00:12:30 01:00:12:31 01:00:12:30 01:00:12:31  
+ |C:ResolveColorYellow |M:hit: title lands |D:1
+
+011  001      V     C        01:00:12:42 01:00:12:43 01:00:12:42 01:00:12:43  
+ |C:ResolveColorGreen |M:stat card in place |D:1
+
+012  001      V     C        01:00:16:00 01:00:16:01 01:00:16:00 01:00:16:01  
+ |C:ResolveColorBlue |M:CUT: clip D profile + overlay |D:1
+
+013  001      V     C        01:00:16:30 01:00:16:31 01:00:16:30 01:00:16:31  
+ |C:ResolveColorYellow |M:hit: title lands |D:1
+
+014  001      V     C        01:00:16:42 01:00:16:43 01:00:16:42 01:00:16:43  
+ |C:ResolveColorGreen |M:stat card in place |D:1
+
+015  001      V     C        01:00:20:00 01:00:20:01 01:00:20:00 01:00:20:01  
+ |C:ResolveColorBlue |M:CUT: clip E discord + overlay |D:1
+
+016  001      V     C        01:00:20:30 01:00:20:31 01:00:20:30 01:00:20:31  
+ |C:ResolveColorYellow |M:hit: title lands |D:1
+
+017  001      V     C        01:00:20:42 01:00:20:43 01:00:20:42 01:00:20:43  
+ |C:ResolveColorGreen |M:stat card in place |D:1
+
+018  001      V     C        01:00:24:00 01:00:24:01 01:00:24:00 01:00:24:01  
+ |C:ResolveColorBlue |M:END: 03_end.mp4 |D:1
+
+019  001      V     C        01:00:24:30 01:00:24:31 01:00:24:30 01:00:24:31  
+ |C:ResolveColorRed |M:hit: BUILD. |D:1
+
+020  001      V     C        01:00:25:00 01:00:25:01 01:00:25:00 01:00:25:01  
+ |C:ResolveColorRed |M:hit: BATTLE. |D:1
+
+021  001      V     C        01:00:25:30 01:00:25:31 01:00:25:30 01:00:25:31  
+ |C:ResolveColorRed |M:hit: BETTER. |D:1
+
+022  001      V     C        01:00:27:00 01:00:27:01 01:00:27:00 01:00:27:01  
+ |C:ResolveColorRed |M:hit: DOWNLOAD FREE |D:1
