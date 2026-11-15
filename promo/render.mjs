@@ -18,7 +18,7 @@ await page.goto("file://" + path.join(here, "ad.html") + "?record");
 await page.evaluate(() => window.ready);
 const shot = async (t, alpha) => {
   await page.evaluate((t) => window.renderAt(t), t);
-  return page.locator("canvas").screenshot({ type: "png", omitBackground: true });
+  return page.locator("#stage").screenshot({ type: "png" });
 };
 if (cmd === "stills") {
   fs.mkdirSync(out, { recursive: true });

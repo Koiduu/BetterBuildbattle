@@ -4,7 +4,7 @@
 
 Writes:
   <out>/sfx/*.wav            every one-shot, for layering by hand in the editor
-  <out>/sfx_mix.wav          all effects placed on the 36s timeline (drop at 0:00)
+  <out>/sfx_mix.wav          all effects placed on the 38s timeline (drop at 0:00)
   <out>/music_bed_120bpm.wav placeholder chiptune beat, bar lines on every cut
   <out>/cues.csv             what plays when
 """
@@ -16,7 +16,7 @@ import wave
 import numpy as np
 
 SR = 48000
-TOTAL = 36.0
+TOTAL = 38.0
 rs = np.random.RandomState(7)
 
 
@@ -218,27 +218,28 @@ cue(15.6, "tick", 0.5, 0, "caption")
 cue(17.78, "whoosh", 0.9, -0.4, "cut: whip pan"); cue(18.05, "whoosh", 0.6, 0.4, "")
 # 4. Achievements, 18-24s
 cue(18.3, "swish", 0.5, 0, "toast drops"); cue(18.58, "notify", 0.7, 0, "achievement unlocked")
-cue(19.3, "swish", 0.4, -0.4, "toast shrinks into the wall"); cue(19.55, "pop", 0.7, -0.5, "")
-for i in range(44):
-    cue(19.6 + i * 0.041, "key" if i % 4 else "pop_hi", 0.22 + i * 0.004, -0.6 + i * 0.027, "wall lights up" if i == 0 else "")
+cue(19.3, "swish", 0.4, 0, "toast drops into the list")
+cue(19.45, "whoosh", 0.5, 0, "camera tilts over the list")
+for i in range(52):
+    cue(19.6 + 2.6 * (0.5 - 0.5 * np.cos(np.pi * i / 52)), "key" if i % 4 else "pop_hi", 0.3, -0.5 + i * 0.02, "the list scrolls" if i == 0 else "")
 cue(19.7, "tick", 0.5, 0, "caption")
-cue(21.4, "chime_hi", 0.65, 0, "all 124 lit")
-cue(22.15, "swish", 0.35, 0, "shimmer")
-cue(23.9, "whoosh", 0.6, 0, "cut: the wall falls"); cue(24.0, "clatter", 0.8, 0, "")
-# 5. Ranked, 24-30s
-for i in range(34):
-    cue(24.5 + 2.5 * (1 - (1 - i / 34) ** (1 / 3)) if i < 34 else 27.0, "tock", 0.3, 0, "rows rush past" if i == 0 else "")
-cue(26.0, "riser", 0.55, 0, "")
-cue(27.0, "impact", 1.0, 0, "rank locks in"); cue(27.05, "chime_hi", 0.6, 0, "")
-cue(27.4, "tick", 0.5, 0, "caption")
-cue(29.74, "whoosh", 0.8, 0, "cut: your row fills the frame"); cue(30.0, "sub_hit", 0.8, 0, "")
-# 6. End, 30-36s
-cue(30.5, "sub_hit", 0.85, -0.3, "BUILD."); cue(31.0, "sub_hit", 0.95, 0, "BATTLE.")
-cue(31.5, "impact", 1.0, 0.2, "BETTER.")
-cue(32.48, "whoosh", 0.5, 0, ""); cue(32.5, "clatter", 0.7, 0, "logo assembles")
-cue(33.5, "impact", 1.0, 0, "DOWNLOAD FREE"); cue(33.55, "chime_hi", 0.6, 0, "")
-cue(34.0, "sub_hit", 0.8, 0, "battle.aspir3.net"); cue(34.0, "pop", 0.5, 0, "")
-cue(34.4, "tick", 0.4, 0, "")
+cue(22.0, "whoosh", 0.5, 0, "pull back"); cue(22.9, "chime_hi", 0.65, 0, "all 124")
+cue(23.76, "whoosh", 0.8, 0, "cut: the list scrolls off, the page rises"); cue(24.4, "thud", 0.6, 0, "")
+# 5. The site, 24-32s
+cue(25.0, "tick", 0.5, 0, "caption")
+for at, what in ((25.0, "rank and score"), (26.55, "activity"), (27.95, "achievements"), (29.35, "Speed Builders bests")):
+    cue(at, "whoosh", 0.6, 0, "camera flies to " + what)
+    cue(at + 0.5, "sub_hit", 0.6, 0, ""); cue(at + 0.5, "pop_hi", 0.6, 0, "highlight")
+cue(30.6, "whoosh", 0.6, 0, "pull back"); cue(31.2, "chime", 0.55, 0, "")
+cue(31.0, "riser", 0.6, 0, "")
+cue(31.74, "whoosh", 0.8, 0, "cut: gold fills the frame"); cue(32.0, "sub_hit", 0.8, 0, "")
+# 6. End, 32-38s
+cue(32.5, "sub_hit", 0.85, -0.3, "BUILD."); cue(33.0, "sub_hit", 0.95, 0, "BATTLE.")
+cue(33.5, "impact", 1.0, 0.2, "BETTER.")
+cue(34.48, "whoosh", 0.5, 0, ""); cue(34.5, "clatter", 0.7, 0, "logo assembles")
+cue(35.5, "impact", 1.0, 0, "DOWNLOAD FREE"); cue(35.55, "chime_hi", 0.6, 0, "")
+cue(36.0, "sub_hit", 0.8, 0, "battle.aspir3.net"); cue(36.0, "pop", 0.5, 0, "")
+cue(36.4, "tick", 0.4, 0, "")
 
 
 def place(buf, x, t, gain=1.0, pan=0.0):
@@ -283,10 +284,10 @@ def music_bed():
         bar = int(t // 2)
         root = roots[bar % 4]
         intro = t < 2.5
-        full = 6.0 <= t < 30.0
-        outro = t >= 32.0
-        near_cut = any(0 < c - t <= beat for c in (6, 12, 18, 24, 30))   # leave room for the whoosh
-        if not intro and not outro and not (30 <= t < 32):
+        full = 6.0 <= t < 32.0
+        outro = t >= 34.0
+        near_cut = any(0 < c - t <= beat for c in (6, 12, 18, 24, 32))   # leave room for the whoosh
+        if not intro and not outro and not (32 <= t < 34):
             place(buf, kick, t, 0.9 if full else 0.6)
         if full and b % 2 == 1:
             place(buf, clap, t, 0.5)
@@ -311,7 +312,7 @@ def music_bed():
     for note, pan in ((0, -0.4), (7, 0.4), (12, 0), (15, 0.2)):
         t = tt(4.0)
         pad = onepole_lp(np.where((A * 2 ** (note / 12) * t) % 1.0 < 0.5, 1.0, -1.0), 1800) * np.minimum(t / 0.01, 1) * np.exp(-0.9 * t)
-        place(buf, pad, 32.5, 0.16, pan)
+        place(buf, pad, 34.5, 0.16, pan)
     return master(buf, 0.7)
 
 

@@ -34,29 +34,38 @@ FCM: NON-DROP FRAME
 011  001      V     C        01:00:19:42 01:00:19:43 01:00:19:42 01:00:19:43  
  |C:ResolveColorGreen |M:caption in |D:1
 
-012  001      V     C        01:00:21:24 01:00:21:25 01:00:21:24 01:00:21:25  
- |C:ResolveColorYellow |M:hit: wall complete |D:1
+012  001      V     C        01:00:22:54 01:00:22:55 01:00:22:54 01:00:22:55  
+ |C:ResolveColorYellow |M:hit: all 124 |D:1
 
 013  001      V     C        01:00:24:00 01:00:24:01 01:00:24:00 01:00:24:01  
- |C:ResolveColorBlue |M:CUT: RANKED |D:1
+ |C:ResolveColorBlue |M:CUT: THE SITE |D:1
 
-014  001      V     C        01:00:27:00 01:00:27:01 01:00:27:00 01:00:27:01  
- |C:ResolveColorRed |M:hit: rank locks |D:1
-
-015  001      V     C        01:00:27:24 01:00:27:25 01:00:27:24 01:00:27:25  
+014  001      V     C        01:00:25:00 01:00:25:01 01:00:25:00 01:00:25:01  
  |C:ResolveColorGreen |M:caption in |D:1
 
-016  001      V     C        01:00:30:00 01:00:30:01 01:00:30:00 01:00:30:01  
+015  001      V     C        01:00:25:30 01:00:25:31 01:00:25:30 01:00:25:31  
+ |C:ResolveColorYellow |M:stop: rank |D:1
+
+016  001      V     C        01:00:27:03 01:00:27:04 01:00:27:03 01:00:27:04  
+ |C:ResolveColorYellow |M:stop: activity |D:1
+
+017  001      V     C        01:00:28:27 01:00:28:28 01:00:28:27 01:00:28:28  
+ |C:ResolveColorYellow |M:stop: achievements |D:1
+
+018  001      V     C        01:00:29:51 01:00:29:52 01:00:29:51 01:00:29:52  
+ |C:ResolveColorYellow |M:stop: Speed Builders |D:1
+
+019  001      V     C        01:00:32:00 01:00:32:01 01:00:32:00 01:00:32:01  
  |C:ResolveColorBlue |M:CUT: END |D:1
 
-017  001      V     C        01:00:30:30 01:00:30:31 01:00:30:30 01:00:30:31  
+020  001      V     C        01:00:32:30 01:00:32:31 01:00:32:30 01:00:32:31  
  |C:ResolveColorRed |M:hit: BUILD. |D:1
 
-018  001      V     C        01:00:31:00 01:00:31:01 01:00:31:00 01:00:31:01  
+021  001      V     C        01:00:33:00 01:00:33:01 01:00:33:00 01:00:33:01  
  |C:ResolveColorRed |M:hit: BATTLE. |D:1
 
-019  001      V     C        01:00:31:30 01:00:31:31 01:00:31:30 01:00:31:31  
+022  001      V     C        01:00:33:30 01:00:33:31 01:00:33:30 01:00:33:31  
  |C:ResolveColorRed |M:hit: BETTER. |D:1
 
-020  001      V     C        01:00:33:30 01:00:33:31 01:00:33:30 01:00:33:31  
+023  001      V     C        01:00:35:30 01:00:35:31 01:00:35:30 01:00:35:31  
  |C:ResolveColorRed |M:hit: DOWNLOAD FREE |D:1

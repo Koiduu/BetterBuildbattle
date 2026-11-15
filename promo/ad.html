@@ -6,17 +6,48 @@
 <style>
   @font-face { font-family: "Pixelify"; src: url("PixelifySans-Variable.ttf") format("truetype"); font-weight: 400 700; }
   html, body { margin: 0; background: #000; }
-  canvas { display: block; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #111114; }
+  canvas { display: block; position: absolute; left: 0; top: 0; }
+  /* The 3D layer sits between the two canvases: scenery behind it, captions and transitions in front. */
+  #three { position: absolute; inset: 0; perspective: 1500px; perspective-origin: 50% 45%; pointer-events: none; }
+  #three > div { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: none; will-change: transform; }
+  #ach { display: grid; grid-template-columns: repeat(4, 480px); gap: 24px; width: 1992px; }
+  .card { height: 120px; box-sizing: border-box; background: #202026; border: 4px solid #000; display: flex; align-items: center;
+          gap: 18px; padding: 0 18px; box-shadow: inset 5px 5px 0 #34343c, inset -5px -5px 0 #121216; }
+  .card i { flex: none; width: 64px; height: 64px; border: 4px solid #000; box-shadow: inset 6px 6px 0 rgba(255,255,255,.4), inset -6px -6px 0 rgba(0,0,0,.35); }
+  .card b { display: block; font: 700 31px "Pixelify", monospace; color: #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 3px 3px 0 #000; }
+  .card span { display: block; font: 17px Verdana, "DejaVu Sans", sans-serif; color: #9d9da6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 6px; }
+  .card div { flex: 1; min-width: 0; }
+  .card em { flex: none; font: 700 30px "Pixelify", monospace; color: #ffaa00; font-style: normal; text-shadow: 3px 3px 0 #000; }
+  #win { width: 1280px; border: 6px solid #000; box-shadow: 0 60px 120px rgba(0,0,0,.7), 0 0 0 2px #3a3a42; background: #2a2a30; }
+  #win .bar { height: 56px; background: #3a3a42; box-shadow: inset 5px 5px 0 #55555f, inset -5px -5px 0 #26262c; display: flex; align-items: center; gap: 12px; padding: 0 20px; }
+  #win .bar u { width: 20px; height: 20px; border: 3px solid #000; }
+  #win .bar p { margin: 0 0 0 16px; flex: 1; background: #17171a; border: 3px solid #000; padding: 6px 16px; font: 700 22px "Pixelify", monospace; color: #c6c6c6; }
+  #win img { display: block; width: 1280px; }
+  #hl { position: absolute; border: 8px solid #ffaa00; box-shadow: 0 0 0 4px #000, 0 0 60px 10px rgba(255,170,0,.55), inset 0 0 0 4px #000; opacity: 0; }
 </style>
 </head>
 <body>
-<canvas id="c" width="1920" height="1080"></canvas>
+<div id="stage">
+  <canvas id="c" width="1920" height="1080"></canvas>
+  <div id="three">
+    <div id="ach"></div>
+    <div id="win">
+      <div class="bar"><u style="background:#ff5555"></u><u style="background:#ffaa00"></u><u style="background:#55ff55"></u><p>battle.aspir3.net/p/Koidu</p></div>
+      <img src="site_profile.png" alt="">
+      <div id="hl"></div>
+    </div>
+  </div>
+  <canvas id="f" width="1920" height="1080"></canvas>
+</div>
+<script src="data.js"></script>
 <script>
-// Better Battle promo, 36 seconds, on a 120 BPM grid (a bar is 2s, a beat is 0.5s).
-// Six scenes of 6s each. Each scene acts its feature out and carries ONE caption, always in
+// Better Battle promo, 38 seconds, on a 120 BPM grid (a bar is 2s, a beat is 0.5s).
+// Six scenes (the site tour is 8s, the rest 6s). Each scene acts its feature out and carries ONE caption, always in
 // the same place, held for more than two seconds. Every frame is drawn from the time alone.
 const W = 1920, H = 1080;
-const ctx = document.getElementById("c").getContext("2d");
+const BACK = document.getElementById("c").getContext("2d"), FRONT = document.getElementById("f").getContext("2d");
+let ctx = BACK;     // scenes draw on the back canvas; captions and transitions go on the front one
 const FONT = '"Pixelify", monospace';
 const C = {
   bg: "#111114", bg2: "#17171a", gold: "#ffaa00", pink: "#ff66aa", green: "#55ff55",
@@ -29,6 +60,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const prog = (t, a, b) => clamp((t - a) / (b - a));
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const easeIn = (t) => t * t * t;
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeBack = (t) => { const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 function rng(seed) {
   return function () {
@@ -111,7 +143,8 @@ function caption(parts, t, at, until = 5.75) {
   const q = easeBack(prog(t, at, at + 0.25)), out = prog(t, until, until + 0.15);
   if (q <= 0 || out >= 1) return;
   const size = 76, widths = parts.map(([s]) => measure(s, size)), total = widths.reduce((a, b) => a + b, 0);
-  const w = total + 120, h = 130, cy = 950;
+  const w = total + 120, h = 130, cy = 950, behind = ctx;
+  ctx = FRONT;        // above the 3D layer
   ctx.save();
   ctx.globalAlpha = 1 - out;
   ctx.translate(W / 2, cy + (1 - q) * 60); ctx.scale(lerp(0.7, 1, q), lerp(0.7, 1, q));
@@ -119,6 +152,7 @@ function caption(parts, t, at, until = 5.75) {
   let x = -total / 2;
   parts.forEach(([s, col], i) => { text(s, x, 4, { size, color: col || C.white, align: "left" }); x += widths[i]; });
   ctx.restore();
+  ctx = behind;
 }
 
 // ---------- background, shake, flashes, dust
@@ -373,95 +407,56 @@ function sceneTimer(t) {
 }
 
 // ================= 4. ACHIEVEMENTS =================
-// One achievement pops like it does in game, then drops into a wall of 124 that lights up.
-// 0.3 toast  1.3 toast shrinks into the first tile  1.6-3.4 the wall lights, the number counts with it
-const TILE = 84, TP = 96, TCOLS = 16, TCOUNT = 124, TX0 = (W - TCOLS * TP + (TP - TILE)) / 2, TY0 = 70;
-const tilePos = (i) => [TX0 + (i % TCOLS) * TP, TY0 + Math.floor(i / TCOLS) * TP];
-const tileColor = (i) => [C.gold, C.pink, C.aqua, C.green, C.purple][(i * 7 + Math.floor(i / TCOLS) * 3) % 5];
-const tileLitAt = (i) => 1.6 + (((i % TCOLS) + Math.floor(i / TCOLS) * 1.5) / (TCOLS + 11)) * 1.8;
+// One achievement pops like it does in game. Then the camera tilts over the real list, all 124 of
+// them, and scrolls it from top to bottom while the number counts, before pulling back.
+// 0.3 toast  1.3 it drops into the list  1.5-4.2 the scroll  4.0-4.9 pull back
+const achEl = document.getElementById("ach"), winEl = document.getElementById("win"), hlEl = document.getElementById("hl");
+const ACH = window.ACH || [], ACH_W = 1992, ACH_H = Math.ceil(ACH.length / 4) * 144 - 24;
+achEl.innerHTML = ACH.map(([name, desc, pts], i) =>
+  `<div class="card"><i style="background:${[C.gold, C.pink, C.aqua, C.green, C.purple][(i * 7 + (i >> 2) * 3) % 5]}"></i><div><b>${name}</b><span>${desc}</span></div><em>+${pts}</em></div>`).join("");
 function sceneAch(t) {
   background(t, { tint: C.pink, glow: 0.1 });
-  let lit = 0;
-  const appear = prog(t, 1.15, 1.45);
-  for (let i = 0; i < TCOUNT; i++) {
-    const [x, y] = tilePos(i), at = i === 0 ? 1.5 : tileLitAt(i), on = t >= at;
-    if (on) lit++;
-    const pop = on ? 1 + 0.35 * clamp(1 - (t - at) / 0.18) : 1;
-    const sweep = clamp(1 - Math.abs(x + y * 0.6 - ((t - 4.2) * 3200 - 200)) / 140) * 0.7;
-    const s = TILE * pop;
-    block(x - (s - TILE) / 2, y - (s - TILE) / 2, s, on ? tileColor(i) : "#26262c",
-      { alpha: appear, flash: Math.max(on ? clamp(1 - (t - at) / 0.2) * 0.9 : 0, on ? sweep : 0) });
-  }
-  // the toast
   if (t < 1.55) {
     const drop = easeBack(prog(t, 0.3, 0.6)), shrink = easeIn(prog(t, 1.3, 1.55));
-    const [tx, ty] = tilePos(0);
-    const cx = lerp(W / 2, tx + TILE / 2, shrink), cy = lerp(lerp(-200, 420, drop), ty + TILE / 2, shrink), sc = lerp(1, 0.1, shrink);
-    ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
+    ctx.save(); ctx.translate(W / 2, lerp(lerp(-200, 420, drop), 560, shrink)); ctx.scale(lerp(1, 0.45, shrink), lerp(1, 0.45, shrink));
+    ctx.globalAlpha = 1 - shrink;
     panel(-520, -100, 1040, 200, "#202026", { edge: 8 });
     block(-480, -60, 120, C.gold);
     text("Achievement unlocked!", -320, -40, { size: 40, align: "left", color: C.gold });
     text("One Block Wonder", -320, 34, { size: 76, align: "left" });
     ctx.restore();
   }
-  burst(t, 1.55, TX0 + 42, TY0 + 42, { n: 18, seed: 71, color: C.gold, spread: 300 });
-  caption([[String(lit), C.pink], [" achievements to chase."]], t, 1.7);
-  vignette();
-}
-// The lit wall falls away. Drawn over the next scene for its first half second.
-function tilesFall(d) {
-  if (d > 0.5) return;
-  const R = rng(81);
-  for (let i = 0; i < TCOUNT; i++) {
-    const [x, y] = tilePos(i), lag = (i % TCOLS) * 0.012 + R() * 0.06, spin = R() - 0.5, p = prog(d, lag, lag + 0.26);
-    if (p < 1) block(x, y + easeIn(p) * 1100, TILE, tileColor(i), { rot: p * spin * 3 });
-  }
+  const sc = easeInOut(prog(t, 1.5, 4.2)), pull = easeInOut(prog(t, 4.0, 4.9)), exit = easeIn(prog(t, 5.72, 6.0));
+  const fy = lerp(lerp(160, ACH_H - 260, sc), ACH_H * 0.62, pull), s = lerp(0.95, 0.5, pull), rx = lerp(52, 30, pull);
+  achEl.style.opacity = prog(t, 1.2, 1.5);
+  achEl.style.transform = `translate(960px, ${lerp(640, 520, pull) - exit * 1700}px) scale(${s}) rotateX(${rx}deg) translate(${-ACH_W / 2}px, ${-fy}px)`;
+  caption([[String(t < 1.5 ? 1 : Math.round(lerp(1, ACH.length, sc))), C.pink], [" achievements to chase."]], t, 1.7);
 }
 
-// ================= 5. RANKED =================
-// A leaderboard rushes past while your row holds the middle and the number climbs.
-// 0.5-3.0 the climb  3.0 it stops  3.4 caption  5.75 your row grows to fill the screen
-function sceneRank(t) {
-  background(t, { tint: C.green, glow: 0.1 });
-  const [sx, sy] = shakes(t, [[3.0, 24]]);
-  ctx.save(); ctx.translate(sx, sy);
-  const e = easeOut(prog(t, 0.5, 3.0)), r = lerp(2400, 382, e), speed = t > 0.5 && t < 3.0 ? (1 - prog(t, 0.5, 3.0)) : 0;
-  const RH = 100, RP = 116, cy = 430, X = 410, RW = 1100;
-  const base = Math.round(r);
-  for (let k = base - 5; k <= base + 5; k++) {
-    if (k === base) continue;
-    const y = cy + (k - r) * RP;
-    if (y < -RH || y > 860) continue;
-    const R = rng(k * 13), fade = clamp(1 - Math.abs(y - cy) / 520) * prog(t, 0.2, 0.5);
-    ctx.save(); ctx.globalAlpha = fade * (1 - speed * 0.45);
-    panel(X, y - RH / 2, RW, RH, "#202026", { edge: 5 });
-    text("#" + k.toLocaleString("en-US"), X + 40, y + 4, { size: 48, align: "left", color: C.muted });
-    block(X + 270, y - 32, 64, ["#6a7fb0", "#b06a6a", "#6ab08a", "#b0a26a"][Math.floor(R() * 4)]);
-    ctx.fillStyle = "#3a3a42"; ctx.fillRect(X + 370, y - 14, 180 + R() * 220, 28);     // a name, as a bar: nothing to read
-    ctx.fillStyle = "#2e2e36"; ctx.fillRect(X + RW - 220, y - 14, 170, 28);
-    if (speed > 0.15) { ctx.fillStyle = `rgba(255,255,255,${speed * 0.12})`; ctx.fillRect(X, y - RH / 2 - 60 * speed, RW, 60 * speed); }
-    ctx.restore();
+// ================= 5. THE SITE =================
+// The real profile page as a window floating in space. The camera flies in on four parts of it.
+// Each stop: [from, to, x, y, zoom, tiltX, tiltY, highlight box]. Positions are page pixels.
+const BAR = 56;
+const STOPS = [
+  [0.0, 0.9, 640, 760, 0.52, 36, -18, null],                          // the whole page, tilted
+  [1.5, 2.5, 800, 200, 1.32, 8, -5, [652, 82, 528, 219]],             // rank and score
+  [3.0, 3.9, 640, 1138, 1.32, 12, 6, [100, 1021, 1080, 233]],         // activity
+  [4.4, 5.3, 640, 1462, 1.28, 10, -6, [100, 1271, 1080, 382]],        // achievements and this week
+  [5.8, 6.6, 640, 1955, 1.32, 12, 6, [100, 1817, 1080, 275]],         // Speed Builders bests
+  [7.2, 8.0, 640, 1380, 0.4, 16, -12, null],                         // pull back: all of it
+];
+function sceneTour(t) {
+  background(t, { tint: C.green, glow: 0.12 });
+  let a = STOPS[0], b = STOPS[0], k = 0;
+  for (let i = 0; i < STOPS.length; i++) {
+    if (t >= STOPS[i][0]) { a = b = STOPS[i]; k = 0; if (t > STOPS[i][1] && STOPS[i + 1]) { b = STOPS[i + 1]; k = easeInOut(prog(t, a[1], b[0])); } }
   }
-  // your row
-  const grow = easeIn(prog(t, 5.72, 5.98)), landed = t >= 3.0 ? clamp(1 - (t - 3.0) / 0.25) : 0;
-  const hw = lerp(RW / 2 + 40, W, grow), hh = lerp(RH / 2 + 14, H, grow), a = prog(t, 0.2, 0.45);
-  ctx.save(); ctx.globalAlpha = a;
-  panel(W / 2 - hw, cy - hh, hw * 2, hh * 2, C.gold, { edge: 8 });
-  if (landed > 0) { ctx.fillStyle = `rgba(255,255,255,${landed * 0.7})`; ctx.fillRect(W / 2 - hw, cy - hh, hw * 2, hh * 2); }
-  ctx.globalAlpha = a * (1 - grow);
-  text("#" + base.toLocaleString("en-US"), X + 10, cy + 6, { size: 84, align: "left", color: "#17171a", shadow: false });
-  block(X + 330, cy - 40, 80, "#b98f6a");
-  text("YOU", X + 450, cy + 6, { size: 72, align: "left", color: "#17171a", shadow: false });
-  // a green arrow, pulsing while you climb
-  const up = t < 3.0 ? (t * 3) % 1 : 0;
-  ctx.fillStyle = "#17171a"; ctx.beginPath();
-  ctx.moveTo(X + RW - 70, cy - 34 - up * 10); ctx.lineTo(X + RW - 20, cy + 26 - up * 10); ctx.lineTo(X + RW - 120, cy + 26 - up * 10); ctx.fill();
-  ctx.restore();
-  burst(t, 3.0, W / 2, cy, { n: 40, seed: 91, color: C.gold, spread: 800 });
-  ctx.restore();
-  flashOverlay(t, 3.0, 0.2, 0.4, "255,200,80");
-  caption([["See where you "], ["really rank.", C.green]], t, 3.4, 5.6);
-  vignette();
+  const v = (n) => lerp(a[n], b[n], k), rise = (1 - easeOut(prog(t, 0, 0.45))) * 1500;
+  winEl.style.transform = `translate(960px, ${520 + rise}px) scale(${v(4)}) rotateX(${v(5)}deg) rotateY(${v(6)}deg) translate(${-v(2)}px, ${-(v(3) + BAR)}px)`;
+  const box = k < 0.5 ? a[7] : b[7], on = box ? (k < 0.5 ? 1 - k * 2 : k * 2 - 1) * (a === b ? prog(t, a[0], a[0] + 0.15) : 1) : 0;
+  if (box) Object.assign(hlEl.style, { left: box[0] - 10 + "px", top: box[1] + BAR - 10 + "px", width: box[2] + 4 + "px", height: box[3] + 4 + "px" });
+  hlEl.style.opacity = on * (0.75 + 0.25 * Math.sin(t * 9));
+  caption([["Your whole career, "], ["on one page.", C.green]], t, 1.0, 7.55);
 }
 
 // ================= 6. END =================
@@ -519,28 +514,36 @@ function flood(d, color, cx, cy) {  // a colour grows from one point until it fi
 }
 
 // ---------- timeline
-const SCENES = [sceneHook, sceneGrade, sceneTimer, sceneAch, sceneRank, sceneEnd], LEN = 6, TOTAL = 36;
+const SCENES = [sceneHook, sceneGrade, sceneTimer, sceneAch, sceneTour, sceneEnd], STARTS = [0, 6, 12, 18, 24, 32], TOTAL = 38;
 function renderAt(t) {
+  t = clamp(t, 0, TOTAL - 1e-6);
+  let i = 0;
+  while (i < STARTS.length - 1 && t >= STARTS[i + 1]) i++;
+  const lt = t - STARTS[i];
+  FRONT.setTransform(1, 0, 0, 1, 0, 0); FRONT.globalAlpha = 1; FRONT.clearRect(0, 0, W, H);
+  ctx = BACK;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-  t = clamp(t, 0, TOTAL - 1e-6);
-  const i = Math.floor(t / LEN), lt = t - i * LEN;
+  achEl.style.display = i === 3 ? "grid" : "none";
+  winEl.style.display = i === 4 ? "block" : "none";
   // cut 3 to 4 is a whip pan: one scene flies out left as the next flies in from the right
   let dx = 0;
-  if (i === 2 && lt > LEN - 0.18) dx = -easeIn(prog(lt, LEN - 0.18, LEN)) * W;
+  if (i === 2 && lt > 5.82) dx = -easeIn(prog(lt, 5.82, 6)) * W;
   if (i === 3 && lt < 0.22) dx = (1 - easeOut(prog(lt, 0, 0.22))) * W;
   ctx.save(); ctx.translate(dx, 0);
   SCENES[i](lt);
   ctx.restore();
+  ctx = FRONT;
   if (dx) {                         // speed streaks
     const R = rng(5);
     for (let k = 0; k < 14; k++) { ctx.fillStyle = `rgba(255,255,255,${0.05 + R() * 0.1})`; ctx.fillRect(0, R() * H, W, 4 + R() * 14); }
   }
   blockWipe(t - 6, 40);                                   // hook -> graded
   flood(t - 12, C.gold, 1420, 330);                       // graded -> timed: the stamp swallows the frame
-  if (i === 4) tilesFall(lt);                             // achievements -> ranked: the wall falls away
-  if (i === 5) flood(lt, C.gold, W / 2, 430);             // ranked -> end: your row has filled the frame
+  // timed -> achievements: whip pan.  achievements -> site: the list scrolls off and the page rises
+  flood(t - 32, C.gold, W / 2, H / 2);                    // site -> end
+  ctx = BACK;
 }
 window.TOTAL = TOTAL;
 window.renderAt = renderAt;
