@@ -17,7 +17,7 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 await page.goto("file://" + path.join(here, "ad.html") + "?record");
 await page.evaluate(() => window.ready);
 const shot = async (t, alpha) => {
-  await page.evaluate(([t, alpha]) => window.renderAt(t, { alpha }), [t, alpha]);
+  await page.evaluate((t) => window.renderAt(t), t);
   return page.locator("canvas").screenshot({ type: "png", omitBackground: true });
 };
 if (cmd === "stills") {

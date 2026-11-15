@@ -1,62 +1,53 @@
-# Better Battle: 30-second ad, DaVinci Resolve blueprint
+# Better Battle: 36-second ad
 
-Timeline: 1920x1080, 60 fps, 30 s. The edit sits on a 120 BPM grid, so one bar is 2 s
-(120 frames), every cut is on a bar line and every big hit is on a beat (30 frames).
+1920x1080, 60 fps, 36 s, on a 120 BPM grid: a bar is 2 s, every scene is 6 s (three bars) and
+every big hit is on a beat. Any 120 BPM track will lock to it.
+
+## The idea
+
+Each scene acts its feature out and carries one caption. The caption is always in the same place
+and stays up for more than two seconds. No scene shares a layout or a transition with another.
+
+| Time | What happens | The one line | Cut out with |
+|---|---|---|---|
+| 0:00-0:06 | A gold block drops and types "Build Battle needed an update." It tears apart, "So we built one." slams in and breaks into the block-built logo. | (the two lines) | blocks cover the screen and drop away |
+| 0:06-0:12 | A build drops in block by block. Six votes fly in and the crowd bar fills. An SS stamp slams down. | Every build gets a grade. | the stamp grows until it fills the frame |
+| 0:12-0:18 | A Speed Builders build goes up while a giant timer runs. Two bars race: your old best against this run. You win by 0.82 s. | Race your own best time. | whip pan |
+| 0:18-0:24 | One achievement pops like it does in game, shrinks into the first tile of a wall, and all 124 tiles light up as the number counts. | 124 achievements to chase. | the wall falls away |
+| 0:24-0:30 | A leaderboard rushes past while your gold row holds the middle and the number climbs from #2,400 to #382. | See where you really rank. | your row grows until it fills the frame |
+| 0:30-0:36 | BUILD. BATTLE. BETTER. on three beats, then the logo, DOWNLOAD FREE, battle.aspir3.net. | | |
+
+Voice-over, if you want one: read the hook's two lines, then each caption as it appears, then
+"Build. Battle. Better. Free, at battle dot aspir3 dot net." Each caption appears about 3.4 s into
+its scene, so start each line there.
 
 ## Files (made by `render.mjs` and `sfx.py` into `promo/out/`)
 
-| File | What it is | Track | Starts at |
-|---|---|---|---|
-| `01_hook.mp4` | The hook, finished | V1 | 0:00 |
-| your clips A to E | 4 s each (record longer, trim to fit) | V1 | 0:04, 0:08, 0:12, 0:16, 0:20 |
-| `02_overlay_A_graded.mov` ... `E_discord.mov` | Titles, stat card and block wipes, with transparency | V2 | 0:04, 0:08, 0:12, 0:16, 0:20 |
-| `03_end.mp4` | The end card, finished | V1 | 0:24 |
-| `sfx_mix.wav` | Every sound effect, already timed | A1 | 0:00 |
-| `music_bed_120bpm.wav` | Placeholder beat. Swap for any 120 BPM track | A2 | 0:00 |
-| your voice-over | | A3 | see below |
-| `sfx/*.wav` | The 17 one-shots, to add or move hits by hand | | `cues.csv` lists every hit |
-| `markers.edl` | Timeline markers for every cut and beat hit | | |
+| File | Track | Starts at |
+|---|---|---|
+| `BetterBattle_video_only.mp4` | V1 | 0:00 |
+| `sfx_mix.wav` (every effect, already timed) | A1 | 0:00 |
+| `music_bed_120bpm.wav` (placeholder beat, swap for a real 120 BPM track) | A2 | 0:00 |
+| your voice-over | A3 | |
+| `sfx/*.wav`, `cues.csv` | the 17 one-shots and when each plays, to move or layer hits by hand | |
+| `markers.edl` | timeline markers for every cut, hit and caption | |
 
-## Shot list
+`BetterBattle_ad_v3.mp4` is the same video with both audio files already mixed in.
 
-| Time | On screen | Record this | Voice-over |
-|---|---|---|---|
-| 0:00-0:04 | A gold block drops and types "Build Battle needed an update." It tears apart, "So we built one." slams in and breaks into the block-built logo. | nothing | "Build Battle needed an update. So we built one." |
-| 0:04-0:08 | EVERY BUILD, GRADED. Card: SS grade, crowd score, level-up bar. | End of a Solo game, the recap showing in chat | "Every build graded. Every win ranked." |
-| 0:08-0:12 | EVERY SECOND, TIMED. Card: timer stops on a PB, world record tag. | A Speed Builders round with the timer on screen | "Speed Builders, with a real timer, personal bests and world records." |
-| 0:12-0:16 | EVERY GAME, COUNTS. Card: counter rolls to 124, three achievements. | An achievement popping, then the Achievements screen | "A hundred and twenty-four achievements, plus weekly challenges." |
-| 0:16-0:20 | EVERY STAT, SHAREABLE. Card: share card, shutter flash, "Link copied". | Your profile on battle.aspir3.net, clicking Share card | "Your whole career on one profile. Share it anywhere." |
-| 0:20-0:24 | EVERY FRIEND, CHALLENGED. Card: /stats typed, the bot replies. | Running /stats in the Discord | "Flex it in Discord, or call out a friend." |
-| 0:24-0:30 | BUILD. BATTLE. BETTER. on three beats, then the logo, DOWNLOAD FREE and the site. | nothing | "Build. Battle. Better. Free, at battle dot aspir3 dot net." |
+## In Resolve
 
-Recording tips: 1080p60, hide the F3 screen, record 6 to 10 s per shot so there is room to pick the best 4.
-The stat card covers the right third of the frame and the title covers the bottom left, so keep the action
-in the upper left and centre.
+1. Project Settings: 1920x1080, 60 fps, before importing.
+2. Drop the video on V1 and the two audio files on A1 and A2, all at the start.
+3. Timelines > Import > Timeline Markers from EDL, pick `markers.edl`.
+4. To use real footage: cut it in at a scene's cut marker and keep the next transition by ending
+   your clip a quarter second before the following cut marker. The scenes that swap best are the
+   timer (a real Speed Builders round) and the grade (the end of a real game).
+5. Duck the music about 6 dB under the voice-over.
+6. Deliver H.264, 1080p60, around 20 Mb/s.
 
-## Building it in Resolve
+## Rebuilding
 
-1. File > Project Settings: 1920x1080, timeline and playback 60 fps. Do this before importing anything.
-2. Import the whole `out` folder into the Media Pool.
-3. Right-click the timeline > Timelines > Import > Timeline Markers from EDL, pick `markers.edl`.
-4. Place the files using the table above. With snapping on (N), clips lock to the markers.
-5. If the overlays show a black background, right-click one in the Media Pool > Clip Attributes > Alpha Mode: Straight.
-6. Polish, in order of payoff:
-   - Punch-in: on each footage clip, keyframe Zoom from 1.00 to 1.06 across its 4 s (Inspector > Transform),
-     so nothing on screen is ever still.
-   - Speed ramp: Retime Controls (Ctrl+R) on each clip, fast for the first half second, then normal speed,
-     landing on the moment the stat card arrives (0.7 s in).
-   - Duck the music: on A2, drop about 6 dB under the voice-over (Fairlight > sidechain compressor keyed
-     from A3, or just keyframe the volume).
-   - Colour: a light contrast and saturation boost on the footage only makes the overlays sit better.
-7. Deliver: H.264, 1080p60, around 20 Mb/s for YouTube.
+    python3 promo/sfx.py promo/out
+    node promo/render.mjs preview promo/out/BetterBattle_video_only.mp4 60
 
-## What changed from the first script, and why
-
-- No Hypixel icon or logo anywhere. The ad says "Build Battle" and ends with "fan-made, not affiliated with
-  Hypixel", so nobody can take it for an official update.
-- "Custom titles, badges, cosmetic loadouts" is gone: that isn't in the product. The profile beat shows the
-  real share card instead.
-- "Copied to Clipboard!" is now "Link copied", the text the site really shows.
-- The call to action is battle.aspir3.net, where the download is, not GitHub.
-- Glass panels became Minecraft-style bevelled panels, matching the website and the mod's own menus.
-- Achievements got their own beat: 124 of them is one of the strongest things the mod has, and it's free.
+`promo/ad.html` plays in a browser; add `?t=12` to start from that second.

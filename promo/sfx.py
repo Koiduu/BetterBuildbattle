@@ -4,7 +4,7 @@
 
 Writes:
   <out>/sfx/*.wav            every one-shot, for layering by hand in the editor
-  <out>/sfx_mix.wav          all effects placed on the 30s timeline (drop at 0:00)
+  <out>/sfx_mix.wav          all effects placed on the 36s timeline (drop at 0:00)
   <out>/music_bed_120bpm.wav placeholder chiptune beat, bar lines on every cut
   <out>/cues.csv             what plays when
 """
@@ -16,7 +16,7 @@ import wave
 import numpy as np
 
 SR = 48000
-TOTAL = 30.0
+TOTAL = 36.0
 rs = np.random.RandomState(7)
 
 
@@ -187,65 +187,58 @@ def cue(t, name, gain=1.0, pan=0.0, note=""):
     CUES.append((round(t, 3), name, gain, pan, note))
 
 
-# Hook, 0-4s
+# 1. Hook, 0-6s
 cue(0.28, "thud", 0.9, 0, "block lands")
 for i in range(30):
-    cue(0.35 + i * 0.035, "key", 0.28, rs.uniform(-0.3, 0.3), "typing" if i == 0 else "")
-cue(1.0, "riser", 0.45, 0, "tension into the slam")
-cue(1.75, "glitch", 0.6, 0, "line tears apart")
-cue(2.0, "impact", 1.0, 0, "SO WE BUILT ONE")
-cue(2.48, "whoosh", 0.5, 0, "words break into blocks")
-cue(2.5, "clatter", 0.7, 0, "logo assembles")
-cue(3.0, "sub_hit", 0.7, 0, "ribbon lands")
-cue(3.0, "pop", 0.6, 0, "")
-cue(3.08, "chime", 0.5, 0, "logo complete")
-# Every cut gets a whoosh that peaks on the bar line, and a thud as the blocks drop
-for c in (4, 8, 12, 16, 20, 24):
-    cue(c - 0.24, "whoosh", 0.75, 0, "block wipe")
-    cue(c + 0.02, "thud", 0.6, 0, "")
-# Every feature: two title slams and the card sliding in
-for T in (4, 8, 12, 16, 20):
-    cue(T + 0.25, "sub_hit", 0.7, -0.3, "title line 1")
-    cue(T + 0.5, "sub_hit", 0.9, -0.3, "title line 2")
-    cue(T + 0.5, "tick", 0.5, -0.3, "")
-    cue(T + 0.36, "swish", 0.45, 0.5, "card slides in")
-    cue(T + 3.7, "swish", 0.35, 0, "everything leaves")
-# A: grade
-cue(5.0, "pop", 0.8, 0.4, "SS badge"); cue(5.0, "thud", 0.5, 0.4, "")
-cue(5.5, "pop_hi", 0.5, 0.4, "+120 XP"); cue(5.65, "pop_hi", 0.5, 0.5, "NEW BEST")
-cue(6.3, "chime_hi", 0.6, 0.4, "LEVEL UP")
-# B: timer
-for i in range(9):
-    cue(8.6 + i * 0.1, "tick" if i % 2 == 0 else "tock", 0.4, 0.4, "timer runs" if i == 0 else "")
-cue(9.5, "chime", 0.55, 0.4, "timer stops: PB"); cue(9.5, "pop", 0.6, 0.3, "")
-for i in range(3):
-    cue(9.7 + i * 0.15, "tick", 0.35, 0.4, "")
-cue(10.0, "chime_hi", 0.65, 0.5, "WORLD RECORD"); cue(10.0, "pop_hi", 0.6, 0.5, "")
-# C: achievements
-for i in range(14):
-    cue(12.5 + i * 0.05, "key", 0.3, 0.3, "counter rolls to 124" if i == 0 else "")
-for i, f in enumerate(("pop", "pop", "pop_hi")):
-    cue(13.5 + i * 0.25, f, 0.75, 0.4, "achievement %d" % (i + 1)); cue(13.74 + i * 0.25, "tick", 0.4, 0.4, "")
-cue(14.25, "chime_hi", 0.55, 0.4, "")
-# D: profile + share
-cue(16.9, "pop_hi", 0.45, 0.4, ""); cue(17.0, "pop_hi", 0.45, 0.5, "")
-cue(17.6, "tick", 0.5, 0.2, "Share card button")
-cue(18.0, "shutter", 0.9, 0.4, "card captured")
-cue(18.5, "chime", 0.6, 0.5, "Link copied"); cue(18.5, "pop", 0.6, 0.5, "")
-# E: Discord
-for i in range(15):
-    cue(20.7 + i * 0.047, "key", 0.35, 0.3, "typing /stats" if i == 0 else "")
-cue(21.5, "notify", 0.7, 0.4, "bot replies")
-for i in range(3):
-    cue(22.3 + i * 0.15, "pop_hi", 0.5, 0.2 + i * 0.2, "")
-# End, 24-30s
-cue(23.0, "riser", 0.7, 0, "build into the end card")
-cue(24.5, "sub_hit", 0.85, -0.3, "BUILD."); cue(25.0, "sub_hit", 0.95, 0, "BATTLE.")
-cue(25.5, "impact", 1.0, 0.2, "BETTER.")
-cue(25.98, "whoosh", 0.5, 0, ""); cue(26.0, "clatter", 0.7, 0, "logo assembles")
-cue(27.0, "impact", 1.0, 0, "DOWNLOAD FREE"); cue(27.05, "chime_hi", 0.6, 0, "")
-cue(27.5, "sub_hit", 0.8, 0, "battle.aspir3.net"); cue(27.5, "pop", 0.5, 0, "")
-cue(28.0, "tick", 0.4, 0, ""); cue(28.3, "tick", 0.4, 0, "")
+    cue(0.35 + i * 0.032, "key", 0.28, rs.uniform(-0.3, 0.3), "typing" if i == 0 else "")
+cue(1.5, "riser", 0.45, 0, "tension into the slam")
+cue(2.3, "glitch", 0.6, 0, "line tears apart")
+cue(2.5, "impact", 1.0, 0, "SO WE BUILT ONE")
+cue(3.48, "whoosh", 0.5, 0, "words break into blocks")
+cue(3.5, "clatter", 0.7, 0, "logo assembles")
+cue(4.0, "sub_hit", 0.7, 0, "ribbon lands"); cue(4.0, "pop", 0.6, 0, "")
+cue(4.08, "chime", 0.5, 0, "logo complete")
+cue(5.76, "whoosh", 0.75, 0, "cut: block wipe"); cue(6.02, "thud", 0.6, 0, "")
+# 2. Graded, 6-12s
+for i in range(26):
+    cue(6.4 + i * 0.058, "tock" if i % 3 else "tick", 0.22, rs.uniform(-0.2, 0.2), "build drops in" if i == 0 else "")
+for i in range(6):
+    cue(8.2 + i * 0.15, "swish", 0.3, -0.6 if i % 2 == 0 else 0.6, "votes fly in" if i == 0 else "")
+    cue(8.42 + i * 0.15, "pop_hi" if i > 2 else "pop", 0.55, 0, "")
+cue(9.0, "impact", 1.0, 0.3, "SS stamp"); cue(9.08, "chime_hi", 0.6, 0.3, "")
+cue(9.4, "tick", 0.5, 0, "caption"); cue(9.5, "pop", 0.6, 0.4, "+120 XP")
+cue(11.76, "whoosh", 0.8, 0.3, "cut: the stamp fills the frame"); cue(12.0, "sub_hit", 0.8, 0, "")
+# 3. Timed, 12-18s
+for i in range(20):
+    cue(12.5 + i * 0.125, "tick" if i % 2 == 0 else "tock", 0.4, 0.3, "timer runs" if i == 0 else "")
+cue(14.0, "riser", 0.35, 0, "")
+cue(15.0, "sub_hit", 0.9, 0, "timer stops"); cue(15.0, "chime", 0.55, 0.3, "")
+cue(15.3, "chime_hi", 0.65, 0.3, "NEW BEST"); cue(15.3, "pop_hi", 0.6, 0.3, "")
+cue(15.6, "tick", 0.5, 0, "caption")
+cue(17.78, "whoosh", 0.9, -0.4, "cut: whip pan"); cue(18.05, "whoosh", 0.6, 0.4, "")
+# 4. Achievements, 18-24s
+cue(18.3, "swish", 0.5, 0, "toast drops"); cue(18.58, "notify", 0.7, 0, "achievement unlocked")
+cue(19.3, "swish", 0.4, -0.4, "toast shrinks into the wall"); cue(19.55, "pop", 0.7, -0.5, "")
+for i in range(44):
+    cue(19.6 + i * 0.041, "key" if i % 4 else "pop_hi", 0.22 + i * 0.004, -0.6 + i * 0.027, "wall lights up" if i == 0 else "")
+cue(19.7, "tick", 0.5, 0, "caption")
+cue(21.4, "chime_hi", 0.65, 0, "all 124 lit")
+cue(22.15, "swish", 0.35, 0, "shimmer")
+cue(23.9, "whoosh", 0.6, 0, "cut: the wall falls"); cue(24.0, "clatter", 0.8, 0, "")
+# 5. Ranked, 24-30s
+for i in range(34):
+    cue(24.5 + 2.5 * (1 - (1 - i / 34) ** (1 / 3)) if i < 34 else 27.0, "tock", 0.3, 0, "rows rush past" if i == 0 else "")
+cue(26.0, "riser", 0.55, 0, "")
+cue(27.0, "impact", 1.0, 0, "rank locks in"); cue(27.05, "chime_hi", 0.6, 0, "")
+cue(27.4, "tick", 0.5, 0, "caption")
+cue(29.74, "whoosh", 0.8, 0, "cut: your row fills the frame"); cue(30.0, "sub_hit", 0.8, 0, "")
+# 6. End, 30-36s
+cue(30.5, "sub_hit", 0.85, -0.3, "BUILD."); cue(31.0, "sub_hit", 0.95, 0, "BATTLE.")
+cue(31.5, "impact", 1.0, 0.2, "BETTER.")
+cue(32.48, "whoosh", 0.5, 0, ""); cue(32.5, "clatter", 0.7, 0, "logo assembles")
+cue(33.5, "impact", 1.0, 0, "DOWNLOAD FREE"); cue(33.55, "chime_hi", 0.6, 0, "")
+cue(34.0, "sub_hit", 0.8, 0, "battle.aspir3.net"); cue(34.0, "pop", 0.5, 0, "")
+cue(34.4, "tick", 0.4, 0, "")
 
 
 def place(buf, x, t, gain=1.0, pan=0.0):
@@ -289,15 +282,15 @@ def music_bed():
         t = b * beat
         bar = int(t // 2)
         root = roots[bar % 4]
-        intro = t < 2.0
-        full = 4.0 <= t < 24.0
-        outro = t >= 26.0
-        near_cut = any(0 < c - t <= beat for c in (4, 8, 12, 16, 20, 24))   # leave room for the whoosh
-        if not intro and not outro and not (24 <= t < 26):
+        intro = t < 2.5
+        full = 6.0 <= t < 30.0
+        outro = t >= 32.0
+        near_cut = any(0 < c - t <= beat for c in (6, 12, 18, 24, 30))   # leave room for the whoosh
+        if not intro and not outro and not (30 <= t < 32):
             place(buf, kick, t, 0.9 if full else 0.6)
         if full and b % 2 == 1:
             place(buf, clap, t, 0.5)
-        if (full or 2 <= t < 4) and not near_cut:
+        if (full or 2.5 <= t < 6) and not near_cut:
             place(buf, hat, t + beat / 2, 0.22, 0.3)
             if full:
                 place(buf, hat, t + beat / 4, 0.1, -0.3); place(buf, hat, t + 3 * beat / 4, 0.1, -0.3)
@@ -313,12 +306,12 @@ def music_bed():
                 place(buf, sq(A * 2 ** (note / 12), 0.11, 0.25, 22), t + k * beat / 4, 0.09, 0.5 if k % 2 else -0.5)
         b += 1
     # a low drone under the hook, and a held chord under the end card
-    drone = np.sin(2 * np.pi * 55 * tt(2.0)) * np.linspace(0.2, 0.6, n(2.0)) * 0.5
+    drone = np.sin(2 * np.pi * 55 * tt(2.5)) * np.linspace(0.2, 0.6, n(2.5)) * 0.5
     place(buf, drone, 0.0, 0.5)
     for note, pan in ((0, -0.4), (7, 0.4), (12, 0), (15, 0.2)):
         t = tt(4.0)
         pad = onepole_lp(np.where((A * 2 ** (note / 12) * t) % 1.0 < 0.5, 1.0, -1.0), 1800) * np.minimum(t / 0.01, 1) * np.exp(-0.9 * t)
-        place(buf, pad, 26.0, 0.16, pan)
+        place(buf, pad, 32.5, 0.16, pan)
     return master(buf, 0.7)
 
 
