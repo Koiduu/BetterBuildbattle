@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Better Battle Promo</title>
+<style>
+  @font-face { font-family: "Pixelify"; src: url("PixelifySans-Variable.ttf") format("truetype"); font-weight: 400 700; }
+  html, body { margin: 0; background: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// Better Battle promo. Every frame is drawn from the time alone (renderAt(t)), so the
+// recorder can step through it frame by frame and get the same video every time.
+const W = 1920, H = 1080;
+const ctx = document.getElementById("c").getContext("2d");
+const FONT = '"Pixelify", monospace';
+
+const C = {
+  bg: "#111114", bg2: "#17171a", gold: "#ffaa00", pink: "#ff66aa", green: "#55ff55",
+  aqua: "#55ffff", white: "#f0f0f0", soft: "#c6c6c6", muted: "#9d9da6", red: "#ff5555",
+};
+
+// ---------- helpers
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const easeIn = (t) => t * t * t;
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeBack = (t) => { const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let r = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(",")})`;
+}
+function shade(rgb, k) {
+  const m = rgb.match(/\d+/g).map(Number);
+  return `rgb(${m.map((v) => Math.round(clamp(k > 0 ? v + (255 - v) * k : v * (1 + k), 0, 255))).join(",")})`;
+}
+const asRgb = (c) => (c.startsWith("#") ? mix(c, c, 0) : c);
+
+// A Minecraft-style block: flat face, light top-left edge, dark bottom-right edge, black outline.
+function block(x, y, s, color, { alpha = 1, rot = 0, flash = 0 } = {}) {
+  if (alpha <= 0) return;
+  const base = asRgb(color);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x + s / 2, y + s / 2);
+  if (rot) ctx.rotate(rot);
+  const h = s / 2, e = Math.max(2, s * 0.16);
+  ctx.fillStyle = "#000"; ctx.fillRect(-h - 2, -h - 2, s + 4, s + 4);
+  ctx.fillStyle = base; ctx.fillRect(-h, -h, s, s);
+  ctx.fillStyle = shade(base, 0.45); ctx.fillRect(-h, -h, s, e); ctx.fillRect(-h, -h, e, s);
+  ctx.fillStyle = shade(base, -0.4); ctx.fillRect(-h, h - e, s, e); ctx.fillRect(h - e, -h, e, s);
+  if (flash > 0) { ctx.globalAlpha = alpha * flash; ctx.fillStyle = "#fff"; ctx.fillRect(-h, -h, s, s); }
+  ctx.restore();
+}
+
+function text(str, x, y, { size = 60, color = C.white, align = "center", weight = 700, alpha = 1, shadow = true, base = "middle", spacing = 0 } = {}) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `${weight} ${size}px ${FONT}`;
+  ctx.textAlign = align;
+  ctx.textBaseline = base;
+  if (spacing) ctx.letterSpacing = spacing + "px";
+  if (shadow) { ctx.fillStyle = "rgba(0,0,0,0.85)"; const d = Math.max(3, size / 14); ctx.fillText(str, x + d, y + d); }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.restore();
+}
+function measure(str, size, weight = 700) { ctx.save(); ctx.font = `${weight} ${size}px ${FONT}`; const w = ctx.measureText(str).width; ctx.restore(); return w; }
+
+// Bevelled panel, like a Minecraft button or inventory slot.
+function panel(x, y, w, h, fill, { alpha = 1, edge = 6 } = {}) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const base = asRgb(fill);
+  ctx.fillStyle = "#000"; ctx.fillRect(x - 4, y - 4, w + 8, h + 8);
+  ctx.fillStyle = base; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = shade(base, 0.3); ctx.fillRect(x, y, w, edge); ctx.fillRect(x, y, edge, h);
+  ctx.fillStyle = shade(base, -0.45); ctx.fillRect(x, y + h - edge, w, edge); ctx.fillRect(x + w - edge, y, edge, h);
+  ctx.restore();
+}
+
+// ---------- background: dark, a slow drifting block grid, floating dust, vignette
+function background(t, { tint = C.pink, glow = 0.12 } = {}) {
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  const s = 64, off = (t * 18) % s;
+  ctx.strokeStyle = "rgba(255,255,255,0.035)"; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = -s + off; x < W + s; x += s) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  for (let y = -s + off * 0.5; y < H + s; y += s) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+  const g = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, 900);
+  const [r, gg, b] = hexToRgb(tint);
+  g.addColorStop(0, `rgba(${r},${gg},${b},${glow})`); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const R = rng(7);
+  for (let i = 0; i < 40; i++) {
+    const x = (R() * W + t * (10 + R() * 30)) % W, y = (R() * H - t * (20 + R() * 40) + H * 10) % H, z = 3 + R() * 6;
+    ctx.globalAlpha = 0.15 + 0.2 * Math.sin(t * 2 + i);
+    ctx.fillStyle = i % 3 ? C.white : tint;
+    ctx.fillRect(x, y, z, z);
+  }
+  ctx.globalAlpha = 1;
+}
+function vignette() {
+  const g = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.75)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+// Screen shake that dies away after an impact at time `at`.
+function shake(t, at, power = 18, len = 0.35) {
+  const p = (t - at) / len;
+  if (p < 0 || p > 1) return [0, 0];
+  const k = power * Math.pow(1 - p, 2);
+  return [Math.sin(t * 95) * k, Math.cos(t * 83) * k];
+}
+function flashOverlay(t, at, len = 0.25, max = 0.8) {
+  const p = (t - at) / len;
+  if (p < 0 || p > 1) return;
+  ctx.fillStyle = `rgba(255,255,255,${max * (1 - p)})`; ctx.fillRect(0, 0, W, H);
+}
+// Dust kicked up when something lands.
+function burst(t, at, x, y, { n = 26, color = C.white, seed = 1, spread = 520 } = {}) {
+  const p = t - at;
+  if (p < 0 || p > 0.9) return;
+  const R = rng(seed);
+  for (let i = 0; i < n; i++) {
+    const a = R() * Math.PI * 2, v = spread * (0.3 + R() * 0.7), s = 6 + R() * 12;
+    const px = x + Math.cos(a) * v * easeOut(p / 0.9), py = y + Math.sin(a) * v * easeOut(p / 0.9) + 300 * p * p;
+    block(px, py, s * (1 - p), R() < 0.4 ? C.gold : color, { alpha: 1 - p / 0.9 });
+  }
+}
+
+// ---------- the logo, built from blocks
+const GLYPHS = {
+  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+  " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
+};
+const LOGO = "BETTER BATTLE";
+const PITCH = 22, CELL = 21;
+function logoCells(cx, cy, scale = 1) {
+  const cols = LOGO.length * 6 - 1, w = cols * PITCH * scale, h = 7 * PITCH * scale;
+  const x0 = cx - w / 2, y0 = cy - h / 2, out = [];
+  [...LOGO].forEach((ch, li) => {
+    GLYPHS[ch].forEach((row, ry) => [...row].forEach((bit, rx) => {
+      if (bit !== "1") return;
+      const col = li * 6 + rx;
+      out.push({ x: x0 + col * PITCH * scale, y: y0 + ry * PITCH * scale, col, row: ry, cols, s: CELL * scale });
+    }));
+  });
+  return out;
+}
+// from: "box" = fly out of a rectangle (the text before it), "edges" = fly in from off screen.
+function drawLogo(t, start, cx, cy, { from = "edges", box = null, scale = 1, sweepAt = null, seed = 3, alpha = 1 } = {}) {
+  const cells = logoCells(cx, cy, scale), R = rng(seed);
+  for (const c of cells) {
+    let sx, sy;
+    if (from === "box") { sx = box.x + R() * box.w; sy = box.y + R() * box.h; }
+    else { const a = R() * Math.PI * 2, d = 1300 + R() * 400; sx = cx + Math.cos(a) * d; sy = cy + Math.sin(a) * d; }
+    const delay = (c.col / c.cols) * 0.55 + R() * 0.25, dur = 0.55, spin = (R() - 0.5) * 8;
+    const p = clamp((t - start - delay) / dur);
+    if (p <= 0 && from === "edges") continue;
+    const e = easeBack(p);
+    const x = lerp(sx, c.x, e), y = lerp(sy, c.y, e);
+    const landFlash = clamp(1 - (t - start - delay - dur) / 0.25) * (p >= 1 ? 1 : 0);
+    let color = mix(C.gold, C.pink, c.col / c.cols);
+    let flash = landFlash * 0.9;
+    if (sweepAt !== null) { // a bright band crossing the logo
+      const band = (t - sweepAt) * 2200 - 300, d = Math.abs((c.x - (cx - 800)) + c.y * 0.6 - band);
+      flash = Math.max(flash, clamp(1 - d / 110) * 0.85);
+    }
+    block(x, y, c.s * (p < 1 ? lerp(0.6, 1, p) : 1), color, { rot: spin * (1 - e), flash, alpha: alpha * (from === "box" ? clamp(p * 4) : 1) });
+  }
+  return cells;
+}
+function ribbon(str, cx, cy, t, at, { color = C.pink, size = 46, textColor = "#fff" } = {}) {
+  const p = prog(t, at, at + 0.35);
+  if (p <= 0) return;
+  const w = measure(str, size) + 90, h = size + 40, e = easeBack(p);
+  ctx.save();
+  ctx.translate(cx, cy); ctx.scale(lerp(0.2, 1, e), lerp(1.6, 1, e));
+  panel(-w / 2, -h / 2, w, h, color, { edge: 6 });
+  text(str, 0, 3, { size, color: textColor, shadow: true });
+  ctx.restore();
+}
+
+// ---------- scenes. Each draws itself from its own local time.
+function sceneHook(t) {
+  background(t, { tint: C.gold, glow: t < 4.3 ? 0.04 : 0.14 });
+  const [sx, sy] = (() => {
+    const a = shake(t, 0.5, 14), b = shake(t, 3.35, 22), c = shake(t, 5.2, 16);
+    return [a[0] + b[0] + c[0], a[1] + b[1] + c[1]];
+  })();
+  ctx.save(); ctx.translate(sx, sy);
+
+  // 1. One block drops and lands.
+  const line1 = "Build Battle's been waiting for an update.";
+  const size1 = 64, w1 = measure(line1, size1), x1 = W / 2 - w1 / 2;
+  const typeP = prog(t, 0.75, 2.35), shown = Math.floor(line1.length * typeP);
+  const typed = line1.slice(0, shown);
+  const cursorX = x1 + measure(typed, size1) + 14;
+  if (t < 0.75) {
+    const p = easeIn(prog(t, 0, 0.5));
+    block(W / 2 - 30, lerp(-120, H / 2 - 30, p), 60, C.gold);
+  } else if (t < 3.0) {
+    // 2. The block becomes the typing cursor.
+    const m = easeOut(prog(t, 0.75, 0.95));
+    const bx = lerp(W / 2 - 30, cursorX, m), by = lerp(H / 2 - 30, H / 2 - 22, m), bs = lerp(60, 44, m);
+    text(typed, x1, H / 2 + 4, { size: size1, align: "left", color: C.white });
+    if (t < 2.35 || Math.floor(t * 4) % 2 === 0) block(bx, by, bs, C.gold);
+  }
+  burst(t, 0.5, W / 2, H / 2 + 30, { n: 22, seed: 4, spread: 380 });
+
+  // 3. It glitches away.
+  if (t >= 3.0 && t < 3.3) {
+    const R = rng(Math.floor(t * 60));
+    for (let i = 0; i < 9; i++) {
+      ctx.save();
+      const sy0 = H / 2 - 40 + i * 10;
+      ctx.beginPath(); ctx.rect(0, sy0, W, 10); ctx.clip();
+      const dx = (R() - 0.5) * 140 * prog(t, 3.0, 3.3);
+      text(line1, x1 + dx - 6, H / 2 + 4, { size: size1, align: "left", color: "rgba(255,80,80,0.7)", shadow: false });
+      text(line1, x1 + dx + 6, H / 2 + 4, { size: size1, align: "left", color: "rgba(80,220,255,0.7)", shadow: false });
+      text(line1, x1 + dx, H / 2 + 4, { size: size1, align: "left", alpha: 1 - prog(t, 3.1, 3.3) });
+      ctx.restore();
+    }
+  }
+
+  // 4. The answer slams in, then breaks into the blocks that build the logo.
+  const line2 = "We stopped waiting.", size2 = 120;
+  const w2 = measure(line2, size2);
+  if (t >= 3.3 && t < 4.75) {
+    const p = prog(t, 3.3, 3.45);
+    const sc = lerp(1.6, 1, easeOut(p));
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(sc, sc);
+    text(line2, 0, 0, { size: size2, color: C.gold, alpha: p * (1 - prog(t, 4.45, 4.75)) });
+    ctx.restore();
+  }
+  flashOverlay(t, 3.33, 0.22, 0.5);
+  if (t >= 4.45) {
+    drawLogo(t, 4.45, W / 2, H / 2 - 70, {
+      from: "box", box: { x: W / 2 - w2 / 2, y: H / 2 - 60, w: w2, h: 120 }, sweepAt: 6.1, seed: 11,
+    });
+    ribbon("THE SPEED BUILDERS UPDATE", W / 2, H / 2 + 110, t, 5.2, { color: C.pink });
+    text("A free mod for Build Battle", W / 2, H / 2 + 210, { size: 38, color: C.soft, alpha: prog(t, 5.7, 6.1) });
+  }
+  burst(t, 5.2, W / 2, H / 2 + 110, { n: 30, seed: 9, color: C.pink, spread: 700 });
+  ctx.restore();
+  vignette();
+}
+
+// A short punchy title card between clips: icon on the left, two-line title on the right.
+function stinger(t, { kicker, l1, l2, color, art, seed }) {
+  background(t, { tint: color, glow: 0.18 });
+  const [sx, sy] = shake(t, 0.12, 16);
+  ctx.save(); ctx.translate(sx, sy);
+  // Block wipe in: columns of blocks fall away to reveal the card.
+  art(t);
+  const tx = 1000;
+  const p1 = easeOut(prog(t, 0.05, 0.3)), p2 = easeOut(prog(t, 0.15, 0.4));
+  const kw = measure(kicker, 30) + 50;
+  panel(tx, 300, kw, 56, color, { alpha: prog(t, 0, 0.15) });
+  text(kicker, tx + kw / 2, 330, { size: 30, alpha: prog(t, 0, 0.15) });
+  text(l1, lerp(tx + 200, tx, p1), 450, { size: 110, align: "left", alpha: p1 });
+  text(l2, lerp(tx + 260, tx, p2), 580, { size: 110, align: "left", color, alpha: p2 });
+  ctx.restore();
+  wipe(t, seed);
+  vignette();
+}
+// Blocks cover the screen for the first few frames and drop away.
+function wipe(t, seed) {
+  if (t > 0.45) return;
+  const R = rng(seed), s = 120;
+  for (let x = 0; x < W; x += s) for (let y = 0; y < H; y += s) {
+    const d = (x / W) * 0.2 + R() * 0.08, p = prog(t, d, d + 0.18);
+    if (p >= 1) continue;
+    const yy = y + easeIn(p) * 900;
+    block(x, yy, s, mix(C.bg2, "#2a2a30", R()), { alpha: 1, rot: p * (R() - 0.5) * 2 });
+  }
+}
+
+function artGrade(t) {
+  const p = prog(t, 0.2, 0.42), sc = lerp(2.4, 1, easeOut(p));
+  ctx.save(); ctx.translate(560, 470); ctx.scale(sc, sc);
+  panel(-200, -200, 400, 400, "#2a2a30", { alpha: p, edge: 10 });
+  text("SS", 0, 18, { size: 260, color: C.gold, alpha: p });
+  ctx.restore();
+  burst(t, 0.42, 560, 470, { n: 30, seed: 21, color: C.gold, spread: 600 });
+  // crowd score bar
+  const bp = easeOut(prog(t, 0.6, 1.4)), pct = Math.round(94 * bp);
+  text("Crowd score", 360, 760, { size: 40, align: "left", color: C.soft, alpha: prog(t, 0.5, 0.7) });
+  text(pct + "%", 760, 760, { size: 40, align: "right", color: C.green, alpha: prog(t, 0.5, 0.7) });
+  panel(360, 800, 400, 34, "#0b0b0d", { alpha: prog(t, 0.5, 0.7), edge: 4 });
+  ctx.fillStyle = C.green; ctx.fillRect(366, 806, 388 * bp * 0.94, 22);
+  ["1st place", "+120 XP"].forEach((s, i) => {
+    const q = easeBack(prog(t, 1.0 + i * 0.15, 1.3 + i * 0.15));
+    if (q <= 0) return;
+    const w = measure(s, 32) + 40;
+    ctx.save(); ctx.translate(360 + i * 220 + w / 2, 890); ctx.scale(q, q);
+    panel(-w / 2, -26, w, 52, i ? "#2a5a2a" : "#5a4410", { edge: 4 });
+    text(s, 0, 2, { size: 32, color: i ? C.green : C.gold });
+    ctx.restore();
+  });
+}
+function artTimer(t) {
+  const run = prog(t, 0.2, 1.1), ms = Math.round(7430 * easeOut(run));
+  const s = Math.floor(ms / 1000), cs = Math.floor((ms % 1000) / 10);
+  const str = `0:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+  panel(130, 330, 760, 260, "#1f1f24", { alpha: prog(t, 0.1, 0.25), edge: 10 });
+  text(str, 510, 470, { size: 190, color: run < 1 ? C.white : C.aqua, alpha: prog(t, 0.1, 0.25) });
+  if (run >= 1) flashOverlay(t, 1.1, 0.2, 0.25);
+  [["PB  -0.82s", C.green, "#1d3d1d"], ["WORLD RECORD", C.gold, "#4a3a10"]].forEach(([s, col, bg], i) => {
+    const q = easeBack(prog(t, 1.15 + i * 0.2, 1.45 + i * 0.2));
+    if (q <= 0) return;
+    const w = measure(s, 40) + 50;
+    ctx.save(); ctx.translate(i ? 890 - w / 2 : 130 + w / 2, 680); ctx.scale(q, q);
+    panel(-w / 2, -32, w, 64, bg, { edge: 5 });
+    text(s, 0, 2, { size: 40, color: col });
+    ctx.restore();
+  });
+  burst(t, 1.35, 760, 680, { n: 24, seed: 31, color: C.gold, spread: 500 });
+}
+function artAchievements(t) {
+  const n = Math.round(124 * easeOut(prog(t, 0.15, 1.0)));
+  text(String(n), 560, 360, { size: 230, color: C.pink, alpha: prog(t, 0.1, 0.2) });
+  const toasts = [["One Block Wonder", "+40 AP"], ["Speedrunner", "+50 AP"], ["Photo Finish", "+20 AP"]];
+  toasts.forEach(([name, ap], i) => {
+    const q = easeOut(prog(t, 0.5 + i * 0.22, 0.8 + i * 0.22));
+    if (q <= 0) return;
+    const x = lerp(-700, 160, q), y = 560 + i * 120;
+    panel(x, y, 800, 100, "#202026", { edge: 6 });
+    block(x + 22, y + 22, 56, [C.gold, C.aqua, C.pink][i]);
+    text("Achievement unlocked", x + 104, y + 32, { size: 24, align: "left", color: C.muted, shadow: false });
+    text(name, x + 104, y + 68, { size: 38, align: "left", color: C.white });
+    text(ap, x + 770, y + 52, { size: 36, align: "right", color: C.gold });
+  });
+}
+function artRank(t) {
+  const p = easeOut(prog(t, 0.15, 1.1)), rank = Math.round(lerp(9999, 382, p));
+  text("GLOBAL RANK", 560, 300, { size: 44, color: C.soft, alpha: prog(t, 0.1, 0.25) });
+  text("#" + rank.toLocaleString("en-US"), 560, 430, { size: 210, color: C.gold, alpha: prog(t, 0.1, 0.25) });
+  text("on Hypixel's leaderboard", 560, 560, { size: 36, color: C.muted, alpha: prog(t, 1.1, 1.3) });
+  const bp = easeOut(prog(t, 0.9, 1.7));
+  text("Master", 260, 680, { size: 40, align: "left", color: C.gold, alpha: prog(t, 0.8, 1.0) });
+  text("Legend", 860, 680, { size: 40, align: "right", color: C.green, alpha: prog(t, 0.8, 1.0) });
+  panel(260, 720, 600, 34, "#0b0b0d", { alpha: prog(t, 0.8, 1.0), edge: 4 });
+  ctx.fillStyle = C.green; ctx.fillRect(266, 726, 588 * 0.31 * bp + 588 * 0.0, 22);
+  text("battle.aspir3.net", 560, 840, { size: 46, color: C.pink, alpha: prog(t, 1.3, 1.5) });
+}
+
+function sceneEnd(t) {
+  background(t, { tint: C.pink, glow: 0.16 });
+  const [sx, sy] = shake(t, 1.25, 14);
+  ctx.save(); ctx.translate(sx, sy);
+  drawLogo(t, 0.0, W / 2, 330, { from: "edges", sweepAt: 1.6, seed: 5, scale: 1 });
+  ribbon("DOWNLOAD FREE", W / 2, 520, t, 1.3, { color: C.green, textColor: "#0b0b0d", size: 54 });
+  text("battle.aspir3.net", W / 2, 680, { size: 96, color: C.pink, alpha: prog(t, 1.7, 2.0) });
+  text("Forge 1.8.9   |   Fabric 26.3", W / 2, 790, { size: 42, color: C.soft, alpha: prog(t, 2.0, 2.3) });
+  text("Nothing in a game is ever paid.", W / 2, 860, { size: 34, color: C.muted, alpha: prog(t, 2.3, 2.6) });
+  ctx.restore();
+  text("Better Battle is a fan-made mod. Not affiliated with Hypixel.", W / 2, 1030, { size: 22, color: "#6a6a72", shadow: false, weight: 400, alpha: prog(t, 2.6, 3.0) });
+  vignette();
+}
+
+// Stand-in for footage you record. Shows what to capture and the voice-over line.
+function sceneClip(t, { id, shot, vo, color }) {
+  ctx.fillStyle = "#0b0b0d"; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.setLineDash([24, 16]); ctx.lineDashOffset = -t * 60;
+  ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(80, 80, W - 160, H - 160);
+  ctx.restore();
+  text("YOUR CLIP " + id, W / 2, 330, { size: 54, color });
+  text(shot, W / 2, 440, { size: 44, color: C.white, weight: 500 });
+  text("Voice-over", W / 2, 640, { size: 30, color: C.muted, weight: 500 });
+  text('"' + vo + '"', W / 2, 700, { size: 38, color: C.soft, weight: 500 });
+}
+
+// ---------- timeline
+const STINGERS = {
+  grade: { kicker: "NEW", l1: "EVERY BUILD,", l2: "GRADED.", color: C.gold, art: artGrade, seed: 41 },
+  timer: { kicker: "SPEED BUILDERS", l1: "EVERY SECOND,", l2: "TIMED.", color: C.aqua, art: artTimer, seed: 42 },
+  ach: { kicker: "124 TO UNLOCK", l1: "EVERY GAME,", l2: "COUNTS.", color: C.pink, art: artAchievements, seed: 43 },
+  rank: { kicker: "YOUR PROFILE", l1: "EVERY PLAYER,", l2: "RANKED.", color: C.green, art: artRank, seed: 44 },
+};
+const TIMELINE = [
+  { name: "01_hook", dur: 7.0, draw: sceneHook },
+  { name: "clip_A", dur: 4.0, clip: { id: "A", shot: "In the lobby: press B, the Better Battle menu opens", vo: "This is Better Battle. A free mod that turns every game into progress.", color: C.gold } },
+  { name: "02_graded", dur: 2.2, draw: (t) => stinger(t, STINGERS.grade) },
+  { name: "clip_B", dur: 5.0, clip: { id: "B", shot: "Win (or finish) a Solo game: the recap pops up in chat", vo: "Every build gets a grade, a crowd score and XP the second it ends.", color: C.gold } },
+  { name: "03_timed", dur: 2.2, draw: (t) => stinger(t, STINGERS.timer) },
+  { name: "clip_C", dur: 5.0, clip: { id: "C", shot: "Speed Builders round with the timer on screen, beat your PB", vo: "Speed Builders gets a real timer, personal bests and world records.", color: C.aqua } },
+  { name: "04_counts", dur: 2.2, draw: (t) => stinger(t, STINGERS.ach) },
+  { name: "clip_D", dur: 5.0, clip: { id: "D", shot: "An achievement toast pops, then scroll the Achievements screen", vo: "Over a hundred achievements, and new challenges every week.", color: C.pink } },
+  { name: "05_ranked", dur: 2.2, draw: (t) => stinger(t, STINGERS.rank) },
+  { name: "clip_E", dur: 4.0, clip: { id: "E", shot: "Your profile on battle.aspir3.net (screen recording)", vo: "And your profile, with your real rank, lives on the website.", color: C.green } },
+  { name: "06_end", dur: 5.0, draw: sceneEnd },
+];
+let acc = 0;
+for (const s of TIMELINE) { s.start = acc; acc += s.dur; }
+const TOTAL = acc;
+
+// mode "animatic" plays everything in order; mode "graphics" leaves the clip slots out.
+function renderAt(t, mode = "animatic") {
+  const list = mode === "graphics" ? TIMELINE.filter((s) => !s.clip) : TIMELINE;
+  let start = 0;
+  for (const s of list) {
+    if (t < start + s.dur || s === list[list.length - 1]) {
+      const local = Math.min(t - start, s.dur - 1e-6);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      if (s.clip) sceneClip(local, s.clip); else s.draw(local);
+      return s.name;
+    }
+    start += s.dur;
+  }
+}
+window.TIMELINE = TIMELINE;
+window.TOTAL = TOTAL;
+window.renderAt = renderAt;
+window.ready = document.fonts.load(`700 60px ${FONT}`).then(() => document.fonts.load(`500 60px ${FONT}`)).then(() => { renderAt(0); return true; });
+
+// Opened in a browser: just play it on a loop.
+if (!new URLSearchParams(location.search).has("record")) {
+  window.ready.then(() => {
+    const t0 = performance.now();
+    (function frame() { renderAt(((performance.now() - t0) / 1000) % TOTAL); requestAnimationFrame(frame); })();
+  });
+}
+</script>
+</body>
+</html>
