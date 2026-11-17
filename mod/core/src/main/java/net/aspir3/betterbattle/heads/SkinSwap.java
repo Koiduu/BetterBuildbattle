@@ -27,7 +27,7 @@ import java.util.Set;
  * Gets a database head with Hypixel's /skull: puts the head's texture on your own skin for a moment,
  * runs /skull with your name, waits for the head to land in your inventory, then puts your skin back.
  *
- * Your old skin is written to heads/restore.json before anything changes, so if the game closes
+ * Your old skin is written to heads/restore-<you>.json before anything changes, so if the game closes
  * halfway it is put back the next time the mod starts.
  */
 public final class SkinSwap {
@@ -56,7 +56,7 @@ public final class SkinSwap {
         boolean wasDefault;
     }
 
-    private final File restoreFile;
+    private final File headsDir;
     private final Game game;
     private volatile Step step = Step.IDLE;
     private volatile String status = "";
@@ -68,8 +68,14 @@ public final class SkinSwap {
     private volatile boolean busyThread;
 
     public SkinSwap(File modDir, Game game) {
-        this.restoreFile = new File(new File(modDir, "heads"), "restore.json");
+        this.headsDir = new File(modDir, "heads");
         this.game = game;
+    }
+
+    /** One backup per account, so switching accounts never puts one account's skin on another. */
+    private File restoreFile() {
+        String name = game.playerName();
+        return new File(headsDir, "restore-" + (name == null ? "unknown" : name.toLowerCase(Locale.ROOT)) + ".json");
     }
 
     public Step step() { return step; }
@@ -79,7 +85,7 @@ public final class SkinSwap {
 
     /** Puts back a skin left changed by a crash or a closed game. Safe to call any time nothing is running. */
     public void restoreIfLeftOver() {
-        if (busy() || !restoreFile.isFile()) return;
+        if (busy() || !restoreFile().isFile()) return;
         step = Step.RESTORING;
         status = "Putting your skin back...";
         background(new Runnable() {
@@ -204,7 +210,7 @@ public final class SkinSwap {
     // ---- Mojang
 
     private void saveCurrentSkin(String token) throws Exception {
-        if (restoreFile.isFile()) return;   // an earlier swap never finished: that file has the real skin
+        if (restoreFile().isFile()) return;   // an earlier swap never finished: that file has the real skin
         JsonObject profile = request("GET", PROFILE, token, null, null).getAsJsonObject();
         Restore r = new Restore();
         r.wasDefault = true;
@@ -217,8 +223,8 @@ public final class SkinSwap {
                 r.wasDefault = r.url == null;
             }
         }
-        restoreFile.getParentFile().mkdirs();
-        try (Writer w = new OutputStreamWriter(new FileOutputStream(restoreFile), StandardCharsets.UTF_8)) {
+        restoreFile().getParentFile().mkdirs();
+        try (Writer w = new OutputStreamWriter(new FileOutputStream(restoreFile()), StandardCharsets.UTF_8)) {
             new Gson().toJson(r, w);
         }
         game.debug("heads: saved skin " + (r.wasDefault ? "(default)" : r.url + " " + r.variant));
@@ -241,12 +247,12 @@ public final class SkinSwap {
 
     private void restore(boolean leftOver) {
         try {
-            if (!restoreFile.isFile()) {
+            if (!restoreFile().isFile()) {
                 done(leftOver ? "" : "Skin back to normal.");
                 return;
             }
             Restore r;
-            try (Reader in = new InputStreamReader(new FileInputStream(restoreFile), StandardCharsets.UTF_8)) {
+            try (Reader in = new InputStreamReader(new FileInputStream(restoreFile()), StandardCharsets.UTF_8)) {
                 r = new Gson().fromJson(in, Restore.class);
             }
             String token = game.accessToken();
@@ -263,7 +269,7 @@ public final class SkinSwap {
                     upload(token, download(r.url), variant);
                 }
             }
-            if (!restoreFile.delete()) restoreFile.deleteOnExit();
+            if (!restoreFile().delete()) restoreFile().deleteOnExit();
             game.debug("heads: skin restored");
             if (leftOver) game.chat(P + "Your skin was left changed last time. It's back to normal now.");
             done(leftOver ? "" : "Skin back to normal.");
