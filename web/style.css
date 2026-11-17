@@ -747,3 +747,8 @@ body.cookie-notice-visible { padding-bottom: calc(var(--cookie-notice-height, 0p
   .legal-page { padding: 16px; }
   .cookie-notice { left: 8px; bottom: 8px; width: calc(100% - 16px); transform: none; }
 }
+
+.challenge-form { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.challenge-form input, .challenge-form select, .challenge-form textarea { font: inherit; }
+.challenge-form textarea { resize: vertical; }
+.challenge-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }

@@ -25,7 +25,7 @@ public final class MenuScreen extends Screen {
     private static final Identifier XP_PROGRESS = Identifier.withDefaultNamespace("hud/experience_bar_progress");
 
     private final Screen parent;
-    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 82);
+    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 106);
 
     private boolean tracking;
     private long level, xpInto, xpNeeded;
@@ -59,6 +59,9 @@ public final class MenuScreen extends Screen {
         middle.addChild(Button.builder(Component.literal("What's New"), b -> minecraft.gui.setScreen(new TextPageScreen(this, BetterBattle.get().whatsNewPage()))).width(100).build());
         middle.addChild(Button.builder(Component.literal("Last Game"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.lastGamePage()))).width(100).build());
         middle.addChild(Button.builder(Component.literal("Weekly"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.weeklyPage()))).width(100).build());
+
+        LinearLayout heads = rows.addChild(LinearLayout.horizontal().spacing(8));
+        heads.addChild(Button.builder(Component.literal("Head Database"), b -> minecraft.gui.setScreen(new HeadsScreen(this, ""))).width(316).build());
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
         bottom.addChild(Button.builder(Component.literal("Settings"), b -> minecraft.gui.setScreen(new SettingsScreen(this))).width(100).build());

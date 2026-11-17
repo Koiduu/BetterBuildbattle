@@ -22,7 +22,9 @@ public final class ChatParser {
         /** "+120 tokens! (2nd Place)" */
         TOKENS_PLACEMENT,
         /** "1st - 7": the next chat line is that player's name. */
-        PODIUM
+        PODIUM,
+        /** Hypixel /nick: on, with the nick, and back off. */
+        NICK_ON, NICK_SET, NICK_RESET
     }
 
     public static final class Event {
