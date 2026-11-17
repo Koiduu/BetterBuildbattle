@@ -378,7 +378,9 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             Minecraft mc = Minecraft.getInstance();
             ServerData server = mc.getCurrentServer();
             if (server == null || mc.isLocalServer() || mc.getConnection() == null) return false;
+            boolean keepGame = inGame();
             mc.execute(() -> {
+                if (keepGame) core.holdGameForRejoin();
                 mc.disconnectFromWorld(Component.literal("Rejoining so Hypixel sees your new skin"));
                 ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), mc,
                     ServerAddress.parseString(server.ip), server, false, null);
