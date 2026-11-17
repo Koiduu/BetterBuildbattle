@@ -55,7 +55,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Mod(modid = BetterBattle.MOD_ID, name = "Better Battle", version = BetterBattleForge.VERSION,
     clientSideOnly = true, acceptedMinecraftVersions = "[1.8.9]")
 public class BetterBattleForge implements Platform {
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.2.1";
     public static final String MC_VERSION = "1.8.9";
     static final String PREFIX = "§d§lBetter Battle §8» §7";
 

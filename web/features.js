@@ -5,6 +5,7 @@ import { app, esc, num, percent, title, avatar, get, go, meReady, NAME_RE } from
 import { drawCard, CARD_W, CARD_H } from "./card.js";
 import { CARD_THEMES } from "./style-options.js";
 import { has } from "./plans.js";
+import { latestDownloads } from "./mod-downloads.js";
 
 export const downloadUrl = (loader) => `/download/${loader}`;
 
@@ -20,6 +21,9 @@ export async function updatesPage() {
   document.title = "Updates · Better Battle";
   app.innerHTML = `<div class="loading" style="height:420px"></div>`;
   const { updates } = await fetch("/updates.json").then((r) => r.json());
+  const downloadSlot = `<div class="update-downloads" data-update-downloads>
+    <p class="sub"><a href="/install" data-link>Install guide</a> · Step-by-step setup for both loaders.</p>
+  </div>`;
   app.innerHTML = `
     <section class="intro">
       <h1>Updates</h1>
@@ -35,6 +39,7 @@ export async function updatesPage() {
           ${i === 0 ? `<span class="chip pink">Latest</span>` : ""}
         </div>
         ${u.summary ? `<p class="update-summary">${esc(u.summary)}</p>` : ""}
+        ${i === 0 ? downloadSlot : ""}
         <div class="update-sections">
           ${(u.sections ?? []).map((s) => `
             <div>
@@ -48,8 +53,23 @@ export async function updatesPage() {
         <h2>Get the update</h2>
         <p>Every new feature can be switched off in the mod's Settings screen if you'd rather play normally.</p>
       </div>
-      <a class="btn primary" href="/install" data-link>Install</a>
+      ${downloadSlot}
     </section>`;
+  const slots = [...app.querySelectorAll("[data-update-downloads]")];
+  const downloads = await latestDownloads();
+  const choices = downloads.map(({ loader, version, size }) => `
+    <div class="download-choice">
+      <a class="btn${loader === "fabric" ? " primary" : ""}" href="${downloadUrl(loader)}" download>
+        Download for ${loader === "fabric" ? "26.3 (Fabric)" : "1.8.9 (Forge)"}
+      </a>
+      <p class="sub">Latest build v${esc(version)}${size ? ` · ${esc(size)}` : ""}</p>
+    </div>`).join("");
+  const status = downloads.length === 0 ? "Downloads are temporarily unavailable. "
+    : downloads.length === 1 ? "The other loader is temporarily unavailable. " : "";
+  for (const slot of slots) {
+    slot.innerHTML = `${choices ? `<div class="download-choices">${choices}</div>` : ""}
+      <p class="sub">${status}<a href="/install" data-link>Install guide</a> · Step-by-step setup for both loaders.</p>`;
+  }
 }
 
 // ---------------------------------------------------------------- Install
