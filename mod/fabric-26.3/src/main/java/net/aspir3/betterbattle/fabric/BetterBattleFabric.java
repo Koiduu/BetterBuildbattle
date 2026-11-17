@@ -46,6 +46,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -104,6 +108,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             core.onJoin(server == null ? "singleplayer" : server.ip, profile.id(), profile.name());
             plotFound = false;
             if (core.active()) PacketWatcher.install(handler.getConnection(), blockChanges::add);
+            swap.onJoined();
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> core.onLeave());
 
@@ -362,6 +367,24 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         public String playerName() { return Minecraft.getInstance().getUser().getName(); }
         public void chat(String message) { runOnMainThread(() -> BetterBattleFabric.this.chat(message)); }
         public void debug(String line) { core.debug(line); }
+
+        public boolean inGame() {
+            if (!core.active()) return false;
+            GameStateMachine.State s = core.game().state();
+            return s == GameStateMachine.State.BUILDING || s == GameStateMachine.State.VOTING;
+        }
+
+        public boolean reconnect() {
+            Minecraft mc = Minecraft.getInstance();
+            ServerData server = mc.getCurrentServer();
+            if (server == null || mc.isLocalServer() || mc.getConnection() == null) return false;
+            mc.execute(() -> {
+                mc.disconnectFromWorld(Component.literal("Rejoining so Hypixel sees your new skin"));
+                ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), mc,
+                    ServerAddress.parseString(server.ip), server, false, null);
+            });
+            return true;
+        }
 
         public void sendCommand(String command) {
             ClientPacketListener connection = Minecraft.getInstance().getConnection();

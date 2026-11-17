@@ -9,6 +9,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -104,7 +105,7 @@ public final class HeadsScreen extends Screen {
         }
         playerHead.active = !swap().busy() && USERNAME.matcher(q.trim()).matches();
         SkinSwap.Step step = swap().step();
-        cancel.active = step == SkinSwap.Step.WAITING || step == SkinSwap.Step.ASKED;
+        cancel.active = step == SkinSwap.Step.RECONNECTING || step == SkinSwap.Step.WAITING || step == SkinSwap.Step.ASKED;
     }
 
     @Override
@@ -126,12 +127,12 @@ public final class HeadsScreen extends Screen {
         if (super.mouseClicked(event, doubleClick)) return true;
         HeadLibrary.Head h = headAt(event.x(), event.y());
         if (h == null) return false;
-        if (event.button() == 1) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             library().toggleFavourite(h);
             lastLoaded = -1;
             return true;
         }
-        if (swap().busy()) return true;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT || swap().busy()) return true;
         if (confirming != null && confirming.hash.equals(h.hash)) {
             confirming = null;
             library().addRecent(h);
@@ -197,7 +198,7 @@ public final class HeadsScreen extends Screen {
 
         String status = swap().status();
         if (confirming != null && !swap().busy())
-            status = "Get " + confirming.name + "? Your skin wears it for a few seconds, then changes back. Click it again.";
+            status = "Get " + confirming.name + "? You'll briefly rejoin Hypixel wearing it as your skin, then it changes back. Click it again.";
         graphics.text(font, Component.literal(status).withStyle(swap().busy() ? ChatFormatting.YELLOW : ChatFormatting.GRAY), 8, height - 20, 0xFFFFFFFF, false);
         graphics.text(font, Component.literal(HeadLibrary.CREDIT).withStyle(ChatFormatting.DARK_GRAY), 8, height - 36, 0xFFFFFFFF, false);
     }

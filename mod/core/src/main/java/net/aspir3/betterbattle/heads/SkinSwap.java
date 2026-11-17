@@ -41,15 +41,21 @@ public final class SkinSwap {
         List<String> skullHashes();
         void chat(String message);
         void debug(String line);
+        /** Leaves and rejoins the current server; false when that can't be done here. */
+        boolean reconnect();
+        /** True while in a Build Battle game (so /rejoin is worth sending after reconnecting). */
+        boolean inGame();
     }
 
-    public enum Step { IDLE, CHANGING_SKIN, WAITING, ASKED, RESTORING }
+    public enum Step { IDLE, CHANGING_SKIN, RECONNECTING, WAITING, ASKED, RESTORING }
 
     private static final String PROFILE = "https://api.minecraftservices.com/minecraft/profile";
     private static final String P = "§d§lBetter Battle §8» §7";
     /** Hypixel looks your skin up again after a short while; these are the gaps between tries. */
     private static final long[] TRY_AFTER_MS = {6000, 12000, 15000, 20000, 25000, 30000, 30000, 30000};
     private static final long ANSWER_WAIT_MS = 5000;
+    private static final long RECONNECT_DELAY_MS = 1500, RECONNECT_TIMEOUT_MS = 60000;
+    private static final long JOIN_WAIT_MS = 3000, REJOIN_GAME_WAIT_MS = 8000;
 
     private static final class Restore {
         String url, variant;
@@ -63,7 +69,9 @@ public final class SkinSwap {
     private HeadLibrary.Head head;
     private String targetHash;
     private int tries;
-    private long nextAt, askedAt;
+    private long nextAt, askedAt, reconnectAt;
+    private volatile boolean reconnecting;
+    private boolean rejoinGame;
     private Set<String> before = new HashSet<String>();
     private volatile boolean busyThread;
 
@@ -127,9 +135,11 @@ public final class SkinSwap {
                         game.debug("heads: Mojang stored it as " + applied + " (asked for " + targetHash + ")");
                         targetHash = applied;
                     }
-                    nextAt = System.currentTimeMillis() + TRY_AFTER_MS[0];
-                    status = "Waiting for Hypixel to see the new skin...";
-                    step = Step.WAITING;
+                    // Hypixel only reads your skin when you log in, so rejoin to make /skull see it.
+                    reconnecting = false;
+                    reconnectAt = System.currentTimeMillis() + RECONNECT_DELAY_MS;
+                    status = "Skin changed. Rejoining so Hypixel sees it...";
+                    step = Step.RECONNECTING;
                 } catch (Exception e) {
                     game.debug("heads: skin change failed: " + e);
                     fail("Couldn't change your skin (" + e.getMessage() + ").");
@@ -140,13 +150,38 @@ public final class SkinSwap {
     }
 
     public void cancel() {
-        if (step == Step.WAITING || step == Step.ASKED) finish("Cancelled. Putting your skin back...");
+        if (step == Step.RECONNECTING || step == Step.WAITING || step == Step.ASKED) finish("Cancelled. Putting your skin back...");
+    }
+
+    /** Call when the client has (re)joined a server. */
+    public void onJoined() {
+        if (step != Step.RECONNECTING || !reconnecting) return;
+        reconnecting = false;
+        if (rejoinGame) game.sendCommand("rejoin");
+        tries = 0;
+        nextAt = System.currentTimeMillis() + (rejoinGame ? REJOIN_GAME_WAIT_MS : JOIN_WAIT_MS);
+        status = rejoinGame ? "Back on Hypixel. Rejoining your game..." : "Back on Hypixel. Asking for the head...";
+        step = Step.WAITING;
     }
 
     /** Called every client tick on the main thread. */
     public void tick() {
         long now = System.currentTimeMillis();
-        if (step == Step.WAITING && now >= nextAt) {
+        if (step == Step.RECONNECTING && !reconnecting && now >= reconnectAt) {
+            rejoinGame = game.inGame();
+            if (game.reconnect()) {
+                reconnecting = true;
+                reconnectAt = now + RECONNECT_TIMEOUT_MS;
+                game.debug("heads: rejoining" + (rejoinGame ? " (then /rejoin)" : ""));
+            } else {
+                nextAt = now;
+                status = "Waiting for Hypixel to see the new skin...";
+                step = Step.WAITING;
+            }
+        } else if (step == Step.RECONNECTING && reconnecting && now >= reconnectAt) {
+            reconnecting = false;
+            fail("Couldn't get back on the server, so your skin is going back.");
+        } else if (step == Step.WAITING && now >= nextAt) {
             before = new HashSet<String>();
             for (String s : game.skullHashes()) if (s != null) before.add(s);
             tries++;
