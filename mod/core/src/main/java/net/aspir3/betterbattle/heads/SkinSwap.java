@@ -75,7 +75,10 @@ public final class SkinSwap {
     /** One backup per account, so switching accounts never puts one account's skin on another. */
     private File restoreFile() {
         String name = game.playerName();
-        return new File(headsDir, "restore-" + (name == null ? "unknown" : name.toLowerCase(Locale.ROOT)) + ".json");
+        File f = new File(headsDir, "restore-" + (name == null ? "unknown" : name.toLowerCase(Locale.ROOT)) + ".json");
+        File legacy = new File(headsDir, "restore.json");   // 0.2.1 kept a single backup
+        if (!f.isFile() && legacy.isFile()) legacy.renameTo(f);
+        return f;
     }
 
     public Step step() { return step; }
