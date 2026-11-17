@@ -125,33 +125,17 @@ public final class BetterBattle {
         return underscores >= 2 && line.matches("^[\\p{L}\\d_ '\\-!?.,&()]+$");
     }
 
-    private GameStateMachine heldGame;
-    private String heldName;
-    private boolean holdNextLeave;
-
-    /** The next disconnect is a quick rejoin (head database): keep the running game so it stays one match. */
-    public void holdGameForRejoin() { holdNextLeave = game != null; }
-
     /** Called when the player joins a server. Only Hypixel unless anyServer is on. */
     public void onJoin(String address, UUID uuid, String name) {
         onLeave();
-        GameStateMachine held = heldGame;
-        String heldBy = heldName;
-        heldGame = null;
-        heldName = null;
         String host = address == null ? "" : address.toLowerCase();
-        if (!config.anyServer && !host.contains("hypixel.net")) {
-            if (held != null) held.leave();
-            return;
-        }
+        if (!config.anyServer && !host.contains("hypixel.net")) return;
         try {
             playerName = name;
             db = new LocalDatabase(dir.getParentFile(), uuid.toString());
             HttpApiClient api = new HttpApiClient(config.apiBase, modVersion, mcVersion);
             sync = new SyncService(db, api, name, new SyncListener());
-            boolean resume = held != null && name != null && name.equalsIgnoreCase(heldBy);
-            if (held != null && !resume) held.leave();
-            game = resume ? held : new GameStateMachine(parser, new GameListener(), mcVersion, name);
+            game = new GameStateMachine(parser, new GameListener(), mcVersion, name);
             game.setSpbRecords(new LocalRecords());
             game.setNick(nicked, nick);
             joinedAt = System.currentTimeMillis();
@@ -174,13 +158,7 @@ public final class BetterBattle {
 
     public void onLeave() {
         // Hypixel moves you between servers all the time; keep a game that was cut short.
-        if (holdNextLeave && game != null) {
-            heldGame = game;
-            heldName = playerName;
-        } else if (game != null) {
-            game.leave();
-        }
-        holdNextLeave = false;
+        if (game != null) game.leave();
         if (sync != null) sync.shutdown();
         if (db != null) {
             try { db.close(); } catch (Exception ignored) { }
