@@ -39,6 +39,7 @@ public final class HeadsScreen extends Screen {
     private int scrollRow, lastLoaded = -1;
     private String lastQuery = null, lastCategory = null;
     private HeadLibrary.Head confirming;
+    private String given;
 
     public HeadsScreen(Screen parent, String query) {
         super(Component.literal("Head Database"));
@@ -132,13 +133,22 @@ public final class HeadsScreen extends Screen {
             lastLoaded = -1;
             return true;
         }
-        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT || swap().busy()) return true;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
+        // In creative (Build Battle's build phase) the head goes straight into your hotbar. Shift-click uses /skull instead.
+        if (!event.hasShiftDown() && BetterBattleFabric.giveCreative(BetterBattleFabric.headItem(h))) {
+            library().addRecent(h);
+            confirming = null;
+            given = "Put " + h.name + " in your hotbar.";
+            return true;
+        }
+        if (swap().busy()) return true;
         if (confirming != null && confirming.hash.equals(h.hash)) {
             confirming = null;
             library().addRecent(h);
             swap().start(h);
         } else {
             confirming = h;
+            given = null;
         }
         return true;
     }
@@ -192,11 +202,12 @@ public final class HeadsScreen extends Screen {
             List<Component> lines = new ArrayList<>();
             lines.add(Component.literal(hover.name));
             if (hover.tags != null && !hover.tags.isEmpty()) lines.add(Component.literal(hover.tags).withStyle(ChatFormatting.DARK_GRAY));
-            lines.add(Component.literal(confirming == hover ? "Click again to get it with /skull" : "Click to get · Right-click to favourite").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.literal(confirming == hover ? "Click again to get it with /skull" : "Click to get · Shift-click: /skull · Right-click: favourite").withStyle(ChatFormatting.GRAY));
             graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY);
         }
 
         String status = swap().status();
+        if (given != null && confirming == null && !swap().busy()) status = given;
         if (confirming != null && !swap().busy())
             status = "Get " + confirming.name + "? You'll briefly rejoin Hypixel wearing it as your skin, then it changes back. Click it again.";
         graphics.text(font, Component.literal(status).withStyle(swap().busy() ? ChatFormatting.YELLOW : ChatFormatting.GRAY), 8, height - 20, 0xFFFFFFFF, false);
