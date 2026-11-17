@@ -9,6 +9,18 @@ import net.aspir3.betterbattle.Platform;
 import net.aspir3.betterbattle.heads.HeadLibrary;
 import net.aspir3.betterbattle.heads.SkinSwap;
 import net.aspir3.betterbattle.fabric.ui.HeadsScreen;
+import net.aspir3.betterbattle.fabric.ui.BannersScreen;
+import net.aspir3.betterbattle.heads.BannerLibrary;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.entity.BannerPattern;
+import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import com.google.common.collect.ImmutableMultimap;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -45,7 +57,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -104,11 +121,14 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             core.onJoin(server == null ? "singleplayer" : server.ip, profile.id(), profile.name());
             plotFound = false;
             if (core.active()) PacketWatcher.install(handler.getConnection(), blockChanges::add);
+            swap.onJoined();
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> core.onLeave());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> core.endRejoin());
 
         heads = new HeadLibrary(core.dir());
         swap = new SkinSwap(core.dir(), new SwapGame());
+        banners = new BannerLibrary(core.dir());
         swap.restoreIfLeftOver();
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !overlay || !core.onActionBar(message.getString()));
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
@@ -145,6 +165,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                         String q = StringArgumentType.getString(c, "search");
                         return open(() -> new HeadsScreen(null, q));
                     })))
+                .then(ClientCommands.literal("banners").executes(c -> open(() -> new BannersScreen(null))))
                 .then(ClientCommands.literal("settings").executes(c -> open(() -> new SettingsScreen(null))))
                 .then(ClientCommands.literal("credits").executes(c -> open(() -> new CreditsScreen(null))))
                 .then(ClientCommands.literal("sync").executes(c -> {
@@ -348,12 +369,49 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     public static HeadLibrary heads() { return heads; }
     public static SkinSwap swap() { return swap; }
 
+    static BannerLibrary banners;
+    public static BannerLibrary banners() { return banners; }
+
+    /** Puts an item in your hotbar the way creative mode does (Hypixel's build phase). False when not in creative. */
+    public static boolean giveCreative(ItemStack stack) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.gameMode == null || mc.gameMode.getPlayerMode() != GameType.CREATIVE) return false;
+        Inventory inv = mc.player.getInventory();
+        int slot = inv.getSelectedSlot();
+        if (!inv.getItem(slot).isEmpty()) {
+            for (int i = 0; i < Inventory.getSelectionSize(); i++) {
+                if (inv.getItem(i).isEmpty()) { slot = i; break; }
+            }
+        }
+        inv.setItem(slot, stack.copy());
+        mc.gameMode.handleCreativeModeItemAdd(stack.copy(), 36 + slot);
+        inv.setSelectedSlot(slot);
+        return true;
+    }
+
+    public static ItemStack bannerItem(BannerLibrary.Design d) {
+        Item item = BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(d.base + "_banner"));
+        ItemStack stack = new ItemStack(item);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && !d.layers.isEmpty()) {
+            Registry<BannerPattern> patterns = mc.level.registryAccess().lookupOrThrow(Registries.BANNER_PATTERN);
+            BannerPatternLayers.Builder layers = new BannerPatternLayers.Builder();
+            for (String[] l : d.layers) {
+                layers.addIfRegistered(patterns, ResourceKey.create(Registries.BANNER_PATTERN, Identifier.withDefaultNamespace(l[0])), DyeColor.byName(l[1], DyeColor.BLACK));
+            }
+            stack.set(DataComponents.BANNER_PATTERNS, layers.build());
+        }
+        if (d.name != null && !d.name.isEmpty()) stack.set(DataComponents.ITEM_NAME, Component.literal(d.name));
+        return stack;
+    }
+
     /** The head item for a database head, as /skull would hand it out. */
     public static ItemStack headItem(HeadLibrary.Head h) {
         ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
         PropertyMap props = new PropertyMap(ImmutableMultimap.of("textures", new Property("textures", h.textureProperty())));
         UUID id = UUID.nameUUIDFromBytes(h.hash.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(new GameProfile(id, "BBHead", props)));
+        stack.set(DataComponents.ITEM_NAME, Component.literal(h.name));
         return stack;
     }
 
@@ -362,6 +420,28 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         public String playerName() { return Minecraft.getInstance().getUser().getName(); }
         public void chat(String message) { runOnMainThread(() -> BetterBattleFabric.this.chat(message)); }
         public void debug(String line) { core.debug(line); }
+
+        public boolean inGame() {
+            if (!core.active()) return false;
+            GameStateMachine.State s = core.game().state();
+            return s == GameStateMachine.State.BUILDING || s == GameStateMachine.State.VOTING;
+        }
+
+        public boolean reconnect() {
+            Minecraft mc = Minecraft.getInstance();
+            ServerData server = mc.getCurrentServer();
+            if (server == null || mc.isLocalServer() || mc.getConnection() == null) return false;
+            boolean keepGame = inGame();
+            mc.execute(() -> {
+                if (keepGame) core.holdGameForRejoin();
+                mc.disconnectFromWorld(Component.literal("Rejoining so Hypixel sees your new skin"));
+                ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), mc,
+                    ServerAddress.parseString(server.ip), server, false, null);
+            });
+            return true;
+        }
+
+        public void reconnectFailed() { runOnMainThread(core::endRejoin); }
 
         public void sendCommand(String command) {
             ClientPacketListener connection = Minecraft.getInstance().getConnection();

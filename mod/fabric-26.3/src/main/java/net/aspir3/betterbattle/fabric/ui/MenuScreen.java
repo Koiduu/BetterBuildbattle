@@ -61,7 +61,8 @@ public final class MenuScreen extends Screen {
         middle.addChild(Button.builder(Component.literal("Weekly"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.weeklyPage()))).width(100).build());
 
         LinearLayout heads = rows.addChild(LinearLayout.horizontal().spacing(8));
-        heads.addChild(Button.builder(Component.literal("Head Database"), b -> minecraft.gui.setScreen(new HeadsScreen(this, ""))).width(316).build());
+        heads.addChild(Button.builder(Component.literal("Head Database"), b -> minecraft.gui.setScreen(new HeadsScreen(this, ""))).width(154).build());
+        heads.addChild(Button.builder(Component.literal("Banner Database"), b -> minecraft.gui.setScreen(new BannersScreen(this))).width(154).build());
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
         bottom.addChild(Button.builder(Component.literal("Settings"), b -> minecraft.gui.setScreen(new SettingsScreen(this))).width(100).build());

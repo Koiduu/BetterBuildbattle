@@ -125,8 +125,30 @@ public final class BetterBattle {
         return underscores >= 2 && line.matches("^[\\p{L}\\d_ '\\-!?.,&()]+$");
     }
 
+    private boolean rejoining;
+
+    /**
+     * The next disconnect is the head database's quick rejoin: keep the game, database and sync open
+     * so the match stays one record. Ends at the next join, or {@link #endRejoin()} if that never comes.
+     */
+    public void holdGameForRejoin() { rejoining = game != null; }
+
+    public void endRejoin() {
+        if (!rejoining) return;
+        rejoining = false;
+        onLeave();
+    }
+
     /** Called when the player joins a server. Only Hypixel unless anyServer is on. */
     public void onJoin(String address, UUID uuid, String name) {
+        if (rejoining) {
+            rejoining = false;
+            String to = address == null ? "" : address.toLowerCase();
+            if (name != null && name.equalsIgnoreCase(playerName) && (config.anyServer || to.contains("hypixel.net"))) {
+                debug("rejoined " + address + ", carrying on with the same game");
+                return;
+            }
+        }
         onLeave();
         String host = address == null ? "" : address.toLowerCase();
         if (!config.anyServer && !host.contains("hypixel.net")) return;
@@ -157,6 +179,7 @@ public final class BetterBattle {
     }
 
     public void onLeave() {
+        if (rejoining) return;
         // Hypixel moves you between servers all the time; keep a game that was cut short.
         if (game != null) game.leave();
         if (sync != null) sync.shutdown();

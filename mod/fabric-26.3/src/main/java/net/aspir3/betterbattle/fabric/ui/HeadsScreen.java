@@ -9,6 +9,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -38,6 +39,7 @@ public final class HeadsScreen extends Screen {
     private int scrollRow, lastLoaded = -1;
     private String lastQuery = null, lastCategory = null;
     private HeadLibrary.Head confirming;
+    private String given;
 
     public HeadsScreen(Screen parent, String query) {
         super(Component.literal("Head Database"));
@@ -104,7 +106,7 @@ public final class HeadsScreen extends Screen {
         }
         playerHead.active = !swap().busy() && USERNAME.matcher(q.trim()).matches();
         SkinSwap.Step step = swap().step();
-        cancel.active = step == SkinSwap.Step.WAITING || step == SkinSwap.Step.ASKED;
+        cancel.active = step == SkinSwap.Step.RECONNECTING || step == SkinSwap.Step.WAITING || step == SkinSwap.Step.ASKED;
     }
 
     @Override
@@ -126,9 +128,17 @@ public final class HeadsScreen extends Screen {
         if (super.mouseClicked(event, doubleClick)) return true;
         HeadLibrary.Head h = headAt(event.x(), event.y());
         if (h == null) return false;
-        if (event.button() == 1) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             library().toggleFavourite(h);
             lastLoaded = -1;
+            return true;
+        }
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
+        // In creative (Build Battle's build phase) the head goes straight into your hotbar. Shift-click uses /skull instead.
+        if (!event.hasShiftDown() && BetterBattleFabric.giveCreative(BetterBattleFabric.headItem(h))) {
+            library().addRecent(h);
+            confirming = null;
+            given = "Put " + h.name + " in your hotbar.";
             return true;
         }
         if (swap().busy()) return true;
@@ -138,6 +148,7 @@ public final class HeadsScreen extends Screen {
             swap().start(h);
         } else {
             confirming = h;
+            given = null;
         }
         return true;
     }
@@ -191,13 +202,14 @@ public final class HeadsScreen extends Screen {
             List<Component> lines = new ArrayList<>();
             lines.add(Component.literal(hover.name));
             if (hover.tags != null && !hover.tags.isEmpty()) lines.add(Component.literal(hover.tags).withStyle(ChatFormatting.DARK_GRAY));
-            lines.add(Component.literal(confirming == hover ? "Click again to get it with /skull" : "Click to get · Right-click to favourite").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.literal(confirming == hover ? "Click again to get it with /skull" : "Click to get · Shift-click: /skull · Right-click: favourite").withStyle(ChatFormatting.GRAY));
             graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY);
         }
 
         String status = swap().status();
+        if (given != null && confirming == null && !swap().busy()) status = given;
         if (confirming != null && !swap().busy())
-            status = "Get " + confirming.name + "? Your skin wears it for a few seconds, then changes back. Click it again.";
+            status = "Get " + confirming.name + "? You'll briefly rejoin Hypixel wearing it as your skin, then it changes back. Click it again.";
         graphics.text(font, Component.literal(status).withStyle(swap().busy() ? ChatFormatting.YELLOW : ChatFormatting.GRAY), 8, height - 20, 0xFFFFFFFF, false);
         graphics.text(font, Component.literal(HeadLibrary.CREDIT).withStyle(ChatFormatting.DARK_GRAY), 8, height - 36, 0xFFFFFFFF, false);
     }

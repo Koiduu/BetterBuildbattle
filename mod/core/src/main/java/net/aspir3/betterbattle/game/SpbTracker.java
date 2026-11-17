@@ -138,9 +138,9 @@ public final class SpbTracker {
     public void onPerfect(String name, String seconds, long now) {
         if (current == null) return;
         boolean self = name == null || name.isEmpty() || selfNames.contains(name.toLowerCase(java.util.Locale.ROOT));
-        // Nicked but the nick isn't known yet: Hypixel calls the build perfect the moment the last
+        // Nicked but the nick isn't known yet (once it is, only that name counts): Hypixel calls the build perfect the moment the last
         // block goes down, so a perfect line right after your own placement is yours.
-        if (!self && nicked && !current.perfect && current.placed > 0 && now - lastTouchAt <= NICK_MATCH_MS) {
+        if (!self && nicked && nickSeen() == null && !current.perfect && current.placed > 0 && now - lastTouchAt <= NICK_MATCH_MS) {
             self = true;
             selfNames.add(name.toLowerCase(java.util.Locale.ROOT));
         }
