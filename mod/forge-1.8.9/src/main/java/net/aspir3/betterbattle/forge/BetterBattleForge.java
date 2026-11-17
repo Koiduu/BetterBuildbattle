@@ -7,6 +7,7 @@ import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.forge.ui.AchievementToasts;
 import net.aspir3.betterbattle.forge.ui.MenuScreen;
 import net.aspir3.betterbattle.forge.ui.SpbTimerOverlay;
+import net.aspir3.betterbattle.forge.ui.PinnedAchievementsHud;
 import net.aspir3.betterbattle.forge.ui.TextPageScreen;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
@@ -86,6 +87,7 @@ public class BetterBattleForge implements Platform {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
         MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
+        MinecraftForge.EVENT_BUS.register(new PinnedAchievementsHud());
     }
 
     BetterBattle core() {
