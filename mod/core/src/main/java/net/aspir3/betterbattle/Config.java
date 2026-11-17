@@ -30,6 +30,10 @@ public final class Config {
     // ---- Build Battle update features. All of them can be switched off to play normally.
     /** Speed Builders stopwatch with your best time next to it. */
     public boolean spbTimer = true;
+    /** Special challenge: hide Guess the Build's word hint (the "_ _ _" line above the hotbar). */
+    public boolean challengeNoHints = false;
+    /** Special challenge: every block is plain white. Fabric only. */
+    public boolean challengeNoTextures = false;
     /** Also show the Better Battle world record on the stopwatch. */
     public boolean spbShowRecord = true;
     public boolean pinnedAchievementsHud = true;
@@ -87,6 +91,8 @@ public final class Config {
         new Toggle("chatMessages", "Chat messages", "Achievement and sync messages in chat"),
         new Toggle("weeklyAlerts", "Weekly challenge alerts", "Tell me when I finish a weekly challenge"),
         new Toggle("whatsNew", "What's New after updates", "Show the patch notes once after the mod updates"),
+        new Toggle("challengeNoHints", "Challenge: no word hint", "Hide Guess the Build's word hint above the hotbar"),
+        new Toggle("challengeNoTextures", "Challenge: no textures", "Every block is plain white (Fabric only, reloads textures)"),
         new Toggle("updateNotices", "Update notices", "Tell me in chat when a newer version is out"),
         new Toggle("shareVotes", "Save my votes", "Keep the votes you cast for Build Battle Wrapped")));
 

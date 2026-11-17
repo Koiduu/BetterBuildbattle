@@ -54,7 +54,11 @@ public final class SpbTracker {
         transient Set<String> finishedTypes = new HashSet<String>();
     }
 
+    private static final long NICK_MATCH_MS = 1500;
     private final String playerName;
+    private final java.util.Set<String> selfNames = new java.util.HashSet<String>();
+    private boolean nicked;
+    private long lastTouchAt;
     private final List<Round> rounds = new ArrayList<Round>();
     private Records records;
     private Round current;
@@ -63,6 +67,7 @@ public final class SpbTracker {
 
     public SpbTracker(String playerName, Records records) {
         this.playerName = playerName;
+        if (playerName != null) selfNames.add(playerName.toLowerCase(java.util.Locale.ROOT));
         this.records = records;
     }
 
@@ -115,9 +120,30 @@ public final class SpbTracker {
     }
 
     /** Someone got a perfect build. name is null for "You ...". seconds is null if the line had no time. */
+    /**
+     * You're playing under a Hypixel /nick, so the perfect-build line shows the nick, not your name.
+     * nick may be null when we only know you're nicked.
+     */
+    public void setNick(boolean nicked, String nick) {
+        this.nicked = nicked;
+        if (nick != null && !nick.isEmpty()) selfNames.add(nick.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** The name you show up as in this game, if it isn't your account name. */
+    public String nickSeen() {
+        for (String n : selfNames) if (playerName == null || !n.equalsIgnoreCase(playerName)) return n;
+        return null;
+    }
+
     public void onPerfect(String name, String seconds, long now) {
         if (current == null) return;
-        boolean self = name == null || name.isEmpty() || name.equalsIgnoreCase(playerName);
+        boolean self = name == null || name.isEmpty() || selfNames.contains(name.toLowerCase(java.util.Locale.ROOT));
+        // Nicked but the nick isn't known yet: Hypixel calls the build perfect the moment the last
+        // block goes down, so a perfect line right after your own placement is yours.
+        if (!self && nicked && !current.perfect && current.placed > 0 && now - lastTouchAt <= NICK_MATCH_MS) {
+            self = true;
+            selfNames.add(name.toLowerCase(java.util.Locale.ROOT));
+        }
         if (!self) {
             current.othersPerfect++;
             return;
@@ -156,6 +182,7 @@ public final class SpbTracker {
     public void onPlace(String blockId) {
         if (current == null || current.perfect) return;
         current.placed++;
+        lastTouchAt = System.currentTimeMillis();
         if (blockId.equals(current.currentType)) return;
         if (current.finishedTypes.contains(blockId)) current.oneTypeAtATime = false;
         if (current.currentType != null) current.finishedTypes.add(current.currentType);
@@ -163,7 +190,10 @@ public final class SpbTracker {
     }
 
     public void onBreak() {
-        if (current != null && !current.perfect) current.broken++;
+        if (current != null && !current.perfect) {
+            current.broken++;
+            lastTouchAt = System.currentTimeMillis();
+        }
     }
 
     /** Ends the last round and returns them all. */

@@ -33,7 +33,10 @@
     "SPB_ACCURACY": "^Your build was (\\d{1,3})% accurate!$",
     "SPB_ELIMINATED": "^You were eliminated",
     "TOKENS_PLACEMENT": "^\\+[\\d,]+ tokens! \\((\\d+)(?:st|nd|rd|th) Place\\)$",
-    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - [\\d,.]+$"
+    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - [\\d,.]+$",
+    "NICK_ON": "^You are currently (?:NICKED|nicked)",
+    "NICK_SET": "^You are now nicked as ([A-Za-z0-9_]{1,16})!?$",
+    "NICK_RESET": "^Your nick has been reset!?$"
   },
   "titles": [
     "BUILD BATTLE",

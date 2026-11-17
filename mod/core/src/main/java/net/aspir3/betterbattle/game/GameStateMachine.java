@@ -56,6 +56,26 @@ public final class GameStateMachine {
     /** The running Speed Builders game, or null. */
     public SpbTracker spb() { return spb; }
 
+    /** "solo", "gtb", "speed_builders"... from the sidebar, or null. */
+    public String mode() { return mode; }
+
+    private boolean nicked;
+    private String nick;
+
+    /** You're under a Hypixel /nick (nick is null if we don't know it yet). */
+    public void setNick(boolean nicked, String nick) {
+        this.nicked = nicked;
+        if (nick != null) this.nick = nick;
+        if (!nicked) this.nick = null;
+        if (spb != null) spb.setNick(this.nicked, this.nick);
+    }
+
+    /** The nick you're playing under, once known. */
+    public String nick() {
+        if (nick == null && spb != null) nick = spb.nickSeen();
+        return nick;
+    }
+
     private boolean speedBuilders() {
         return "speed_builders".equals(mode);
     }
@@ -153,7 +173,7 @@ public final class GameStateMachine {
         if (state == State.IDLE) return;
         // The end-of-game podium is a place ("1st - 7") and then, on its own line, that player's name.
         if (podiumPlace != null) {
-            if (current != null && current.placement == null && line.equalsIgnoreCase(playerName)) current.placement = podiumPlace;
+            if (current != null && current.placement == null && (line.equalsIgnoreCase(playerName) || line.equalsIgnoreCase(nick()))) current.placement = podiumPlace;
             podiumPlace = null;
         }
         Event e = parser.parse(line);
@@ -235,6 +255,7 @@ public final class GameStateMachine {
         current.mcVersion = mcVersion;
         current.theme = theme;
         spb = "speed_builders".equals(current.mode) ? new SpbTracker(playerName, spbRecords) : null;
+        if (spb != null) spb.setNick(nicked, nick);
         startedAt = System.currentTimeMillis();
         voteRound = -1;
         roundBuilder = null;

@@ -128,7 +128,10 @@ public class BetterBattleForge implements Platform {
 
     @SubscribeEvent
     public void onChat(ClientChatReceivedEvent event) {
-        if (event.type == 2) return;   // action bar
+        if (event.type == 2) {   // action bar
+            if (core.onActionBar(event.message.getUnformattedText())) event.setCanceled(true);
+            return;
+        }
         core.onChat(event.message.getUnformattedText());
     }
 
@@ -236,6 +239,8 @@ public class BetterBattleForge implements Platform {
             if (id != null && id.version() == 4) players.add(id);   // NPCs use other UUID versions
         }
         core.onTabList(players);
+        NetworkPlayerInfo self = mc.getNetHandler().getPlayerInfo(mc.getSession().getProfile().getId());
+        if (self != null) core.onOwnTabName(self.getGameProfile().getName());
     }
 
     private void findPlot(Minecraft mc) {

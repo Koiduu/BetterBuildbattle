@@ -130,6 +130,15 @@ const ACH = [
   ["Mind Reader V", "Correctly guess 10,000 builds in Guess The Build", 30], ["Aspiring", "Play your first game with Better Battle installed", 5],
 ].map(([name, description, points], i) => ({ id: "a" + i, name, description, points, category: "general", unlocked_at: new Date().toISOString() }));
 
+async function challengeRoute(req, res) {
+  const body = await readBody(req);
+  if (String(body.title ?? "").trim().length < 4 || String(body.description ?? "").trim().length < 20) return json(res, 400, { error: "bad_request" });
+  if (body.website) return json(res, 200, { ok: true });
+  if (Date.now() - Number(body.startedAt) < 5000) return json(res, 400, { error: "too_fast" });
+  console.log("challenge submission:", body.title);
+  return json(res, 200, { ok: true, id: "1" });
+}
+
 async function accountRoute(req, res, route, url) {
   const body = req.method === "GET" ? {} : await readBody(req);
   if (route === "/auth/providers") return json(res, 200, { discord: true });
@@ -223,6 +232,7 @@ const server = http.createServer((req, res) => {
     if (route === "/mod/latest") return json(res, 200, { version: modVersion, builtAt: new Date().toISOString(),
       fabric: modJars.fabric?.asset ?? null, forge: modJars.forge?.asset ?? null });
     if (route.startsWith("/auth/") || route === "/me" || route.startsWith("/me/")) return accountRoute(req, res, route, url);
+    if (route === "/challenges/submit" && req.method === "POST") return challengeRoute(req, res);
     if (route === "/stats") return json(res, 200, { rankedPlayers: 412806, modUsers: 318 });
     if (route === "/leaderboard") {
       const page = Number(url.searchParams.get("page") ?? 1);

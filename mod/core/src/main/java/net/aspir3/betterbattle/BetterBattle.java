@@ -84,6 +84,46 @@ public final class BetterBattle {
     public GameStateMachine game() { return game; }
     public LocalDatabase db() { return db; }
     public String modVersion() { return modVersion; }
+    public File dir() { return dir; }
+
+    private boolean nicked;
+    private String nick;
+
+    /** True while you're under a Hypixel /nick. */
+    public boolean nicked() { return nicked; }
+
+    private void setNick(boolean on, String name) {
+        if (on == nicked && (name == null || name.equalsIgnoreCase(nick))) return;
+        nicked = on;
+        nick = on ? (name != null ? name : nick) : null;
+        debug("nick: " + (on ? (nick == null ? "on" : nick) : "off"));
+        if (game != null) game.setNick(nicked, nick);
+    }
+
+    /** The name the server shows for you in the tab list. A different one means you're nicked. */
+    public void onOwnTabName(String shown) {
+        if (shown == null || playerName == null || shown.isEmpty()) return;
+        if (!shown.equalsIgnoreCase(playerName)) setNick(true, shown);
+        else if (nicked) setNick(false, null);
+    }
+
+    /**
+     * Text above the hotbar. Returns true when the "no word hint" challenge says to hide it:
+     * in Guess the Build, the hint is the theme as underscores ("_ _ _ _ _") filling in letter by letter.
+     */
+    public boolean onActionBar(String text) {
+        if (text == null) return false;
+        String line = ChatParser.clean(text);
+        if (line.startsWith("You are currently NICKED") || line.startsWith("You are currently nicked")) setNick(true, null);
+        return config.challengeNoHints && game != null && "gtb".equals(game.mode()) && isWordHint(line);
+    }
+
+    static boolean isWordHint(String line) {
+        if (line.matches("(?i)^the theme is\\b.*")) return true;
+        int underscores = 0;
+        for (int i = 0; i < line.length(); i++) if (line.charAt(i) == '_') underscores++;
+        return underscores >= 2 && line.matches("^[\\p{L}\\d_ '\\-!?.,&()]+$");
+    }
 
     /** Called when the player joins a server. Only Hypixel unless anyServer is on. */
     public void onJoin(String address, UUID uuid, String name) {
@@ -97,6 +137,7 @@ public final class BetterBattle {
             sync = new SyncService(db, api, name, new SyncListener());
             game = new GameStateMachine(parser, new GameListener(), mcVersion, name);
             game.setSpbRecords(new LocalRecords());
+            game.setNick(nicked, nick);
             joinedAt = System.currentTimeMillis();
             if (!modVersion.equals(config.lastSeenVersion)) {
                 if (config.whatsNew) {
@@ -142,6 +183,10 @@ public final class BetterBattle {
             String line = ChatParser.clean(raw);
             if (line.isEmpty()) continue;
             debug("chat: " + line);
+            ChatParser.Event e = parser.parse(line);
+            if (e != null && e.type == ChatParser.Type.NICK_ON) setNick(true, null);
+            else if (e != null && e.type == ChatParser.Type.NICK_SET) setNick(true, e.text);
+            else if (e != null && e.type == ChatParser.Type.NICK_RESET) setNick(false, null);
             game.onChat(line);
         }
     }

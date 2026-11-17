@@ -6,6 +6,15 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.Platform;
+import net.aspir3.betterbattle.heads.HeadLibrary;
+import net.aspir3.betterbattle.heads.SkinSwap;
+import net.aspir3.betterbattle.fabric.ui.HeadsScreen;
+import com.google.common.collect.ImmutableMultimap;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.fabric.ui.AchievementToast;
 import net.aspir3.betterbattle.fabric.ui.AchievementsScreen;
@@ -98,6 +107,10 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> core.onLeave());
 
+        heads = new HeadLibrary(core.dir());
+        swap = new SkinSwap(core.dir(), new SwapGame());
+        swap.restoreIfLeftOver();
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !overlay || !core.onActionBar(message.getString()));
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) core.onChat(message.getString());
         });
@@ -127,6 +140,11 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                 .then(ClientCommands.literal("recap").executes(c -> open(() -> new TextPageScreen(null, core.lastGamePage()))))
                 .then(ClientCommands.literal("weekly").executes(c -> open(() -> new TextPageScreen(null, core.weeklyPage()))))
                 .then(ClientCommands.literal("news").executes(c -> open(() -> new TextPageScreen(null, BetterBattle.get().whatsNewPage()))))
+                .then(ClientCommands.literal("heads").executes(c -> open(() -> new HeadsScreen(null, "")))
+                    .then(ClientCommands.argument("search", StringArgumentType.greedyString()).executes(c -> {
+                        String q = StringArgumentType.getString(c, "search");
+                        return open(() -> new HeadsScreen(null, q));
+                    })))
                 .then(ClientCommands.literal("settings").executes(c -> open(() -> new SettingsScreen(null))))
                 .then(ClientCommands.literal("credits").executes(c -> open(() -> new CreditsScreen(null))))
                 .then(ClientCommands.literal("sync").executes(c -> {
@@ -195,6 +213,8 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     }
 
     private void tick(Minecraft client) {
+        swap.tick();
+        NoTextures.tick(client);
         while (menuKey.consumeClick()) pendingScreen = this::menu;
         if (pendingScreen != null) {
             client.gui.setScreen(pendingScreen.get());
@@ -256,6 +276,8 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             if (id.version() == 4) players.add(id);   // NPCs in the tab list use other UUID versions
         }
         core.onTabList(players);
+        PlayerInfo self = connection.getPlayerInfo(client.getUser().getProfileId());
+        if (self != null) core.onOwnTabName(self.getProfile().name());
     }
 
     /** The block under the player is the floor; the white terracotta around it marks out the plot. */
@@ -316,6 +338,51 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     private static String strip(String s) {
         String out = ChatFormatting.stripFormatting(s);
         return out == null ? "" : out.trim();
+    }
+
+    // ---- Head database
+
+    static HeadLibrary heads;
+    static SkinSwap swap;
+
+    public static HeadLibrary heads() { return heads; }
+    public static SkinSwap swap() { return swap; }
+
+    /** The head item for a database head, as /skull would hand it out. */
+    public static ItemStack headItem(HeadLibrary.Head h) {
+        ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
+        PropertyMap props = new PropertyMap(ImmutableMultimap.of("textures", new Property("textures", h.textureProperty())));
+        UUID id = UUID.nameUUIDFromBytes(h.hash.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(new GameProfile(id, "BBHead", props)));
+        return stack;
+    }
+
+    private final class SwapGame implements SkinSwap.Game {
+        public String accessToken() { return Minecraft.getInstance().getUser().getAccessToken(); }
+        public String playerName() { return Minecraft.getInstance().getUser().getName(); }
+        public void chat(String message) { runOnMainThread(() -> BetterBattleFabric.this.chat(message)); }
+        public void debug(String line) { core.debug(line); }
+
+        public void sendCommand(String command) {
+            ClientPacketListener connection = Minecraft.getInstance().getConnection();
+            if (connection != null) connection.sendCommand(command);
+        }
+
+        public List<String> skullHashes() {
+            List<String> out = new ArrayList<>();
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null) return out;
+            for (ItemStack stack : mc.player.getInventory().getNonEquipmentItems()) {
+                if (!stack.is(Items.PLAYER_HEAD)) continue;
+                ResolvableProfile profile = stack.get(DataComponents.PROFILE);
+                String hash = null;
+                if (profile != null) {
+                    for (Property p : profile.partialProfile().properties().get("textures")) hash = HeadLibrary.hashOf(p.value());
+                }
+                out.add(hash);
+            }
+            return out;
+        }
     }
 
     // ---- Platform

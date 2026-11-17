@@ -101,6 +101,7 @@ const routes = [
   { path: /^\/terms\/?$/, page: termsPage },
   { path: /^\/cookies\/?$/, page: cookiesPage },
   { path: /^\/support\/?$/, page: supportPage },
+  { path: /^\/challenges\/submit\/?$/, page: submitChallengePage },
 ];
 
 function go(url) {
@@ -241,9 +242,76 @@ function supportPage() {
       <p>Use the Better Battle bot: <code>/download</code>, <code>/stats</code>, <code>/verify</code>, and the Open a ticket button in the support channel.</p></section>
     <section><h2>Deleting your account</h2>
       <p>Use the Delete account section at the bottom of the Account page. If your account has no password, type <code>DELETE</code> to confirm.</p></section>
+    <section><h2>Challenge ideas</h2>
+      <p>Got an idea for a Better Battle challenge? <a href="/challenges/submit" data-link>Submit it here</a>. Approved ideas are added to the mod.</p></section>
     <section><h2>Contact</h2>
       <p>For account data copies, corrections or removal requests, contact us on Discord.</p>
       <p class="contact-block">${supportContact()}</p></section>`, false);
+}
+
+const CHALLENGE_MODES = [["any", "Any mode"], ["solo", "Solo"], ["teams", "Teams"], ["pro", "Pro"], ["gtb", "Guess the Build"], ["speed_builders", "Speed Builders"]];
+const CHALLENGE_ERRORS = {
+  too_fast: "That was quick! Take a second to check your idea, then send it again.",
+  form_expired: "This page has been open a long time. Refresh it and try again.",
+  too_many_links: "Please keep it to two links at most.",
+  looks_like_spam: "That looks like spam. Write it out normally and try again.",
+  daily_limit: "You've sent the most ideas allowed today. Thanks! Try again tomorrow.",
+  rate_limited: "You've sent a few ideas already. Try again in an hour.",
+  already_submitted: "Someone has already sent this exact idea.",
+  bad_request: "Check the fields: the title needs 4 to 80 characters and the description 20 to 1000.",
+};
+
+function submitChallengePage() {
+  document.title = "Submit a challenge · Better Battle";
+  const startedAt = Date.now();
+  app.innerHTML = `
+    <article class="card legal-page">
+      <header class="legal-head">
+        <h1>Submit a challenge</h1>
+        <p class="sub">Share an idea for a community challenge. We read every one, and approved ideas are added to the mod.</p>
+      </header>
+      <form id="challenge-form" class="challenge-form" novalidate>
+        <label class="field"><span>Challenge name</span>
+          <input name="title" required minlength="4" maxlength="80" placeholder="Win a Guess the Build game without the word hint"></label>
+        <label class="field"><span>Game mode</span>
+          <select name="mode">${CHALLENGE_MODES.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
+        <label class="field"><span>How it works</span>
+          <textarea name="description" required minlength="20" maxlength="1000" rows="6" placeholder="What do you have to do, and how should the mod check it?"></textarea>
+          <small><span id="challenge-count">0</span> / 1000</small></label>
+        <label class="field"><span>Minecraft name <small>(optional, for credit)</small></span>
+          <input name="mcName" maxlength="16" pattern="[A-Za-z0-9_]{1,16}" autocomplete="off"></label>
+        <label class="field"><span>Discord or email <small>(optional, if you'd like a reply)</small></span>
+          <input name="contact" maxlength="120" autocomplete="off"></label>
+        <label class="challenge-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+        <p class="form-error" id="challenge-error" role="alert" hidden></p>
+        <button class="btn" type="submit">Send idea</button>
+        <p class="sub">Up to 3 ideas an hour. Please keep it about Build Battle.</p>
+      </form>
+    </article>`;
+  const form = document.getElementById("challenge-form");
+  const error = document.getElementById("challenge-error");
+  form.description.addEventListener("input", () => { document.getElementById("challenge-count").textContent = form.description.value.length; });
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    error.hidden = true;
+    const data = Object.fromEntries(new FormData(form));
+    if (data.title.trim().length < 4 || data.description.trim().length < 20) {
+      error.textContent = CHALLENGE_ERRORS.bad_request;
+      error.hidden = false;
+      return;
+    }
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      await request("POST", "/challenges/submit", { ...data, startedAt });
+      form.outerHTML = `<section><h2>Thanks!</h2><p>Your idea was sent. If it's approved, it'll show up in a future update of the mod.</p>
+        <p><a href="/challenges/submit" data-link>Send another idea</a></p></section>`;
+    } catch (err) {
+      error.textContent = CHALLENGE_ERRORS[err.message] ?? "Couldn't send your idea. Try again in a minute.";
+      error.hidden = false;
+      button.disabled = false;
+    }
+  });
 }
 
 // Search box in the top bar

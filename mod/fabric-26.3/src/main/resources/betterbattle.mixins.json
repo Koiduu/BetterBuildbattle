@@ -3,7 +3,8 @@
 	"package": "net.aspir3.betterbattle.fabric.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ConnectionAccessor"
+		"ConnectionAccessor",
+    "SpriteContentsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
