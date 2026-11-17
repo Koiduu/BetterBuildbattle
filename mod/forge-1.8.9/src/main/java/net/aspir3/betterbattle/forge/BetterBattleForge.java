@@ -11,6 +11,7 @@ import net.aspir3.betterbattle.forge.ui.PinnedAchievementsHud;
 import net.aspir3.betterbattle.forge.ui.TextPageScreen;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
+import net.aspir3.betterbattle.game.JumpTracker;
 import net.aspir3.betterbattle.legacy.LegacyIds;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -67,6 +68,7 @@ public class BetterBattleForge implements Platform {
     private GuiScreen pendingScreen;
     private boolean connected, joined, plotFound;
     private int plotTries, ticks;
+    private final JumpTracker jumpTracker = new JumpTracker();
 
     public static BetterBattleForge get() {
         return instance;
@@ -181,6 +183,7 @@ public class BetterBattleForge implements Platform {
 
         if (!core.active() || mc.thePlayer == null || mc.theWorld == null) {
             blockChanges.clear();
+            jumpTracker.reset();
             return;
         }
         GameStateMachine game = core.game();
@@ -192,10 +195,13 @@ public class BetterBattleForge implements Platform {
         if (ticks % 10 == 0) readSidebar(mc);
         if (ticks % 100 == 0) readTabList(mc);
 
+        boolean jumped = jumpTracker.update(mc.thePlayer.onGround, mc.thePlayer.motionY,
+            mc.gameSettings.keyBindJump.isKeyDown(), mc.thePlayer.isOnLadder(),
+            mc.thePlayer.isInWater() || mc.thePlayer.isInLava(), mc.thePlayer.capabilities.isFlying);
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (mc.thePlayer.capabilities.allowFlying) game.onCanFly();
             if (mc.thePlayer.capabilities.isFlying) game.onFlying();
-            if (mc.gameSettings.keyBindJump.isKeyDown() || mc.thePlayer.motionY > 0) game.onJumping();
+            if (jumped) game.onJumping();
             if (!plotFound && plotTries++ < 200 && ticks % 5 == 0) findPlot(mc);
         } else {
             plotFound = false;

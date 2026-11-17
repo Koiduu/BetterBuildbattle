@@ -17,6 +17,7 @@ import net.aspir3.betterbattle.fabric.ui.SpbTimerToast;
 import net.aspir3.betterbattle.fabric.ui.TextPageScreen;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
+import net.aspir3.betterbattle.game.JumpTracker;
 import net.aspir3.betterbattle.palette.Palettes;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -75,6 +76,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     private boolean plotFound;
     private int plotTries;
     private int ticks;
+    private final JumpTracker jumpTracker = new JumpTracker();
 
     @Override
     public void onInitializeClient() {
@@ -200,6 +202,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         }
         if (!core.active() || client.player == null || client.level == null) {
             blockChanges.clear();
+            jumpTracker.reset();
             return;
         }
         GameStateMachine game = core.game();
@@ -212,10 +215,13 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         if (!SpbTimerToast.showing() && !core.hudLines().isEmpty()) client.gui.toastManager().addToast(new SpbTimerToast());
         if (ticks % 100 == 0) readTabList(client);
 
+        boolean jumped = jumpTracker.update(client.player.onGround(), client.player.getDeltaMovement().y,
+            client.options.keyJump.isDown(), client.player.onClimbable(),
+            client.player.isInWater() || client.player.isInLava(), client.player.getAbilities().flying);
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (client.player.getAbilities().mayfly) game.onCanFly();
             if (client.player.getAbilities().flying) game.onFlying();
-            if (client.options.keyJump.isDown() || client.player.getDeltaMovement().y > 0) game.onJumping();
+            if (jumped) game.onJumping();
             if (!plotFound && plotTries++ < 200 && ticks % 5 == 0) findPlot(client);
         } else {
             plotFound = false;
