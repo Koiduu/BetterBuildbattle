@@ -32,6 +32,8 @@ public final class Config {
     public boolean spbTimer = true;
     /** Also show the Better Battle world record on the stopwatch. */
     public boolean spbShowRecord = true;
+    public boolean pinnedAchievementsHud = true;
+    private java.util.List<String> pinnedAchievements = new java.util.ArrayList<String>();
     /** A short summary in chat after each game. */
     public boolean recap = true;
     /** Open the What's New page once after the mod updates. */
@@ -79,6 +81,7 @@ public final class Config {
     public static final java.util.List<Toggle> TOGGLES = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
         new Toggle("spbTimer", "Speed Builders timer", "A stopwatch with your best time while you build"),
         new Toggle("spbShowRecord", "Show world record", "Put the Better Battle record on the timer too"),
+        new Toggle("pinnedAchievementsHud", "Pinned achievements HUD", "Keep up to three achievement goals on screen"),
         new Toggle("recap", "Game recap in chat", "A short summary after each game"),
         new Toggle("toasts", "Achievement pop-ups", "The box in the corner when you unlock one"),
         new Toggle("chatMessages", "Chat messages", "Achievement and sync messages in chat"),
@@ -101,11 +104,44 @@ public final class Config {
         }
         if (c == null) c = new Config();
         c.file = f;
+        c.normalizePins();
         c.save();
         return c;
     }
 
-    public void save() {
+    public synchronized java.util.List<String> pinnedAchievements() {
+        normalizePins();
+        return new java.util.ArrayList<String>(pinnedAchievements);
+    }
+
+    private void normalizePins() {
+        java.util.List<String> clean = new java.util.ArrayList<String>();
+        if (pinnedAchievements != null) for (String id : pinnedAchievements) {
+            if (id != null && net.aspir3.betterbattle.achieve.Catalog.get(id) != null && !clean.contains(id) && clean.size() < 3) clean.add(id);
+        }
+        pinnedAchievements = clean;
+    }
+
+    public synchronized boolean pin(String id) {
+        normalizePins();
+        net.aspir3.betterbattle.achieve.Catalog.Entry e = net.aspir3.betterbattle.achieve.Catalog.get(id);
+        if (e == null || e.secret || pinnedAchievements.contains(id) || pinnedAchievements.size() >= 3) return false;
+        pinnedAchievements.add(id);
+        save();
+        return true;
+    }
+
+    public synchronized void unpin(String id) {
+        normalizePins();
+        if (pinnedAchievements.remove(id)) save();
+    }
+
+    public synchronized void removeUnlockedPins(java.util.Collection<String> unlocked) {
+        normalizePins();
+        if (pinnedAchievements.removeAll(unlocked)) save();
+    }
+
+    public synchronized void save() {
         try (Writer w = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(this, w);
         } catch (Exception ignored) {

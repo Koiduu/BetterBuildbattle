@@ -11,6 +11,7 @@ import net.aspir3.betterbattle.fabric.ui.AchievementToast;
 import net.aspir3.betterbattle.fabric.ui.AchievementsScreen;
 import net.aspir3.betterbattle.fabric.ui.CreditsScreen;
 import net.aspir3.betterbattle.fabric.ui.MenuScreen;
+import net.aspir3.betterbattle.fabric.ui.PinnedAchievementsHud;
 import net.aspir3.betterbattle.fabric.ui.SettingsScreen;
 import net.aspir3.betterbattle.fabric.ui.SpbTimerToast;
 import net.aspir3.betterbattle.fabric.ui.TextPageScreen;
@@ -24,6 +25,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.loader.api.FabricLoader;
@@ -110,6 +112,8 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(BetterBattle.MOD_ID, "pinned_achievements"),
+            (graphics, delta) -> PinnedAchievementsHud.extract(graphics));
         registerCommands();
     }
 

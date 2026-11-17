@@ -321,6 +321,34 @@ public final class LocalDatabase implements AutoCloseable {
 
     // ---------------- meta ----------------
 
+    public synchronized java.util.Map<String, Long> modeMatchCounts() throws SQLException {
+        java.util.Map<String, Long> counts = new java.util.HashMap<String, Long>();
+        try (Statement s = conn.createStatement(); ResultSet r = s.executeQuery("SELECT mode, count(*) FROM matches GROUP BY mode")) {
+            while (r.next()) counts.put(r.getString(1), r.getLong(2));
+        }
+        return counts;
+    }
+
+    /** Local-only track totals. Hypixel lifetime totals aren't cached here, so leave those unknown. */
+    public synchronized java.util.Map<String, Long> achievementTotals() throws SQLException {
+        java.util.Map<String, Long> totals = new java.util.HashMap<String, Long>();
+        try (Statement s = conn.createStatement(); ResultSet r = s.executeQuery(
+                "SELECT count(DISTINCT lower(theme)), count(CASE WHEN grade = 'SS' THEN 1 END)," +
+                " count(CASE WHEN max_score > 0 AND score / max_score >= 0.9 AND mode IN ('solo','teams','pro') THEN 1 END)," +
+                " count(DISTINCT date(played_at / 1000, 'unixepoch')) FROM matches")) {
+            if (r.next()) {
+                totals.put("themes_built", r.getLong(1));
+                totals.put("ss_grades", r.getLong(2));
+                totals.put("crowd_90", r.getLong(3));
+                totals.put("days_played", r.getLong(4));
+            }
+        }
+        try (Statement s = conn.createStatement(); ResultSet r = s.executeQuery("SELECT count(*) FROM personal_bests")) {
+            if (r.next()) totals.put("pbs_set", r.getLong(1));
+        }
+        return totals;
+    }
+
     public synchronized int distinctThemesWon(String mode) throws SQLException {
         try (PreparedStatement p = conn.prepareStatement(
                 "SELECT count(DISTINCT lower(trim(theme))) FROM matches WHERE mode = ? AND placement = 1 AND trim(theme) != ''")) {
