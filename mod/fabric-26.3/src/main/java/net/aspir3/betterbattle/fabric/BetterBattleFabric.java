@@ -45,6 +45,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -111,6 +112,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             swap.onJoined();
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> core.onLeave());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> core.endRejoin());
 
         heads = new HeadLibrary(core.dir());
         swap = new SkinSwap(core.dir(), new SwapGame());
@@ -378,13 +380,17 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             Minecraft mc = Minecraft.getInstance();
             ServerData server = mc.getCurrentServer();
             if (server == null || mc.isLocalServer() || mc.getConnection() == null) return false;
+            boolean keepGame = inGame();
             mc.execute(() -> {
+                if (keepGame) core.holdGameForRejoin();
                 mc.disconnectFromWorld(Component.literal("Rejoining so Hypixel sees your new skin"));
                 ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), mc,
                     ServerAddress.parseString(server.ip), server, false, null);
             });
             return true;
         }
+
+        public void reconnectFailed() { runOnMainThread(core::endRejoin); }
 
         public void sendCommand(String command) {
             ClientPacketListener connection = Minecraft.getInstance().getConnection();

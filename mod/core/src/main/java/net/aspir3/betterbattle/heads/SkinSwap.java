@@ -45,6 +45,8 @@ public final class SkinSwap {
         boolean reconnect();
         /** True while in a Build Battle game (so /rejoin is worth sending after reconnecting). */
         boolean inGame();
+        /** The rejoin started by {@link #reconnect()} never got back on. */
+        void reconnectFailed();
     }
 
     public enum Step { IDLE, CHANGING_SKIN, RECONNECTING, WAITING, ASKED, RESTORING }
@@ -180,6 +182,7 @@ public final class SkinSwap {
             }
         } else if (step == Step.RECONNECTING && reconnecting && now >= reconnectAt) {
             reconnecting = false;
+            game.reconnectFailed();
             fail("Couldn't get back on the server, so your skin is going back.");
         } else if (step == Step.WAITING && now >= nextAt) {
             before = new HashSet<String>();
