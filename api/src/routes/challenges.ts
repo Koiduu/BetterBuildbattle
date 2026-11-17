@@ -28,8 +28,8 @@ const SubmissionIn = z.object({
 const day = () => new Date().toISOString().slice(0, 10);
 const ipOf = (req: Req) => ((req.headers["cf-connecting-ip"] as string) ?? (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.ip ?? "").trim();
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
-const normalise = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const linkCount = (s: string) => (s.match(/https?:\/\/|www\./gi) ?? []).length;
+const normalise = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const linkCount = (s: string) => (s.match(/(?:https?:\/\/)?www\.|https?:\/\//gi) ?? []).length;
 
 /** Counts one use of a daily allowance in Redis; true while still under max. */
 async function underDaily(key: string, max: number): Promise<boolean> {
@@ -85,7 +85,10 @@ export function challengeRoutes(app: Router) {
       `INSERT INTO challenge_submissions (title, description, mode, mc_name, contact, ip_hash)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [body.title, body.description, body.mode, mcName, contact, ipHash],
-    );
+    ).catch(async (e) => {
+      await redis.del(`bb:challenges:seen:${fingerprint}`);   // not saved, so let them try again
+      throw e;
+    });
     const id = row.rows[0].id as string;
 
     if (await underDaily("emails", EMAILS_PER_DAY)) {
