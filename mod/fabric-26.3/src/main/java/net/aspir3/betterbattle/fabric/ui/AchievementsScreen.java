@@ -137,6 +137,8 @@ public final class AchievementsScreen extends Screen {
             detail.addText(time == null ? "Locked" : "Unlocked " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(time)), time == null ? 0xFFAAAAAA : 0xFFAAFFAA);
             String progress = view.progress(selected);
             if (!progress.isEmpty()) detail.addText(progress, 0xFFFFFFFF);
+        } else {
+            detail.addText("Try another Show or Mode filter, then select an achievement to see its details.", 0xFFAAAAAA);
         }
         detail.setScrollAmount(0);
         boolean pinned = selected != null && config().pinnedAchievements().contains(selected.id);
@@ -150,7 +152,8 @@ public final class AchievementsScreen extends Screen {
     private void updateVisibility() {
         boolean panel = !narrow || detailOpen;
         list.visible = !narrow || !detailOpen;
-        detail.visible = pin.visible = panel;
+        detail.visible = panel;
+        pin.visible = panel && selected != null;
         back.visible = narrow && detailOpen;
     }
 
@@ -170,7 +173,7 @@ public final class AchievementsScreen extends Screen {
                 graphics.text(font, "Achievement details", panelX + 31, 50, 0xFFAAAAAA, false);
             } else graphics.text(font, "No achievements here", panelX + 9, 50, 0xFFAAAAAA, false);
         }
-        if (visibleCount == 0) graphics.centeredText(font, Component.literal("No achievements match these filters."), width / 2, height / 2, 0xFFAAAAAA);
+        if (visibleCount == 0 && list.visible) graphics.centeredText(font, Component.literal("No achievements match."), 8 + listWidth / 2, height / 2, 0xFFAAAAAA);
     }
 
     @Override public void onClose() { minecraft.gui.setScreen(parent); }

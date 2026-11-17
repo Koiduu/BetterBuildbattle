@@ -95,6 +95,14 @@ public final class AchievementBrowserTest {
             check(view.progress(Catalog.get("bb_wins_t1")).equals("Goal: 10"));
             view.totals.put("themes_built", 7L);
             check(view.progress(Catalog.get("themes_built_t1")).equals("7 / 25"));
+            view.totals.put("themes_built", 25L);
+            check(view.progress(Catalog.get("themes_built_t1")).equals("Complete, unlocks on next sync"));
+            view.totals.put("themes_built", 30L);
+            check(view.progress(Catalog.get("themes_built_t1")).equals("Complete, unlocks on next sync"));
+            view.unlocked.put("themes_built_t1", 1L);
+            check(view.progress(Catalog.get("themes_built_t1")).equals("25 / 25"));
+            view.totals.put("themes_built", -1L);
+            check(view.progress(Catalog.get("themes_built_t1")).equals("0 / 25"));
             check(AchievementBrowser.modes(Catalog.get("monochrome")).equals("Solo · Teams · Pro"));
             check(ids(view.entries(AchievementBrowser.Show.ALL, "gtb", config)).subList(0, 5)
                 .equals(ids(view.recommended(config, "gtb"))));

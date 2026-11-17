@@ -49,8 +49,9 @@ public final class AchievementBrowser {
     public String progress(Catalog.Entry e) {
         if (hidden(e) || e.threshold == null) return "";
         Long total = totals.get(e.track);
+        if (total != null && total >= e.threshold && !unlocked.containsKey(e.id)) return "Complete, unlocks on next sync";
         return total == null ? "Goal: " + String.format("%,d", e.threshold)
-            : String.format("%,d / %,d", Math.max(0, total), e.threshold);
+            : String.format("%,d / %,d", Math.max(0, Math.min(total, e.threshold)), e.threshold);
     }
 
     public List<Catalog.Entry> recommended(Config config, String mode) {

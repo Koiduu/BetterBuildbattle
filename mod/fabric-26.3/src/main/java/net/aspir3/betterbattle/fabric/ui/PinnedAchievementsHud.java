@@ -40,16 +40,26 @@ public final class PinnedAchievementsHud {
             List<FormattedCharSequence> description = client.font.split(Component.literal(entry.description), width - 14);
             List<FormattedCharSequence> name = client.font.split(Component.literal(entry.name), width - 54);
             String progress = view.progress(entry);
+            List<FormattedCharSequence> progressLines = client.font.split(Component.literal(progress), width - 14);
             int nameLines = Math.min(2, name.size()), lines = Math.min(3, description.size());
-            int h = 12 + nameLines * 10 + lines * 10 + (progress.isEmpty() ? 0 : 12);
+            int h = 12 + nameLines * 10 + lines * 10 + (progress.isEmpty() ? 0 : progressLines.size() * 10 + 2);
             graphics.fill(x, y, x + width, y + h, 0xB0000000);
             graphics.fill(x, y, x + 2, y + h, 0xFFFFAA00);
             for (int i = 0; i < nameLines; i++) graphics.text(client.font, name.get(i), x + 7, y + 6 + i * 10, 0xFFFFDD88, false);
             String ap = "+" + entry.points + " AP";
             graphics.text(client.font, ap, x + width - client.font.width(ap) - 7, y + 6, 0xFFFFAA00, false);
             int textY = y + 8 + nameLines * 10;
-            for (int i = 0; i < lines; i++) graphics.text(client.font, description.get(i), x + 7, textY + i * 10, 0xFFCCCCCC, false);
-            if (!progress.isEmpty()) graphics.text(client.font, progress, x + 7, textY + lines * 10 + 2, 0xFFAAAAAA, false);
+            for (int i = 0; i < lines; i++) {
+                if (i == lines - 1 && description.size() > lines) {
+                    StringBuilder last = new StringBuilder();
+                    description.get(i).accept((index, style, codePoint) -> { last.appendCodePoint(codePoint); return true; });
+                    String clipped = client.font.plainSubstrByWidth(last.toString(), width - 14 - client.font.width("..."));
+                    graphics.text(client.font, clipped + "...", x + 7, textY + i * 10, 0xFFCCCCCC, false);
+                } else graphics.text(client.font, description.get(i), x + 7, textY + i * 10, 0xFFCCCCCC, false);
+            }
+            if (!progress.isEmpty()) for (int i = 0; i < progressLines.size(); i++) {
+                graphics.text(client.font, progressLines.get(i), x + 7, textY + lines * 10 + 2 + i * 10, 0xFFAAAAAA, false);
+            }
             y += h + 4;
         }
     }
