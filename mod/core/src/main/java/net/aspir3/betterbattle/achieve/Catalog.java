@@ -18,6 +18,7 @@ public final class Catalog {
         public int points;
         public boolean secret;
         public Integer threshold;
+        public List<String> modes;
     }
 
     private static final class File {

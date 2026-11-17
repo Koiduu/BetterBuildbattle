@@ -33,6 +33,12 @@ public final class AchievementRules {
             new SpbGrounded(), new GoodEnough(), new AssemblyLine(), new PhotoFinish(), new FromTheBottom(), new Speedrunner(),
             new GtbFastGuess(), new GtbAllRounds(), new PaletteRollWin(), new OfflineGames(),
             new HeightLimit(), new NoFlying(), new LavaFloor(), new DefaultPlot(), new BackgroundSwitches()));
+        rules.addAll(Arrays.<Rule>asList(new SlabsOnly(), new MenuBlocksOnly(), new TeamsNoJumping(),
+            new WinStreak(25, "win_streak_25"), new WinStreak(50, "win_streak_50"), new GtbWinStreak()));
+        for (int score : new int[] {200, 300, 350, 400}) rules.add(new HighScoreWin(score));
+        for (String mode : new String[] {"solo", "teams", "pro"}) {
+            for (int themes : new int[] {10, 25, 50}) rules.add(new DistinctThemeWins(mode, themes));
+        }
         for (String tab : new String[] {"building", "colored", "natural", "functional", "redstone"}) {
             rules.add(new CreativeTabOnly(tab));
         }
@@ -57,6 +63,69 @@ public final class AchievementRules {
     }
 
     // ---- Palette challenges
+
+    private static boolean votedMode(MatchRecord m) {
+        return "solo".equals(m.mode) || "teams".equals(m.mode) || "pro".equals(m.mode);
+    }
+
+    public static final class SlabsOnly extends OnlyBlocks {
+        public String id() { return "slabs_only"; }
+        boolean allowed(String block) { return block.endsWith("_slab"); }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return votedMode(m) && super.onMatch(m, db);
+        }
+    }
+
+    public static final class MenuBlocksOnly extends OnlyBlocks {
+        private static final Set<String> BLOCKS = new HashSet<String>(Arrays.asList(
+            "crafting_table", "furnace", "blast_furnace", "smoker", "smithing_table", "cartography_table",
+            "loom", "stonecutter", "grindstone", "anvil", "chipped_anvil", "damaged_anvil",
+            "enchanting_table", "brewing_stand", "chest", "trapped_chest", "ender_chest", "barrel",
+            "hopper", "dispenser", "dropper"));
+        public String id() { return "menu_blocks_only"; }
+        boolean allowed(String block) { return BLOCKS.contains(block); }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return votedMode(m) && super.onMatch(m, db);
+        }
+    }
+
+    public static final class TeamsNoJumping implements Rule {
+        public String id() { return "teams_no_jumping"; }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return "teams".equals(m.mode) && m.won() && m.blocksPlaced > 0 && !m.jumped;
+        }
+    }
+
+    public static final class HighScoreWin implements Rule {
+        private final int score;
+        public HighScoreWin(int score) { this.score = score; }
+        public String id() { return "score_win_" + score; }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) {
+            return votedMode(m) && m.won() && m.score != null && m.score >= score;
+        }
+    }
+
+    public static final class GtbWinStreak implements Rule {
+        public String id() { return "gtb_win_streak_3"; }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            if (!"gtb".equals(m.mode) || !m.won()) return false;
+            List<MatchRecord> recent = db.recentMatches(3);
+            if (recent.size() != 3) return false;
+            for (MatchRecord match : recent) if (!"gtb".equals(match.mode) || !match.won()) return false;
+            return true;
+        }
+    }
+
+    public static final class DistinctThemeWins implements Rule {
+        private final String mode;
+        private final int themes;
+        public DistinctThemeWins(String mode, int themes) { this.mode = mode; this.themes = themes; }
+        public String id() { return mode + "_theme_wins_" + themes; }
+        public boolean onMatch(MatchRecord m, LocalDatabase db) throws Exception {
+            return mode.equals(m.mode) && m.won() && m.theme != null && !m.theme.trim().isEmpty()
+                && db.distinctThemesWon(mode) >= themes;
+        }
+    }
 
     public static final class Monochrome implements Rule {
         private static final String[] COLOURS = {

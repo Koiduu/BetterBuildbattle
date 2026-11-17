@@ -193,6 +193,7 @@ public class BetterBattleForge implements Platform {
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (mc.thePlayer.capabilities.allowFlying) game.onCanFly();
             if (mc.thePlayer.capabilities.isFlying) game.onFlying();
+            if (mc.gameSettings.keyBindJump.isKeyDown() || mc.thePlayer.motionY > 0) game.onJumping();
             if (!plotFound && plotTries++ < 200 && ticks % 5 == 0) findPlot(mc);
         } else {
             plotFound = false;

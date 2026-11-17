@@ -321,6 +321,14 @@ public final class LocalDatabase implements AutoCloseable {
 
     // ---------------- meta ----------------
 
+    public synchronized int distinctThemesWon(String mode) throws SQLException {
+        try (PreparedStatement p = conn.prepareStatement(
+                "SELECT count(DISTINCT lower(trim(theme))) FROM matches WHERE mode = ? AND placement = 1 AND trim(theme) != ''")) {
+            p.setString(1, mode);
+            try (ResultSet r = p.executeQuery()) { return r.next() ? r.getInt(1) : 0; }
+        }
+    }
+
     public synchronized String getMeta(String key, String def) throws SQLException {
         try (PreparedStatement p = conn.prepareStatement("SELECT value FROM meta WHERE key = ?")) {
             p.setString(1, key);

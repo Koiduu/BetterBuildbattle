@@ -306,6 +306,10 @@ public final class GameStateMachine {
         if (building()) current.flew = true;
     }
 
+    public void onJumping() {
+        if (building()) current.jumped = true;
+    }
+
     // ---- endings
 
     /** The player left the game (sidebar gone, server switch, disconnect). Keeps what was played. */

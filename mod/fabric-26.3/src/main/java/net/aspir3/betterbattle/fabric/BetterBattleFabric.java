@@ -211,6 +211,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (client.player.getAbilities().mayfly) game.onCanFly();
             if (client.player.getAbilities().flying) game.onFlying();
+            if (client.options.keyJump.isDown() || client.player.getDeltaMovement().y > 0) game.onJumping();
             if (!plotFound && plotTries++ < 200 && ticks % 5 == 0) findPlot(client);
         } else {
             plotFound = false;
