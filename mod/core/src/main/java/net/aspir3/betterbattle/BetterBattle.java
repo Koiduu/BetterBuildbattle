@@ -370,6 +370,7 @@ public final class BetterBattle {
         /** True if this unlocked it just now. */
         private boolean unlock(String id, MatchRecord m) throws Exception {
             if (!db.unlockLocal(id, m.playedAt)) return false;
+            config.unpin(id);
             final Catalog.Entry entry = Catalog.get(id);
             if (entry == null) return false;
             if (config.toasts) platform.showAchievement(entry);
@@ -429,6 +430,7 @@ public final class BetterBattle {
         private final List<Catalog.Entry> fromServer = new ArrayList<Catalog.Entry>();
 
         public void achievementConfirmed(String id) {
+            config.unpin(id);
             // Unlocked on the server first, e.g. from Hypixel stats. Shown together after the sync.
             Catalog.Entry entry = Catalog.get(id);
             if (entry != null) fromServer.add(entry);

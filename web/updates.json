@@ -1,6 +1,34 @@
 {
   "updates": [
     {
+      "version": "0.2.1",
+      "date": "2026-11-17",
+      "title": "Your Next Achievement",
+      "summary": "A proper home for your next goal: readable achievement details, daily recommendations and up to three pinned goals on your HUD.",
+      "sections": [
+        {
+          "heading": "Find your next goal",
+          "items": [
+            "Select an achievement to read its full description, modes, AP and unlock date in a side panel",
+            "Five daily recommendations, tailored to the modes you play and your progress",
+            "Filter by Solo, Teams, Pro, GTB or Speed Builders, and show locked, unlocked or pinned goals",
+            "Pin up to three achievements to a compact HUD; goals unpin when you unlock them",
+            "A full-page detail view on smaller screens, plus full-description hover tooltips"
+          ]
+        },
+        {
+          "heading": "Nineteen new challenges",
+          "items": [
+            "Half Measures: win using only slabs; Open for Business: win using only menu-opening blocks",
+            "Down to Earth: win Teams without jumping",
+            "Score milestones for winning with 200, 300, 350 or 400 points",
+            "Relentless and Unbeatable: 25- and 50-game win streaks; Mind over Matter: three consecutive GTB wins",
+            "Solo, Teams and Pro Repertoire: win on 10, 25 and 50 distinct themes in each mode"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.2.0",
       "date": "2026-11-14",
       "title": "The Speed Builders Update",

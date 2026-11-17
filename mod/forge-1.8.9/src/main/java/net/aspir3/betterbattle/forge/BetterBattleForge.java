@@ -7,9 +7,11 @@ import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.forge.ui.AchievementToasts;
 import net.aspir3.betterbattle.forge.ui.MenuScreen;
 import net.aspir3.betterbattle.forge.ui.SpbTimerOverlay;
+import net.aspir3.betterbattle.forge.ui.PinnedAchievementsHud;
 import net.aspir3.betterbattle.forge.ui.TextPageScreen;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
+import net.aspir3.betterbattle.game.JumpTracker;
 import net.aspir3.betterbattle.legacy.LegacyIds;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -53,7 +55,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Mod(modid = BetterBattle.MOD_ID, name = "Better Battle", version = BetterBattleForge.VERSION,
     clientSideOnly = true, acceptedMinecraftVersions = "[1.8.9]")
 public class BetterBattleForge implements Platform {
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.2.1";
     public static final String MC_VERSION = "1.8.9";
     static final String PREFIX = "§d§lBetter Battle §8» §7";
 
@@ -66,6 +68,7 @@ public class BetterBattleForge implements Platform {
     private GuiScreen pendingScreen;
     private boolean connected, joined, plotFound;
     private int plotTries, ticks;
+    private final JumpTracker jumpTracker = new JumpTracker();
 
     public static BetterBattleForge get() {
         return instance;
@@ -86,6 +89,7 @@ public class BetterBattleForge implements Platform {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
         MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
+        MinecraftForge.EVENT_BUS.register(new PinnedAchievementsHud());
     }
 
     BetterBattle core() {
@@ -179,6 +183,7 @@ public class BetterBattleForge implements Platform {
 
         if (!core.active() || mc.thePlayer == null || mc.theWorld == null) {
             blockChanges.clear();
+            jumpTracker.reset();
             return;
         }
         GameStateMachine game = core.game();
@@ -190,9 +195,13 @@ public class BetterBattleForge implements Platform {
         if (ticks % 10 == 0) readSidebar(mc);
         if (ticks % 100 == 0) readTabList(mc);
 
+        boolean jumped = jumpTracker.update(mc.thePlayer.onGround, mc.thePlayer.motionY,
+            mc.gameSettings.keyBindJump.isKeyDown(), mc.thePlayer.isOnLadder(),
+            mc.thePlayer.isInWater() || mc.thePlayer.isInLava(), mc.thePlayer.capabilities.isFlying);
         if (game.state() == GameStateMachine.State.BUILDING) {
             if (mc.thePlayer.capabilities.allowFlying) game.onCanFly();
             if (mc.thePlayer.capabilities.isFlying) game.onFlying();
+            if (jumped) game.onJumping();
             if (!plotFound && plotTries++ < 200 && ticks % 5 == 0) findPlot(mc);
         } else {
             plotFound = false;

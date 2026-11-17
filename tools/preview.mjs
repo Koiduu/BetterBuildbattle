@@ -2,12 +2,23 @@
 //   node tools/preview.mjs   →  http://localhost:5173
 // Response shapes match api/src/routes/public.ts.
 import http from "node:http";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
 const PORT = Number(process.env.PORT ?? 5173);
+const modVersion = JSON.parse(fs.readFileSync(path.join(WEB, "updates.json"), "utf8")).updates[0].version;
+const modJars = Object.fromEntries(["fabric", "forge"].map((loader) => {
+  const mc = loader === "fabric" ? "26.3" : "1.8.9";
+  const file = `betterbattle-${loader}-${mc}-${modVersion}.jar`;
+  const jarPath = path.resolve(WEB, "../mod", `${loader}-${mc}`, "build/libs", file);
+  if (!fs.existsSync(jarPath)) return [loader, null];
+  const body = fs.readFileSync(jarPath);
+  return [loader, { body, asset: { file, version: modVersion, size: body.length,
+    sha256: createHash("sha256").update(body).digest("hex"), download: `/download/${loader}` } }];
+}));
 
 const TITLES = [
   ["Rookie", 0, "#FFFFFF", false], ["Untrained", 100, "#AAAAAA", false], ["Amateur", 250, "#555555", false],
@@ -199,8 +210,18 @@ function weekly() {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
+  const loader = p.match(/^\/download\/(fabric|forge)$/)?.[1];
+  if (loader) {
+    const jar = modJars[loader];
+    if (!jar) return json(res, 503, { error: "download_unavailable" });
+    res.writeHead(200, { "content-type": "application/java-archive",
+      "content-disposition": `attachment; filename="${jar.asset.file}"`, "x-checksum-sha256": jar.asset.sha256 });
+    return res.end(jar.body);
+  }
   if (p.startsWith("/bb/v1/")) {
     const route = p.slice(6);
+    if (route === "/mod/latest") return json(res, 200, { version: modVersion, builtAt: new Date().toISOString(),
+      fabric: modJars.fabric?.asset ?? null, forge: modJars.forge?.asset ?? null });
     if (route.startsWith("/auth/") || route === "/me" || route.startsWith("/me/")) return accountRoute(req, res, route, url);
     if (route === "/stats") return json(res, 200, { rankedPlayers: 412806, modUsers: 318 });
     if (route === "/leaderboard") {

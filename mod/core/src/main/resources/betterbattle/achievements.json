@@ -1,5 +1,5 @@
 {
- "version": 4,
+ "version": 5,
  "achievements": [
   {
    "id": "bb_wins_t1",
@@ -9,7 +9,14 @@
    "points": 5,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_wins_t2",
@@ -19,7 +26,14 @@
    "points": 10,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_wins_t3",
@@ -29,7 +43,14 @@
    "points": 15,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_wins_t4",
@@ -39,7 +60,14 @@
    "points": 20,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_wins_t5",
@@ -49,7 +77,14 @@
    "points": 25,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 2500
+   "threshold": 2500,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_wins_t6",
@@ -59,7 +94,14 @@
    "points": 35,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 5000
+   "threshold": 5000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_wins_t7",
@@ -69,7 +111,14 @@
    "points": 50,
    "secret": false,
    "track": "bb_wins",
-   "threshold": 10000
+   "threshold": 10000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t1",
@@ -79,7 +128,14 @@
    "points": 5,
    "secret": false,
    "track": "bb_score",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t2",
@@ -89,7 +145,14 @@
    "points": 10,
    "secret": false,
    "track": "bb_score",
-   "threshold": 10000
+   "threshold": 10000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t3",
@@ -99,7 +162,14 @@
    "points": 15,
    "secret": false,
    "track": "bb_score",
-   "threshold": 50000
+   "threshold": 50000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t4",
@@ -109,7 +179,14 @@
    "points": 20,
    "secret": false,
    "track": "bb_score",
-   "threshold": 100000
+   "threshold": 100000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t5",
@@ -119,7 +196,14 @@
    "points": 30,
    "secret": false,
    "track": "bb_score",
-   "threshold": 200000
+   "threshold": 200000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t6",
@@ -129,7 +213,14 @@
    "points": 40,
    "secret": false,
    "track": "bb_score",
-   "threshold": 300000
+   "threshold": 300000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "bb_score_t7",
@@ -139,7 +230,14 @@
    "points": 60,
    "secret": false,
    "track": "bb_score",
-   "threshold": 500000
+   "threshold": 500000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t1",
@@ -149,7 +247,10 @@
    "points": 5,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t2",
@@ -159,7 +260,10 @@
    "points": 10,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t3",
@@ -169,7 +273,10 @@
    "points": 15,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t4",
@@ -179,7 +286,10 @@
    "points": 20,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t5",
@@ -189,7 +299,10 @@
    "points": 25,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 2500
+   "threshold": 2500,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t6",
@@ -199,7 +312,10 @@
    "points": 35,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 5000
+   "threshold": 5000,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_builds_t7",
@@ -209,7 +325,10 @@
    "points": 50,
    "secret": false,
    "track": "perfect_builds",
-   "threshold": 10000
+   "threshold": 10000,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "correct_guesses_t1",
@@ -219,7 +338,10 @@
    "points": 5,
    "secret": false,
    "track": "correct_guesses",
-   "threshold": 50
+   "threshold": 50,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "correct_guesses_t2",
@@ -229,7 +351,10 @@
    "points": 10,
    "secret": false,
    "track": "correct_guesses",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "correct_guesses_t3",
@@ -239,7 +364,10 @@
    "points": 15,
    "secret": false,
    "track": "correct_guesses",
-   "threshold": 2500
+   "threshold": 2500,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "correct_guesses_t4",
@@ -249,7 +377,10 @@
    "points": 20,
    "secret": false,
    "track": "correct_guesses",
-   "threshold": 5000
+   "threshold": 5000,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "correct_guesses_t5",
@@ -259,7 +390,10 @@
    "points": 30,
    "secret": false,
    "track": "correct_guesses",
-   "threshold": 10000
+   "threshold": 10000,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "correct_guesses_t6",
@@ -269,7 +403,10 @@
    "points": 45,
    "secret": false,
    "track": "correct_guesses",
-   "threshold": 20000
+   "threshold": 20000,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "pro_wins_t1",
@@ -279,7 +416,10 @@
    "points": 5,
    "secret": false,
    "track": "pro_wins",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "pro_wins_t2",
@@ -289,7 +429,10 @@
    "points": 10,
    "secret": false,
    "track": "pro_wins",
-   "threshold": 50
+   "threshold": 50,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "pro_wins_t3",
@@ -299,7 +442,10 @@
    "points": 15,
    "secret": false,
    "track": "pro_wins",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "pro_wins_t4",
@@ -309,7 +455,10 @@
    "points": 20,
    "secret": false,
    "track": "pro_wins",
-   "threshold": 250
+   "threshold": 250,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "pro_wins_t5",
@@ -319,7 +468,10 @@
    "points": 30,
    "secret": false,
    "track": "pro_wins",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "pro_wins_t6",
@@ -329,7 +481,10 @@
    "points": 45,
    "secret": false,
    "track": "pro_wins",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "teams_wins_t1",
@@ -339,7 +494,10 @@
    "points": 5,
    "secret": false,
    "track": "teams_wins",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "teams"
+   ]
   },
   {
    "id": "teams_wins_t2",
@@ -349,7 +507,10 @@
    "points": 10,
    "secret": false,
    "track": "teams_wins",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "teams"
+   ]
   },
   {
    "id": "teams_wins_t3",
@@ -359,7 +520,10 @@
    "points": 15,
    "secret": false,
    "track": "teams_wins",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "teams"
+   ]
   },
   {
    "id": "teams_wins_t4",
@@ -369,7 +533,10 @@
    "points": 20,
    "secret": false,
    "track": "teams_wins",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "teams"
+   ]
   },
   {
    "id": "teams_wins_t5",
@@ -379,7 +546,10 @@
    "points": 30,
    "secret": false,
    "track": "teams_wins",
-   "threshold": 2500
+   "threshold": 2500,
+   "modes": [
+    "teams"
+   ]
   },
   {
    "id": "teams_wins_t6",
@@ -389,7 +559,10 @@
    "points": 45,
    "secret": false,
    "track": "teams_wins",
-   "threshold": 5000
+   "threshold": 5000,
+   "modes": [
+    "teams"
+   ]
   },
   {
    "id": "solo_wins_t1",
@@ -399,7 +572,10 @@
    "points": 5,
    "secret": false,
    "track": "solo_wins",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "solo_wins_t2",
@@ -409,7 +585,10 @@
    "points": 10,
    "secret": false,
    "track": "solo_wins",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "solo_wins_t3",
@@ -419,7 +598,10 @@
    "points": 15,
    "secret": false,
    "track": "solo_wins",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "solo_wins_t4",
@@ -429,7 +611,10 @@
    "points": 20,
    "secret": false,
    "track": "solo_wins",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "solo_wins_t5",
@@ -439,7 +624,10 @@
    "points": 30,
    "secret": false,
    "track": "solo_wins",
-   "threshold": 2500
+   "threshold": 2500,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "solo_wins_t6",
@@ -449,7 +637,10 @@
    "points": 45,
    "secret": false,
    "track": "solo_wins",
-   "threshold": 5000
+   "threshold": 5000,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "spb_wins_t1",
@@ -459,7 +650,10 @@
    "points": 5,
    "secret": false,
    "track": "spb_wins",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wins_t2",
@@ -469,7 +663,10 @@
    "points": 10,
    "secret": false,
    "track": "spb_wins",
-   "threshold": 50
+   "threshold": 50,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wins_t3",
@@ -479,7 +676,10 @@
    "points": 15,
    "secret": false,
    "track": "spb_wins",
-   "threshold": 250
+   "threshold": 250,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wins_t4",
@@ -489,7 +689,10 @@
    "points": 20,
    "secret": false,
    "track": "spb_wins",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wins_t5",
@@ -499,7 +702,10 @@
    "points": 30,
    "secret": false,
    "track": "spb_wins",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wins_t6",
@@ -509,7 +715,10 @@
    "points": 45,
    "secret": false,
    "track": "spb_wins",
-   "threshold": 2500
+   "threshold": 2500,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "themes_built_t1",
@@ -519,7 +728,14 @@
    "points": 5,
    "secret": false,
    "track": "themes_built",
-   "threshold": 25
+   "threshold": 25,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "themes_built_t2",
@@ -529,7 +745,14 @@
    "points": 10,
    "secret": false,
    "track": "themes_built",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "themes_built_t3",
@@ -539,7 +762,14 @@
    "points": 20,
    "secret": false,
    "track": "themes_built",
-   "threshold": 250
+   "threshold": 250,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "themes_built_t4",
@@ -549,7 +779,14 @@
    "points": 30,
    "secret": false,
    "track": "themes_built",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "themes_built_t5",
@@ -559,7 +796,14 @@
    "points": 50,
    "secret": false,
    "track": "themes_built",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "ss_grades_t1",
@@ -569,7 +813,14 @@
    "points": 5,
    "secret": false,
    "track": "ss_grades",
-   "threshold": 1
+   "threshold": 1,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "ss_grades_t2",
@@ -579,7 +830,14 @@
    "points": 10,
    "secret": false,
    "track": "ss_grades",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "ss_grades_t3",
@@ -589,7 +847,14 @@
    "points": 20,
    "secret": false,
    "track": "ss_grades",
-   "threshold": 50
+   "threshold": 50,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "ss_grades_t4",
@@ -599,7 +864,14 @@
    "points": 30,
    "secret": false,
    "track": "ss_grades",
-   "threshold": 250
+   "threshold": 250,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "ss_grades_t5",
@@ -609,7 +881,14 @@
    "points": 50,
    "secret": false,
    "track": "ss_grades",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "crowd_90_t1",
@@ -619,7 +898,12 @@
    "points": 10,
    "secret": false,
    "track": "crowd_90",
-   "threshold": 1
+   "threshold": 1,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "crowd_90_t2",
@@ -629,7 +913,12 @@
    "points": 15,
    "secret": false,
    "track": "crowd_90",
-   "threshold": 10
+   "threshold": 10,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "crowd_90_t3",
@@ -639,7 +928,12 @@
    "points": 25,
    "secret": false,
    "track": "crowd_90",
-   "threshold": 50
+   "threshold": 50,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "crowd_90_t4",
@@ -649,7 +943,12 @@
    "points": 40,
    "secret": false,
    "track": "crowd_90",
-   "threshold": 200
+   "threshold": 200,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "precision_100_t1",
@@ -659,7 +958,10 @@
    "points": 5,
    "secret": false,
    "track": "precision_100",
-   "threshold": 1
+   "threshold": 1,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "precision_100_t2",
@@ -669,7 +971,10 @@
    "points": 10,
    "secret": false,
    "track": "precision_100",
-   "threshold": 25
+   "threshold": 25,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "precision_100_t3",
@@ -679,7 +984,10 @@
    "points": 20,
    "secret": false,
    "track": "precision_100",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "precision_100_t4",
@@ -689,7 +997,10 @@
    "points": 30,
    "secret": false,
    "track": "precision_100",
-   "threshold": 500
+   "threshold": 500,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "precision_100_t5",
@@ -699,7 +1010,10 @@
    "points": 50,
    "secret": false,
    "track": "precision_100",
-   "threshold": 1000
+   "threshold": 1000,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "pbs_set_t1",
@@ -709,7 +1023,10 @@
    "points": 5,
    "secret": false,
    "track": "pbs_set",
-   "threshold": 1
+   "threshold": 1,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "pbs_set_t2",
@@ -719,7 +1036,10 @@
    "points": 10,
    "secret": false,
    "track": "pbs_set",
-   "threshold": 25
+   "threshold": 25,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "pbs_set_t3",
@@ -729,7 +1049,10 @@
    "points": 20,
    "secret": false,
    "track": "pbs_set",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "pbs_set_t4",
@@ -739,7 +1062,10 @@
    "points": 35,
    "secret": false,
    "track": "pbs_set",
-   "threshold": 250
+   "threshold": 250,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "days_played_t1",
@@ -749,7 +1075,14 @@
    "points": 5,
    "secret": false,
    "track": "days_played",
-   "threshold": 7
+   "threshold": 7,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "days_played_t2",
@@ -759,7 +1092,14 @@
    "points": 15,
    "secret": false,
    "track": "days_played",
-   "threshold": 30
+   "threshold": 30,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "days_played_t3",
@@ -769,7 +1109,14 @@
    "points": 30,
    "secret": false,
    "track": "days_played",
-   "threshold": 100
+   "threshold": 100,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "days_played_t4",
@@ -779,7 +1126,243 @@
    "points": 60,
    "secret": false,
    "track": "days_played",
-   "threshold": 365
+   "threshold": 365,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
+  },
+  {
+   "id": "slabs_only",
+   "name": "Half Measures",
+   "description": "Win using only slabs",
+   "category": "challenge",
+   "points": 25,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
+  },
+  {
+   "id": "menu_blocks_only",
+   "name": "Open for Business",
+   "description": "Win using only blocks that open a menu",
+   "category": "challenge",
+   "points": 30,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
+  },
+  {
+   "id": "teams_no_jumping",
+   "name": "Down to Earth",
+   "description": "Win a Teams game without jumping",
+   "category": "challenge",
+   "points": 25,
+   "secret": false,
+   "modes": [
+    "teams"
+   ]
+  },
+  {
+   "id": "score_win_200",
+   "name": "Double Century",
+   "description": "Win a voted game with at least 200 points",
+   "category": "challenge",
+   "points": 15,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
+  },
+  {
+   "id": "score_win_300",
+   "name": "Triple Century",
+   "description": "Win a voted game with at least 300 points",
+   "category": "challenge",
+   "points": 25,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
+  },
+  {
+   "id": "score_win_350",
+   "name": "High Achiever",
+   "description": "Win a voted game with at least 350 points",
+   "category": "challenge",
+   "points": 35,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
+  },
+  {
+   "id": "score_win_400",
+   "name": "Four Hundred Club",
+   "description": "Win a voted game with at least 400 points",
+   "category": "challenge",
+   "points": 50,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
+  },
+  {
+   "id": "win_streak_25",
+   "name": "Relentless",
+   "description": "Win 25 games in a row",
+   "category": "challenge",
+   "points": 60,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
+  },
+  {
+   "id": "win_streak_50",
+   "name": "Unbeatable",
+   "description": "Win 50 games in a row",
+   "category": "challenge",
+   "points": 75,
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
+  },
+  {
+   "id": "gtb_win_streak_3",
+   "name": "Mind over Matter",
+   "description": "Win 3 consecutive games, all in Guess The Build",
+   "category": "gtb",
+   "points": 20,
+   "secret": false,
+   "modes": [
+    "gtb"
+   ]
+  },
+  {
+   "id": "solo_theme_wins_10",
+   "name": "Solo Repertoire I",
+   "description": "Win on 10 distinct themes in Solo",
+   "category": "challenge",
+   "points": 10,
+   "secret": false,
+   "modes": [
+    "solo"
+   ]
+  },
+  {
+   "id": "solo_theme_wins_25",
+   "name": "Solo Repertoire II",
+   "description": "Win on 25 distinct themes in Solo",
+   "category": "challenge",
+   "points": 20,
+   "secret": false,
+   "modes": [
+    "solo"
+   ]
+  },
+  {
+   "id": "solo_theme_wins_50",
+   "name": "Solo Repertoire III",
+   "description": "Win on 50 distinct themes in Solo",
+   "category": "challenge",
+   "points": 35,
+   "secret": false,
+   "modes": [
+    "solo"
+   ]
+  },
+  {
+   "id": "teams_theme_wins_10",
+   "name": "Teams Repertoire I",
+   "description": "Win on 10 distinct themes in Teams",
+   "category": "challenge",
+   "points": 10,
+   "secret": false,
+   "modes": [
+    "teams"
+   ]
+  },
+  {
+   "id": "teams_theme_wins_25",
+   "name": "Teams Repertoire II",
+   "description": "Win on 25 distinct themes in Teams",
+   "category": "challenge",
+   "points": 20,
+   "secret": false,
+   "modes": [
+    "teams"
+   ]
+  },
+  {
+   "id": "teams_theme_wins_50",
+   "name": "Teams Repertoire III",
+   "description": "Win on 50 distinct themes in Teams",
+   "category": "challenge",
+   "points": 35,
+   "secret": false,
+   "modes": [
+    "teams"
+   ]
+  },
+  {
+   "id": "pro_theme_wins_10",
+   "name": "Pro Repertoire I",
+   "description": "Win on 10 distinct themes in Pro",
+   "category": "challenge",
+   "points": 10,
+   "secret": false,
+   "modes": [
+    "pro"
+   ]
+  },
+  {
+   "id": "pro_theme_wins_25",
+   "name": "Pro Repertoire II",
+   "description": "Win on 25 distinct themes in Pro",
+   "category": "challenge",
+   "points": 20,
+   "secret": false,
+   "modes": [
+    "pro"
+   ]
+  },
+  {
+   "id": "pro_theme_wins_50",
+   "name": "Pro Repertoire III",
+   "description": "Win on 50 distinct themes in Pro",
+   "category": "challenge",
+   "points": 35,
+   "secret": false,
+   "modes": [
+    "pro"
+   ]
   },
   {
    "id": "all_wood",
@@ -787,7 +1370,12 @@
    "description": "Win a game using only wood-type blocks",
    "category": "challenge",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "monochrome",
@@ -795,7 +1383,12 @@
    "description": "Win a game using blocks of a single colour family (all wool, concrete, terracotta and glass of one colour)",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "minimalist",
@@ -803,7 +1396,10 @@
    "description": "Win a Solo game while placing fewer than 100 blocks",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "one_block_wonder",
@@ -811,7 +1407,12 @@
    "description": "Get 1st place using only one block type",
    "category": "challenge",
    "points": 40,
-   "secret": true
+   "secret": true,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "rainbow",
@@ -819,7 +1420,12 @@
    "description": "Win a build that uses every colour of the rainbow: red, orange, yellow, green, blue and purple",
    "category": "challenge",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "stone_age",
@@ -827,7 +1433,12 @@
    "description": "Win using only stone-related blocks (stone, cobblestone, stone bricks, deepslate, andesite, diorite, granite, blackstone, tuff)",
    "category": "challenge",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "nether_native",
@@ -835,7 +1446,12 @@
    "description": "Win using only blocks found in the Nether",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "hotbar_hero",
@@ -843,7 +1459,12 @@
    "description": "Win using only a hotbar's worth of blocks (9 block types or fewer)",
    "category": "challenge",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "block_hoarder",
@@ -851,7 +1472,12 @@
    "description": "Place 100 different types of blocks in one match",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "old_school",
@@ -859,7 +1485,12 @@
    "description": "Win using only blocks that existed in 1.8.9 (on a 26.3 client)",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "steam_engine",
@@ -867,7 +1498,12 @@
    "description": "Win a build that uses both water and lava",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "tab_building",
@@ -875,7 +1511,12 @@
    "description": "Win using only blocks from the Building Blocks tab",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "tab_colored",
@@ -883,7 +1524,12 @@
    "description": "Win using only blocks from the Colored Blocks tab",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "tab_natural",
@@ -891,7 +1537,12 @@
    "description": "Win using only blocks from the Natural Blocks tab",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "tab_functional",
@@ -899,7 +1550,12 @@
    "description": "Win using only blocks from the Functional Blocks tab",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "tab_redstone",
@@ -907,7 +1563,12 @@
    "description": "Win using only blocks from the Redstone Blocks tab",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "sky_high",
@@ -915,7 +1576,12 @@
    "description": "Win a build that reaches the plot's 50-block height limit",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "grounded",
@@ -923,7 +1589,12 @@
    "description": "Win a build without flying",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "floor_is_lava",
@@ -931,7 +1602,12 @@
    "description": "Win a game with your floor set to lava",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "factory_settings",
@@ -939,7 +1615,12 @@
    "description": "Win a game without changing your floor or backdrop",
    "category": "challenge",
    "points": 10,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "indecisive",
@@ -947,7 +1628,12 @@
    "description": "Switch your plot backdrop 5 times in one match",
    "category": "challenge",
    "points": 10,
-   "secret": true
+   "secret": true,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "mode_marathon",
@@ -955,7 +1641,14 @@
    "description": "Win in Solo, Teams, Pro, Guess The Build and Speed Builders within one hour",
    "category": "challenge",
    "points": 40,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "hat_trick",
@@ -963,7 +1656,14 @@
    "description": "Win 3 games in a row",
    "category": "challenge",
    "points": 10,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "unstoppable",
@@ -971,7 +1671,14 @@
    "description": "Win 10 games in a row",
    "category": "challenge",
    "points": 40,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "night_owl",
@@ -979,7 +1686,14 @@
    "description": "Win a game between 2 AM and 5 AM your local time",
    "category": "challenge",
    "points": 10,
-   "secret": true
+   "secret": true,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "century_day",
@@ -987,7 +1701,14 @@
    "description": "Play 100 games in a single day",
    "category": "challenge",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "comeback",
@@ -995,7 +1716,14 @@
    "description": "Win the game right after finishing last",
    "category": "challenge",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "perfect_crowd",
@@ -1003,7 +1731,12 @@
    "description": "Get a 100% crowd score: every voter gave you Legendary",
    "category": "challenge",
    "points": 50,
-   "secret": true
+   "secret": true,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "ss_streak",
@@ -1011,7 +1744,14 @@
    "description": "Earn 5 SS grades in a row",
    "category": "challenge",
    "points": 30,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "underdog",
@@ -1019,7 +1759,10 @@
    "description": "Win a 16-player Solo game",
    "category": "challenge",
    "points": 10,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo"
+   ]
   },
   {
    "id": "spb_sweep",
@@ -1027,7 +1770,10 @@
    "description": "Get a Perfect Build in every round of a Speed Builders game you win",
    "category": "speed_builders",
    "points": 30,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wr_close",
@@ -1035,7 +1781,10 @@
    "description": "Finish a Speed Builders round within 0.5s of the world record",
    "category": "speed_builders",
    "points": 25,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_wr",
@@ -1043,7 +1792,10 @@
    "description": "Set a Better Battle world record on any Speed Builders build",
    "category": "speed_builders",
    "points": 75,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_no_break",
@@ -1051,7 +1803,10 @@
    "description": "Win a Speed Builders game without breaking a single block: no left clicks, no misplacing",
    "category": "speed_builders",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_grounded",
@@ -1059,7 +1814,10 @@
    "description": "Win a Speed Builders game without flying",
    "category": "speed_builders",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_good_enough",
@@ -1067,7 +1825,10 @@
    "description": "Win a Speed Builders game without getting a Perfect Build in every round",
    "category": "speed_builders",
    "points": 10,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_assembly_line",
@@ -1075,7 +1836,10 @@
    "description": "Win a Speed Builders game placing one block type at a time: once you switch blocks, you can't go back that round",
    "category": "speed_builders",
    "points": 35,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_photo_finish",
@@ -1083,7 +1847,10 @@
    "description": "Get a Perfect Build with less than a second left on the clock",
    "category": "speed_builders",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_from_the_bottom",
@@ -1091,7 +1858,10 @@
    "description": "Win a Speed Builders game after having the slowest Perfect Build in round 1",
    "category": "speed_builders",
    "points": 30,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "spb_speedrunner",
@@ -1099,7 +1869,10 @@
    "description": "Win a Speed Builders game with a Perfect Build every round, each with more than half the clock left",
    "category": "speed_builders",
    "points": 50,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "speed_builders"
+   ]
   },
   {
    "id": "gtb_first_guess",
@@ -1107,7 +1880,10 @@
    "description": "Guess a build within 3 seconds of the round starting",
    "category": "gtb",
    "points": 15,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "gtb_all_rounds",
@@ -1115,7 +1891,10 @@
    "description": "Correctly guess every round in one Guess The Build game",
    "category": "gtb",
    "points": 30,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "gtb"
+   ]
   },
   {
    "id": "welcome",
@@ -1123,7 +1902,14 @@
    "description": "Play your first game with Better Battle installed",
    "category": "better_battle",
    "points": 5,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "random_palette_win",
@@ -1131,7 +1917,12 @@
    "description": "Win using only blocks from a /bb palette roll",
    "category": "better_battle",
    "points": 20,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro"
+   ]
   },
   {
    "id": "pinned",
@@ -1139,7 +1930,14 @@
    "description": "Pin a build to your profile",
    "category": "better_battle",
    "points": 5,
-   "secret": false
+   "secret": false,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   },
   {
    "id": "offline_saver",
@@ -1147,7 +1945,14 @@
    "description": "Play 10 games while the Better Battle server is unreachable",
    "category": "better_battle",
    "points": 10,
-   "secret": true
+   "secret": true,
+   "modes": [
+    "solo",
+    "teams",
+    "pro",
+    "gtb",
+    "speed_builders"
+   ]
   }
  ]
 }

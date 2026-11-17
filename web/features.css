@@ -10,6 +10,14 @@
 .update-sections h3 { margin: 0 0 6px; font: 600 16px var(--display); color: var(--gold); }
 .update-sections ul, ul.plain { margin: 0; padding-left: 18px; color: var(--soft); }
 .update-sections li, ul.plain li { margin: 3px 0; }
+.update-downloads { border-top: 2px solid var(--edge); padding-top: 14px; margin-top: 14px; }
+.update.latest .update-downloads { border-top: 0; border-bottom: 2px solid var(--edge); margin: 14px 0 18px; padding: 0 0 14px; }
+.download-choices { display: flex; flex-wrap: wrap; gap: 12px 16px; }
+.download-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 100%; }
+.download-choice .btn { white-space: normal; height: auto; min-height: 36px; padding: 8px 16px; text-align: center; }
+.download-choice .sub { margin: 0; }
+.update-downloads > .sub { margin: 10px 0 0; }
+.get-mod > .update-downloads { width: 100%; margin-top: 0; }
 ul.plain { padding-left: 0; list-style: none; }
 
 /* Compare */

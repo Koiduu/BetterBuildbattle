@@ -25,7 +25,7 @@ public final class LegacyIds {
             {"quartz_ore", "nether_quartz_ore"}, {"noteblock", "note_block"}, {"golden_rail", "powered_rail"},
             {"snow_layer", "snow"}, {"reeds", "sugar_cane"}, {"fence", "oak_fence"}, {"fence_gate", "oak_fence_gate"},
             {"trapdoor", "oak_trapdoor"}, {"wooden_pressure_plate", "oak_pressure_plate"}, {"wooden_button", "oak_button"},
-            {"stone_slab", "smooth_stone_slab"}, {"double_stone_slab", "smooth_stone"}, {"mob_spawner", "spawner"},
+            {"mob_spawner", "spawner"},
             {"lit_redstone_lamp", "redstone_lamp"}, {"unpowered_repeater", "repeater"}, {"powered_repeater", "repeater"},
             {"unpowered_comparator", "comparator"}, {"powered_comparator", "comparator"}, {"monster_egg", "infested_stone"},
             {"flowing_water", "water"}, {"flowing_lava", "lava"}, {"tallgrass", "short_grass"}, {"slime", "slime_block"},
@@ -58,7 +58,13 @@ public final class LegacyIds {
         if (b.equals("leaves")) return WOODS[meta & 3] + "_leaves";
         if (b.equals("leaves2")) return WOODS[4 + (meta & 1)] + "_leaves";
         if (b.equals("sapling")) return WOODS[Math.min(meta & 7, 5)] + "_sapling";
-        if (b.equals("wooden_slab")) return WOODS[Math.min(meta & 7, 5)] + "_slab";
+        if (b.equals("wooden_slab") || b.equals("double_wooden_slab")) return WOODS[Math.min(meta & 7, 5)] + "_slab";
+        if (b.equals("stone_slab") || b.equals("double_stone_slab")) {
+            String[] slabs = {"smooth_stone_slab", "sandstone_slab", "petrified_oak_slab", "cobblestone_slab",
+                "brick_slab", "stone_brick_slab", "nether_brick_slab", "quartz_slab"};
+            return slabs[meta & 7];
+        }
+        if (b.equals("stone_slab2") || b.equals("double_stone_slab2")) return "red_sandstone_slab";
         if (b.equals("sand")) return meta == 1 ? "red_sand" : "sand";
         if (b.equals("dirt")) return meta == 1 ? "coarse_dirt" : meta == 2 ? "podzol" : "dirt";
         if (b.equals("sandstone")) return meta == 1 ? "chiseled_sandstone" : meta == 2 ? "cut_sandstone" : "sandstone";

@@ -7,7 +7,7 @@
 # one_offs: unlocked by a rule class in mod/core/.../achieve (rule: <ClassName>).
 # secret: hidden in the menu until unlocked.
 
-catalog_version: 4
+catalog_version: 5
 
 tracks:
   # ---------------- Build Battle, from Hypixel totals (retroactive) ----------------
@@ -15,48 +15,56 @@ tracks:
     name: "Winner Winner"
     description: "Win {n} Build Battle games"
     category: general
+    modes: [solo, teams, pro, gtb, speed_builders]
     tiers: [10, 100, 500, 1000, 2500, 5000, 10000]
     points: [5, 10, 15, 20, 25, 35, 50]
   - track: bb_score
     name: "Score Climber"
     description: "Reach {n} Build Battle score"
     category: general
+    modes: [solo, teams, pro, gtb, speed_builders]
     tiers: [1000, 10000, 50000, 100000, 200000, 300000, 500000]
     points: [5, 10, 15, 20, 30, 40, 60]
   - track: perfect_builds
     name: "Flawless"
     description: "Get {n} Perfect Builds"
     category: speed_builders
+    modes: [speed_builders]
     tiers: [10, 100, 500, 1000, 2500, 5000, 10000]
     points: [5, 10, 15, 20, 25, 35, 50]
   - track: correct_guesses
     name: "Mind Reader"
     description: "Correctly guess {n} builds in Guess The Build"
     category: gtb
+    modes: [gtb]
     tiers: [50, 500, 2500, 5000, 10000, 20000]
     points: [5, 10, 15, 20, 30, 45]
   - track: pro_wins
     name: "Professional"
     description: "Win {n} Pro games"
     category: pro
+    modes: [pro]
     tiers: [10, 50, 100, 250, 500, 1000]
     points: [5, 10, 15, 20, 30, 45]
   - track: teams_wins
     name: "Dynamic Duo"
     description: "Win {n} Teams games"
     category: teams
+    modes: [teams]
     tiers: [10, 100, 500, 1000, 2500, 5000]
     points: [5, 10, 15, 20, 30, 45]
   - track: solo_wins
     name: "Lone Architect"
     description: "Win {n} Solo games"
     category: solo
+    modes: [solo]
     tiers: [10, 100, 500, 1000, 2500, 5000]
     points: [5, 10, 15, 20, 30, 45]
   - track: spb_wins
     name: "Speed Demon"
     description: "Win {n} Speed Builders games"
     category: speed_builders
+    modes: [speed_builders]
     tiers: [10, 50, 250, 500, 1000, 2500]
     points: [5, 10, 15, 20, 30, 45]
 
@@ -65,63 +73,228 @@ tracks:
     name: "Theme Collector"
     description: "Build {n} different themes"
     category: better_battle
+    modes: [solo, teams, pro, gtb, speed_builders]
     tiers: [25, 100, 250, 500, 1000]
     points: [5, 10, 20, 30, 50]
   - track: ss_grades
     name: "Double S"
     description: "Earn {n} SS grades"
     category: better_battle
+    modes: [solo, teams, pro, gtb, speed_builders]
     tiers: [1, 10, 50, 250, 1000]
     points: [5, 10, 20, 30, 50]
   - track: crowd_90
     name: "Crowd Pleaser"
     description: "Finish {n} games with a crowd score of 90% or higher"
     category: better_battle
+    modes: [solo, teams, pro]
     tiers: [1, 10, 50, 200]
     points: [10, 15, 25, 40]
   - track: precision_100
     name: "Zero Waste"
     description: "Finish {n} Speed Builders rounds at 100% precision"
     category: speed_builders
+    modes: [speed_builders]
     tiers: [1, 25, 100, 500, 1000]
     points: [5, 10, 20, 30, 50]
   - track: pbs_set
     name: "Personal Best"
     description: "Set {n} Speed Builders personal bests"
     category: speed_builders
+    modes: [speed_builders]
     tiers: [1, 25, 100, 250]
     points: [5, 10, 20, 35]
   - track: days_played
     name: "Regular"
     description: "Play on {n} different days"
     category: better_battle
+    modes: [solo, teams, pro, gtb, speed_builders]
     tiers: [7, 30, 100, 365]
     points: [5, 15, 30, 60]
 
 one_offs:
+
+  # ---------------- Score, palette and repertoire challenges ----------------
+  - id: slabs_only
+    name: "Half Measures"
+    description: "Win using only slabs"
+    category: challenge
+    modes: [solo, teams, pro]
+    points: 25
+    rule: SlabsOnly
+
+  - id: menu_blocks_only
+    name: "Open for Business"
+    description: "Win using only blocks that open a menu"
+    category: challenge
+    modes: [solo, teams, pro]
+    points: 30
+    rule: MenuBlocksOnly
+
+  - id: teams_no_jumping
+    name: "Down to Earth"
+    description: "Win a Teams game without jumping"
+    category: challenge
+    modes: [teams]
+    points: 25
+    rule: TeamsNoJumping
+
+  - id: score_win_200
+    name: "Double Century"
+    description: "Win a voted game with at least 200 points"
+    category: challenge
+    modes: [solo, teams, pro]
+    points: 15
+    rule: HighScoreWin
+
+  - id: score_win_300
+    name: "Triple Century"
+    description: "Win a voted game with at least 300 points"
+    category: challenge
+    modes: [solo, teams, pro]
+    points: 25
+    rule: HighScoreWin
+
+  - id: score_win_350
+    name: "High Achiever"
+    description: "Win a voted game with at least 350 points"
+    category: challenge
+    modes: [solo, teams, pro]
+    points: 35
+    rule: HighScoreWin
+
+  - id: score_win_400
+    name: "Four Hundred Club"
+    description: "Win a voted game with at least 400 points"
+    category: challenge
+    modes: [solo, teams, pro]
+    points: 50
+    rule: HighScoreWin
+
+  - id: win_streak_25
+    name: "Relentless"
+    description: "Win 25 games in a row"
+    category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
+    points: 60
+    rule: WinStreak
+
+  - id: win_streak_50
+    name: "Unbeatable"
+    description: "Win 50 games in a row"
+    category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
+    points: 75
+    rule: WinStreak
+
+  - id: gtb_win_streak_3
+    name: "Mind over Matter"
+    description: "Win 3 consecutive games, all in Guess The Build"
+    category: gtb
+    modes: [gtb]
+    points: 20
+    rule: GtbWinStreak
+
+  - id: solo_theme_wins_10
+    name: "Solo Repertoire I"
+    description: "Win on 10 distinct themes in Solo"
+    category: challenge
+    modes: [solo]
+    points: 10
+    rule: DistinctThemeWins
+
+  - id: solo_theme_wins_25
+    name: "Solo Repertoire II"
+    description: "Win on 25 distinct themes in Solo"
+    category: challenge
+    modes: [solo]
+    points: 20
+    rule: DistinctThemeWins
+
+  - id: solo_theme_wins_50
+    name: "Solo Repertoire III"
+    description: "Win on 50 distinct themes in Solo"
+    category: challenge
+    modes: [solo]
+    points: 35
+    rule: DistinctThemeWins
+
+  - id: teams_theme_wins_10
+    name: "Teams Repertoire I"
+    description: "Win on 10 distinct themes in Teams"
+    category: challenge
+    modes: [teams]
+    points: 10
+    rule: DistinctThemeWins
+
+  - id: teams_theme_wins_25
+    name: "Teams Repertoire II"
+    description: "Win on 25 distinct themes in Teams"
+    category: challenge
+    modes: [teams]
+    points: 20
+    rule: DistinctThemeWins
+
+  - id: teams_theme_wins_50
+    name: "Teams Repertoire III"
+    description: "Win on 50 distinct themes in Teams"
+    category: challenge
+    modes: [teams]
+    points: 35
+    rule: DistinctThemeWins
+
+  - id: pro_theme_wins_10
+    name: "Pro Repertoire I"
+    description: "Win on 10 distinct themes in Pro"
+    category: challenge
+    modes: [pro]
+    points: 10
+    rule: DistinctThemeWins
+
+  - id: pro_theme_wins_25
+    name: "Pro Repertoire II"
+    description: "Win on 25 distinct themes in Pro"
+    category: challenge
+    modes: [pro]
+    points: 20
+    rule: DistinctThemeWins
+
+  - id: pro_theme_wins_50
+    name: "Pro Repertoire III"
+    description: "Win on 50 distinct themes in Pro"
+    category: challenge
+    modes: [pro]
+    points: 35
+    rule: DistinctThemeWins
+
+
   # ---------------- Palette challenges ----------------
   - id: all_wood
     name: "Lumberjack"
     description: "Win a game using only wood-type blocks"
     category: challenge
+    modes: [solo, teams, pro]
     points: 20
     rule: AllWood
   - id: monochrome
     name: "Monochrome"
     description: "Win a game using blocks of a single colour family (all wool, concrete, terracotta and glass of one colour)"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: Monochrome
   - id: minimalist
     name: "Less Is More"
     description: "Win a Solo game while placing fewer than 100 blocks"
     category: challenge
+    modes: [solo]
     points: 25
     rule: Minimalist
   - id: one_block_wonder
     name: "One Block Wonder"
     description: "Get 1st place using only one block type"
     category: challenge
+    modes: [solo, teams, pro]
     points: 40
     secret: true
     rule: OneBlockType
@@ -129,18 +302,21 @@ one_offs:
     name: "Taste the Rainbow"
     description: "Win a build that uses every colour of the rainbow: red, orange, yellow, green, blue and purple"
     category: challenge
+    modes: [solo, teams, pro]
     points: 20
     rule: Rainbow
   - id: stone_age
     name: "Stone Age"
     description: "Win using only stone-related blocks (stone, cobblestone, stone bricks, deepslate, andesite, diorite, granite, blackstone, tuff)"
     category: challenge
+    modes: [solo, teams, pro]
     points: 20
     rule: StoneOnly
   - id: nether_native
     name: "Nether Native"
     description: "Win using only blocks found in the Nether"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: NetherOnly
 
@@ -148,24 +324,28 @@ one_offs:
     name: "Hotbar Hero"
     description: "Win using only a hotbar's worth of blocks (9 block types or fewer)"
     category: challenge
+    modes: [solo, teams, pro]
     points: 20
     rule: HotbarOnly
   - id: block_hoarder
     name: "Block Hoarder"
     description: "Place 100 different types of blocks in one match"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: HundredBlockTypes
   - id: old_school
     name: "Old School"
     description: "Win using only blocks that existed in 1.8.9 (on a 26.3 client)"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: LegacyBlocksOnly
   - id: steam_engine
     name: "Steam Engine"
     description: "Win a build that uses both water and lava"
     category: challenge
+    modes: [solo, teams, pro]
     points: 15
     rule: WaterAndLava
 
@@ -174,30 +354,35 @@ one_offs:
     name: "By the Book"
     description: "Win using only blocks from the Building Blocks tab"
     category: challenge
+    modes: [solo, teams, pro]
     points: 15
     rule: CreativeTabOnly
   - id: tab_colored
     name: "Colour Theory"
     description: "Win using only blocks from the Colored Blocks tab"
     category: challenge
+    modes: [solo, teams, pro]
     points: 15
     rule: CreativeTabOnly
   - id: tab_natural
     name: "Back to Nature"
     description: "Win using only blocks from the Natural Blocks tab"
     category: challenge
+    modes: [solo, teams, pro]
     points: 15
     rule: CreativeTabOnly
   - id: tab_functional
     name: "Form Follows Function"
     description: "Win using only blocks from the Functional Blocks tab"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: CreativeTabOnly
   - id: tab_redstone
     name: "Redstone Engineer"
     description: "Win using only blocks from the Redstone Blocks tab"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: CreativeTabOnly
 
@@ -206,30 +391,35 @@ one_offs:
     name: "Sky's the Limit"
     description: "Win a build that reaches the plot's 50-block height limit"
     category: challenge
+    modes: [solo, teams, pro]
     points: 15
     rule: HeightLimit
   - id: grounded
     name: "Grounded"
     description: "Win a build without flying"
     category: challenge
+    modes: [solo, teams, pro]
     points: 25
     rule: NoFlying
   - id: floor_is_lava
     name: "The Floor Is Lava"
     description: "Win a game with your floor set to lava"
     category: challenge
+    modes: [solo, teams, pro]
     points: 15
     rule: LavaFloor
   - id: factory_settings
     name: "Factory Settings"
     description: "Win a game without changing your floor or backdrop"
     category: challenge
+    modes: [solo, teams, pro]
     points: 10
     rule: DefaultPlot
   - id: indecisive
     name: "Indecisive"
     description: "Switch your plot backdrop 5 times in one match"
     category: challenge
+    modes: [solo, teams, pro]
     points: 10
     secret: true
     rule: BackgroundSwitches
@@ -239,24 +429,28 @@ one_offs:
     name: "Mode Marathon"
     description: "Win in Solo, Teams, Pro, Guess The Build and Speed Builders within one hour"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 40
     rule: ModeMarathon
   - id: hat_trick
     name: "Hat Trick"
     description: "Win 3 games in a row"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 10
     rule: WinStreak3
   - id: unstoppable
     name: "Unstoppable"
     description: "Win 10 games in a row"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 40
     rule: WinStreak10
   - id: night_owl
     name: "Night Owl"
     description: "Win a game between 2 AM and 5 AM your local time"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 10
     secret: true
     rule: NightOwl
@@ -264,12 +458,14 @@ one_offs:
     name: "Century"
     description: "Play 100 games in a single day"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 25
     rule: HundredInADay
   - id: comeback
     name: "Comeback Kid"
     description: "Win the game right after finishing last"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 15
     rule: Comeback
 
@@ -278,6 +474,7 @@ one_offs:
     name: "Standing Ovation"
     description: "Get a 100% crowd score: every voter gave you Legendary"
     category: challenge
+    modes: [solo, teams, pro]
     points: 50
     secret: true
     rule: PerfectCrowd
@@ -285,12 +482,14 @@ one_offs:
     name: "S-Tier"
     description: "Earn 5 SS grades in a row"
     category: challenge
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 30
     rule: SsStreak5
   - id: underdog
     name: "Underdog"
     description: "Win a 16-player Solo game"
     category: challenge
+    modes: [solo]
     points: 10
     rule: FullLobbyWin
 
@@ -299,60 +498,70 @@ one_offs:
     name: "Clean Sweep"
     description: "Get a Perfect Build in every round of a Speed Builders game you win"
     category: speed_builders
+    modes: [speed_builders]
     points: 30
     rule: SpbSweep
   - id: spb_wr_close
     name: "Ghost Hunter"
     description: "Finish a Speed Builders round within 0.5s of the world record"
     category: speed_builders
+    modes: [speed_builders]
     points: 25
     rule: WithinHalfSecondOfWr
   - id: spb_wr
     name: "World Record"
     description: "Set a Better Battle world record on any Speed Builders build"
     category: speed_builders
+    modes: [speed_builders]
     points: 75
     rule: SetWr
   - id: spb_no_break
     name: "Measure Twice"
     description: "Win a Speed Builders game without breaking a single block: no left clicks, no misplacing"
     category: speed_builders
+    modes: [speed_builders]
     points: 20
     rule: SpbNoBreak
   - id: spb_grounded
     name: "Feet on the Ground"
     description: "Win a Speed Builders game without flying"
     category: speed_builders
+    modes: [speed_builders]
     points: 20
     rule: SpbGrounded
   - id: spb_good_enough
     name: "Good Enough"
     description: "Win a Speed Builders game without getting a Perfect Build in every round"
     category: speed_builders
+    modes: [speed_builders]
     points: 10
     rule: GoodEnough
   - id: spb_assembly_line
     name: "Assembly Line"
     description: "Win a Speed Builders game placing one block type at a time: once you switch blocks, you can't go back that round"
     category: speed_builders
+    modes: [speed_builders]
     points: 35
     rule: AssemblyLine
   - id: spb_photo_finish
     name: "Photo Finish"
     description: "Get a Perfect Build with less than a second left on the clock"
     category: speed_builders
+    modes: [speed_builders]
     points: 20
     rule: PhotoFinish
   - id: spb_from_the_bottom
     name: "From the Bottom"
     description: "Win a Speed Builders game after having the slowest Perfect Build in round 1"
     category: speed_builders
+    modes: [speed_builders]
     points: 30
     rule: FromTheBottom
   - id: spb_speedrunner
     name: "Speedrunner"
     description: "Win a Speed Builders game with a Perfect Build every round, each with more than half the clock left"
     category: speed_builders
+    modes: [speed_builders]
     points: 50
     rule: Speedrunner
 
@@ -361,12 +570,14 @@ one_offs:
     name: "Lightning Guess"
     description: "Guess a build within 3 seconds of the round starting"
     category: gtb
+    modes: [gtb]
     points: 15
     rule: GtbFastGuess
   - id: gtb_all_rounds
     name: "Telepathic"
     description: "Correctly guess every round in one Guess The Build game"
     category: gtb
+    modes: [gtb]
     points: 30
     rule: GtbAllRounds
 
@@ -375,24 +586,28 @@ one_offs:
     name: "Aspiring"
     description: "Play your first game with Better Battle installed"
     category: better_battle
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 5
     rule: FirstGame
   - id: random_palette_win
     name: "Dice Roller"
     description: "Win using only blocks from a /bb palette roll"
     category: better_battle
+    modes: [solo, teams, pro]
     points: 20
     rule: PaletteRollWin
   - id: pinned
     name: "Proud Builder"
     description: "Pin a build to your profile"
     category: better_battle
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 5
     rule: ServerOnly
   - id: offline_saver
     name: "Off the Grid"
     description: "Play 10 games while the Better Battle server is unreachable"
     category: better_battle
+    modes: [solo, teams, pro, gtb, speed_builders]
     points: 10
     secret: true
     rule: OfflineGames
