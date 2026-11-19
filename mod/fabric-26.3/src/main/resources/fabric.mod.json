@@ -4,9 +4,7 @@
 	"version": "${version}",
 	"name": "Better Battle",
 	"description": "Stats, achievements, levels and Speed Builders tools for Hypixel Build Battle.",
-	"authors": [
-		"Koidu"
-	],
+	"authors": [],
 	"contact": {
 		"homepage": "https://battle.aspir3.net",
 		"sources": "https://github.com/Koiduu/BetterBuildbattle"

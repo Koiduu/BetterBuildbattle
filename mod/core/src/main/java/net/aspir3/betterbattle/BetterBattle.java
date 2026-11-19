@@ -34,7 +34,7 @@ import java.util.UUID;
  */
 public final class BetterBattle {
     public static final String MOD_ID = "betterbattle";
-    public static final String CREDIT = "Better Battle, created by Koidu";
+    public static final String CREDIT = "Better Battle";
 
     private static BetterBattle instance;
 

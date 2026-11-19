@@ -67,4 +67,4 @@ The mod sends your finished games and your achievements to the Better Battle ser
 
 ---
 
-Made by Koidu for the Aspiring guild and every Build Battle player. Not affiliated with Hypixel, Mojang or Microsoft.
+Made for the Aspiring guild and every Build Battle player. Not affiliated with Hypixel, Mojang or Microsoft.

@@ -1,6 +1,6 @@
 # Better Battle — starter code
 
-Created by **Koidu**. Mod + web platform for Hypixel Build Battle and Speed Builders.
+Mod + web platform for Hypixel Build Battle and Speed Builders.
 Website: `battle.aspir3.net` · API: `api.aspir3.net/bb/v1`
 
 ## Layout
