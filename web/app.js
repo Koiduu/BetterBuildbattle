@@ -167,6 +167,8 @@ function privacyPage() {
   legalPage("Privacy", `
     <section><h2>Who runs Better Battle</h2>
       <p>Better Battle is a hobby project run by Koidu, not a company. It is not affiliated with Hypixel, Mojang or Microsoft.</p></section>
+    <section id="ai-disclosure"><h2>Use of AI</h2>
+      <p>Message by Koidu. This project does contain AI-generated material, and the use of Claude and Devin AI was used when creating this project. If you are against this, I fully understand if you decide not to use it.</p></section>
     <section><h2>Website accounts</h2>
       <p>An account stores your email and an Argon2id password hash, never your password itself. If you use Discord login, we receive your Discord ID, username and avatar URL. Discord login asks only for the <code>identify</code> scope, not your email.</p>
       <p>When linked, we store your Minecraft UUID and name, bio and pinned matches.</p></section>
