@@ -9,7 +9,7 @@ import { RESERVED } from "./style";
 const SITE = "Better Battle";
 const DEFAULT = {
   title: SITE,
-  description: "Build Battle rankings, profiles and achievements. Better Battle by Koidu.",
+  description: "Build Battle rankings, profiles and achievements.",
 };
 
 export interface PageMeta { title: string; description: string; image?: string; path: string; largeImage?: boolean }
