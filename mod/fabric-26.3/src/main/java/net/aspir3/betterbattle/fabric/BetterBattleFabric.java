@@ -30,7 +30,6 @@ import net.minecraft.world.item.component.ResolvableProfile;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.fabric.ui.AchievementToast;
 import net.aspir3.betterbattle.fabric.ui.AchievementsScreen;
-import net.aspir3.betterbattle.fabric.ui.CreditsScreen;
 import net.aspir3.betterbattle.fabric.ui.MenuScreen;
 import net.aspir3.betterbattle.fabric.ui.PinnedAchievementsHud;
 import net.aspir3.betterbattle.fabric.ui.SettingsScreen;
@@ -167,7 +166,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                     })))
                 .then(ClientCommands.literal("banners").executes(c -> open(() -> new BannersScreen(null))))
                 .then(ClientCommands.literal("settings").executes(c -> open(() -> new SettingsScreen(null))))
-                .then(ClientCommands.literal("credits").executes(c -> open(() -> new CreditsScreen(null))))
                 .then(ClientCommands.literal("sync").executes(c -> {
                     if (!core.active()) {
                         chat(PREFIX + "Better Battle only runs on Hypixel.");

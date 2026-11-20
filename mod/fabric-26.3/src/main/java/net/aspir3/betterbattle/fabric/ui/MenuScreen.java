@@ -66,7 +66,6 @@ public final class MenuScreen extends Screen {
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
         bottom.addChild(Button.builder(Component.literal("Settings"), b -> minecraft.gui.setScreen(new SettingsScreen(this))).width(100).build());
-        bottom.addChild(Button.builder(Component.literal("Credits"), b -> minecraft.gui.setScreen(new CreditsScreen(this))).width(100).build());
         bottom.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(100).build());
 
         layout.visitWidgets(this::addRenderableWidget);
@@ -187,6 +186,12 @@ public final class MenuScreen extends Screen {
 
         ChatFormatting colour = pending > 0 ? ChatFormatting.YELLOW : ChatFormatting.GREEN;
         graphics.centeredText(font, Component.literal("● ").withStyle(colour).append(Component.literal(syncLine).withStyle(ChatFormatting.GRAY)), cx, y, 0xFFFFFFFF);
+        String update = BetterBattle.get().updateAvailable();
+        if (update != null) {
+            graphics.centeredText(font, Component.literal("Update available: ").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal(update).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" - open What's New to download").withStyle(ChatFormatting.GRAY)), cx, y + 14, 0xFFFFFFFF);
+        }
     }
 
     private void stat(GuiGraphicsExtractor graphics, String label, String value, int x, int w, int y) {
