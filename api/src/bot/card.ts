@@ -29,7 +29,9 @@ const W = 1200;
 const H = 630;
 const fontPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../assets/fonts/PixelifySans-Variable.ttf");
 GlobalFonts.registerFromPath(fontPath, "Pixelify Sans");
-const display = '"Pixelify Sans", "Courier New", monospace';
+// Digits only, so letters fall through to Pixelify: its 3, 8 and 9 are hard to tell apart.
+GlobalFonts.registerFromPath(path.resolve(path.dirname(fontPath), "GeistPixelDigits.ttf"), "Geist Pixel Digits");
+const display = '"Geist Pixel Digits", "Pixelify Sans", "Courier New", monospace';
 const body = 'Arial, "DejaVu Sans", sans-serif';
 const colors = { bg: "#17171a", panel: "#1f1f24", panel2: "#141416", line: "#3a3a42", text: "#f0f0f0", soft: "#c6c6c6", muted: "#9d9da6", gold: "#ffaa00", pink: "#ff66aa" };
 

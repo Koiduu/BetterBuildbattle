@@ -13,6 +13,7 @@ import { CARD_THEMES, publicStyle } from "../lib/style";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB = process.env.WEB_DIR ?? path.resolve(here, "../../../web");
 const FONT = "Pixelify Sans";
+const DIGITS = "Geist Pixel Digits";   // digits only; letters fall through to Pixelify
 let fontReady = false;
 
 const TTL_MS = 10 * 60_000;
@@ -78,6 +79,7 @@ export async function profileCard(name: string, origin: string): Promise<Buffer 
 
   if (!fontReady) {
     fontReady = GlobalFonts.registerFromPath(path.join(WEB, "fonts/PixelifySans-Variable.ttf"), FONT) != null;
+    GlobalFonts.registerFromPath(path.resolve(here, "../../assets/fonts/GeistPixelDigits.ttf"), DIGITS);
   }
   const style = publicStyle(p);
   const canvas = createCanvas(CARD_W, CARD_H);
@@ -88,7 +90,7 @@ export async function profileCard(name: string, origin: string): Promise<Buffer 
     stats,
     url: `${new URL(origin).host}/p/${p.mc_name}`,
     supporter: style.supporter,
-  }, await face(p.mc_uuid), { display: `'${FONT}', sans-serif`, body: `'${FONT}', sans-serif` },
+  }, await face(p.mc_uuid), { display: `'${DIGITS}', '${FONT}', sans-serif`, body: `'${DIGITS}', '${FONT}', sans-serif` },
   style.cardTheme ? CARD_THEMES[style.cardTheme] : undefined);
   const png = await canvas.encode("png");
 
