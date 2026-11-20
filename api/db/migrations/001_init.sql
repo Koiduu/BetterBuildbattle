@@ -32,7 +32,7 @@ CREATE TABLE sessions (
   kind        TEXT NOT NULL CHECK (kind IN ('web','mod')),
   token_hash  BYTEA NOT NULL UNIQUE,                -- sha256(token)
   mod_version TEXT,
-  mc_version  TEXT,                                 -- '26.3' | '1.8.9'
+  mc_version  TEXT,                                 -- '26.3' | '26.2' | '1.8.9'
   expires_at  TIMESTAMPTZ NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );

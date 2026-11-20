@@ -4,7 +4,7 @@
       "version": "0.2.2",
       "date": "2026-11-25",
       "title": "Update Notices",
-      "summary": "The mod now tells you when a newer version is out, and the menu is a little tidier.",
+      "summary": "The mod now tells you when a newer version is out, and there is a Fabric build for Minecraft 26.2.",
       "sections": [
         {
           "heading": "Stay up to date",
@@ -17,6 +17,7 @@
         {
           "heading": "Tidy-ups",
           "items": [
+            "New Fabric build for Minecraft 26.2, next to 26.3 and Forge 1.8.9",
             "The Credits screen and /bb credits are gone"
           ]
         }

@@ -42,10 +42,12 @@ export function downloadRoutes(api: Router, downloads: Router) {
   api.get("/mod/latest", async ({ query }) => {
     const release = await latestRelease();
     if (query.loader !== undefined) {
-      const loader = query.loader;
-      const expectedMc = loader === "fabric" ? "26.3" : loader === "forge" ? "1.8.9" : null;
-      if (!expectedMc || query.mc !== expectedMc || !release) return fail(404, "not_found");
-      const asset = release[loader as Loader];
+      // The mod asks for loader=fabric with its Minecraft version; 26.2 has its own build.
+      const variant: Loader | null = query.loader === "fabric"
+        ? (query.mc === "26.3" ? "fabric" : query.mc === "26.2" ? "fabric262" : null)
+        : query.loader === "forge" && query.mc === "1.8.9" ? "forge" : null;
+      if (!variant || !release) return fail(404, "not_found");
+      const asset = release[variant];
       if (!asset || !/^\d+(?:\.\d+)*$/.test(asset.version)) return fail(404, "not_found");
       const result: { version: string; sha256?: string; notes?: string } = { version: asset.version };
       if (asset.sha256) result.sha256 = asset.sha256;
@@ -58,13 +60,14 @@ export function downloadRoutes(api: Router, downloads: Router) {
       version: release.version,
       builtAt: release.builtAt,
       fabric: publicAsset(release.fabric, "fabric"),
+      fabric262: publicAsset(release.fabric262, "fabric262"),
       forge: publicAsset(release.forge, "forge"),
     };
   });
 
   downloads.get("/download/:loader", async ({ params }) => {
     const loader = params.loader;
-    if (loader !== "fabric" && loader !== "forge") return fail(404, "not_found");
+    if (loader !== "fabric" && loader !== "fabric262" && loader !== "forge") return fail(404, "not_found");
     const jar = await jarFor(loader);
     if (!jar) return fail(503, "download_unavailable");
     return new Raw(jar.body, "application/java-archive", {

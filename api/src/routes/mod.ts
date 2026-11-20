@@ -57,7 +57,7 @@ const MatchIn = z.object({
 
 const SyncBody = z.object({
   modVersion: z.string(),
-  mcVersion: z.enum(["26.3", "1.8.9"]),
+  mcVersion: z.enum(["26.3", "26.2", "1.8.9"]),
   matches: z.array(MatchIn).max(50),
   localAchievements: z.array(z.string()).max(500).default([]),
   // UUIDs of other players seen in this player's lobbies since last sync (tab list). Feeds the global ranking.

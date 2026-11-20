@@ -7,11 +7,15 @@ on:
 
 jobs:
   fabric:
-    name: Fabric 26.3
+    name: Fabric ${{ matrix.mc }}
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ["26.3", "26.2"]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mod/fabric-26.3
+        working-directory: mod/fabric-${{ matrix.mc }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -38,8 +42,8 @@ jobs:
           echo "===== AttackBlockCallback ($FAPI)"; javap -cp "$FAPI" net.fabricmc.fabric.api.event.player.AttackBlockCallback 2>&1 | head -20
       - uses: actions/upload-artifact@v4
         with:
-          name: betterbattle-fabric-26.3
-          path: mod/fabric-26.3/build/libs/betterbattle-fabric-26.3-*[0-9].jar
+          name: betterbattle-fabric-${{ matrix.mc }}
+          path: mod/fabric-${{ matrix.mc }}/build/libs/betterbattle-fabric-${{ matrix.mc }}-*[0-9].jar
           if-no-files-found: error
 
   forge:
@@ -86,4 +90,4 @@ jobs:
           gh release delete dev --repo "$REPO" --yes --cleanup-tag || true
           gh release create dev jars/*.jar jars/SHA256SUMS --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
-            --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jar: Minecraft 26.3 with Fabric API. Forge jar: Minecraft 1.8.9."
+            --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jars: Minecraft 26.3 and 26.2, with Fabric API. Forge jar: Minecraft 1.8.9."
