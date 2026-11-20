@@ -6,10 +6,11 @@ import {
   plansPage, insightsPage, wrappedPage, groupsPage, groupPage, resolveVanity, renderPlanCard, supporterChip,
   supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
 } from "./plans.js";
-import { profileSkeleton, leaderboardSkeleton } from "./skeleton.js";
+import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
+watchReveals(app);
 const SUPPORT = { email: null, discord: "https://discord.gg/zgQcwWpkrq" };
 let flashNotice = null;
 
@@ -481,17 +482,17 @@ function profileError(err, name) {
   return "Couldn't load this profile. Try again in a minute.";
 }
 
-function stat(label, value, note) {
+function stat(label, value, note, key = "") {
   return `
     <div class="stat">
       <span class="stat-label">${esc(label)}</span>
-      <span class="stat-value">${value}</span>
+      <span class="stat-value"${key ? ` data-morph="${key}"` : ""} data-tally>${value}</span>
       <span class="stat-note">${esc(note)}</span>
     </div>`;
 }
 
-function tile(label, value) {
-  return `<div class="tile"><span>${esc(label)}</span><b>${num(value)}</b></div>`;
+function tile(label, value, key = "") {
+  return `<div class="tile"><span>${esc(label)}</span><b${key ? ` data-morph="${key}"` : ""} data-tally>${num(value)}</b></div>`;
 }
 
 function meter(left, right, fraction, color) {
@@ -529,35 +530,35 @@ async function profilePage(name) {
     ? meter(`${title(t.current)} <span class="muted">to</span> ${title(t.next)}`, `${num(t.into)} / ${num(t.span)}`, t.pct, t.next.hex)
     : `<div class="meter-label"><span>${title(t.current)} <span class="muted">(top title)</span></span></div>`;
 
-  app.innerHTML = `
+  await reveal(() => { app.innerHTML = `
     <section class="profile-top">
       <div class="who">
-        <img class="avatar" src="${avatar(p.uuid, 96)}" alt="" width="96" height="96">
+        <img class="avatar" data-morph="avatar" src="${avatar(p.uuid, 96)}" alt="" width="96" height="96">
         <div class="who-text">
           <div class="tags">
             <span class="chip">${title(t.current)}</span>
             ${bb ? `<span class="chip pink">Better Battle</span>` : ""}
             ${supporterChip(p.style?.supporter)}
           </div>
-          <h1>${esc(p.name)}</h1>
+          <h1 data-morph="name">${esc(p.name)}</h1>
           ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}
           ${levelMeter}
           ${titleMeter}
         </div>
       </div>
       <div class="stats">
-        ${stat("Global rank", p.rank ? "#" + num(p.rank) : "–", `out of ${num(p.rankedPlayers)} players`)}
-        ${stat("Build Battle score", num(p.score), `${num(p.hypixel.wins)} wins`)}
+        ${stat("Global rank", p.rank ? "#" + num(p.rank) : "–", `out of ${num(p.rankedPlayers)} players`, "stat-1")}
+        ${stat("Build Battle score", num(p.score), `${num(p.hypixel.wins)} wins`, "stat-2")}
         ${bb
-          ? stat("Crowd score", percent(bb.crowdScore), "average share of max votes")
-          : stat("Games played", num(p.hypixel.gamesPlayed), "all modes")}
+          ? stat("Crowd score", percent(bb.crowdScore), "average share of max votes", "stat-3")
+          : stat("Games played", num(p.hypixel.gamesPlayed), "all modes", "stat-3")}
         ${bb
-          ? stat("Aspiring Points", num(bb.ap), `${num(bb.themesBuilt)} themes built`)
-          : stat("Correct guesses", num(p.hypixel.correctGuesses), "Guess the Build")}
+          ? stat("Aspiring Points", num(bb.ap), `${num(bb.themesBuilt)} themes built`, "stat-4")
+          : stat("Correct guesses", num(p.hypixel.correctGuesses), "Guess the Build", "stat-4")}
       </div>
     </section>
 
-    <section class="card sync">
+    <section class="card sync" data-morph="sync">
       <div class="sync-text">
         <span class="dot${bb ? "" : " off"}"></span>
         <div>
@@ -572,7 +573,7 @@ async function profilePage(name) {
     </section>
 
     <div class="cols">
-      <section class="card">
+      <section class="card" data-morph="graph-card">
         <div class="card-head">
           <div>
             <h2>Rank history</h2>
@@ -586,22 +587,23 @@ async function profilePage(name) {
         </div>
         <div class="graph" id="graph"></div>
       </section>
-      <section class="card">
+      <section class="card" data-morph="wins-card">
         <h2>Wins by mode</h2>
         <div class="tiles">
-          ${tile("Solo", wins.solo)}
-          ${tile("Teams", wins.teams)}
-          ${tile("Pro", wins.pro)}
-          ${tile("Guess the Build", wins.gtb)}
-          ${tile("Speed Builders", wins.speedBuilders)}
-          ${tile("Total votes", p.hypixel.totalVotes)}
+          ${tile("Solo", wins.solo, "tile-1")}
+          ${tile("Teams", wins.teams, "tile-2")}
+          ${tile("Pro", wins.pro, "tile-3")}
+          ${tile("Guess the Build", wins.gtb, "tile-4")}
+          ${tile("Speed Builders", wins.speedBuilders, "tile-5")}
+          ${tile("Total votes", p.hypixel.totalVotes, "tile-6")}
         </div>
       </section>
     </div>
 
     ${positionsSection()}
 
-    ${bb ? modSections(bb) : getModCard()}`;
+    ${bb ? modSections(bb) : getModCard()}`; }, app);
+  tally(app);
 
   decorateProfile(p);
   loadPositions(p.name);
@@ -840,9 +842,9 @@ function drawGraph(el, points, days) {
   el.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Rank went from #${num(points[0].rank)} to #${num(last.rank)}">
       <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#2c2c33" stroke-dasharray="4 4"/>
-      <path d="${line}" fill="none" stroke="#55ff55" stroke-width="3" stroke-linejoin="miter" vector-effect="non-scaling-stroke"/>
+      <path class="rank-line" d="${line}" fill="none" stroke="#55ff55" stroke-width="3" stroke-linejoin="miter" vector-effect="non-scaling-stroke"/>
     </svg>
-    <div class="tip" style="left:100%;top:${(y(last.rank) / H) * 100}%;transform:translate(-100%,-130%)">#${num(last.rank)}</div>
+    <div class="tip end-tip" style="left:100%;top:${(y(last.rank) / H) * 100}%;transform:translate(-100%,-130%)">#${num(last.rank)}</div>
     <div class="axis"><span>${days >= 365 ? "1 year ago" : `${days} days ago`}</span><span>Today</span></div>`;
 
   const svg = el.querySelector("svg");
