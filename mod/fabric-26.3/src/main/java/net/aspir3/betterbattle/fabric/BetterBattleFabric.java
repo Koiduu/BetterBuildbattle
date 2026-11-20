@@ -91,7 +91,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
 
 public final class BetterBattleFabric implements ClientModInitializer, Platform {
-    public static final String MC_VERSION = "26.3";
+    /** "26.3" or "26.2": the first two numbers of the running Minecraft, as the server API expects them. */
+    public static final String MC_VERSION = FabricLoader.getInstance().getModContainer("minecraft")
+        .map(mod -> mod.getMetadata().getVersion().getFriendlyString().replaceFirst("^(\\d+\\.\\d+).*$", "$1"))
+        .orElse("26.3");
     private static final String PREFIX = "§d§lBetter Battle §8» §7";
 
     private BetterBattle core;

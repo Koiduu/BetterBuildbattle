@@ -6,7 +6,7 @@ Project settings to fill in on Modrinth:
   Summary:        Stats, achievements, levels and Speed Builders times for Hypixel Build Battle.
   Categories:     Utility, Social   (Modrinth doesn't have a minigame category)
   Environment:    Client: required. Server: unsupported.
-  Loaders:        Fabric (26.3), Forge (1.8.9)
+  Loaders:        Fabric (26.3, 26.2), Forge (1.8.9)
   Dependencies:   Fabric API (required, Fabric version only)
   License:        All Rights Reserved (as in fabric.mod.json), or pick an open licence first
   Links:          Website https://battle.aspir3.net · Source https://github.com/Koiduu/BetterBuildbattle
@@ -14,7 +14,7 @@ Project settings to fill in on Modrinth:
   Icon:           mod/fabric-26.3/src/main/resources/assets/betterbattle/icon.png
   Gallery:        B menu, Speed Builders timer, game recap in chat, Settings screen, a website profile
 
-Upload the two jars from the CI "dev" release as separate versions: one for Fabric 26.3, one for Forge 1.8.9.
+Upload the three jars from the CI "dev" release as separate versions: Fabric 26.3, Fabric 26.2 and Forge 1.8.9.
 -->
 
 # Better Battle
@@ -54,7 +54,7 @@ Better Battle only **reads** chat, the scoreboard and your own clicks. It never 
 
 ## Getting started
 
-1. Install the jar for your version (Fabric 26.3 needs **Fabric API** too).
+1. Install the jar for your version (Fabric 26.3 and 26.2 need **Fabric API** too).
 2. Join Hypixel and play Build Battle.
 3. Press **B** for your level, achievements and weekly challenges.
 4. To claim your website profile: sign up at battle.aspir3.net, open Account, get a code and type `/bb link <code>` in game.

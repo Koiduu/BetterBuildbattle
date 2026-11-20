@@ -10,10 +10,10 @@ import { fileURLToPath } from "node:url";
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
 const PORT = Number(process.env.PORT ?? 5173);
 const modVersion = JSON.parse(fs.readFileSync(path.join(WEB, "updates.json"), "utf8")).updates[0].version;
-const modJars = Object.fromEntries(["fabric", "forge"].map((loader) => {
-  const mc = loader === "fabric" ? "26.3" : "1.8.9";
-  const file = `betterbattle-${loader}-${mc}-${modVersion}.jar`;
-  const jarPath = path.resolve(WEB, "../mod", `${loader}-${mc}`, "build/libs", file);
+const modJars = Object.fromEntries(["fabric", "fabric262", "forge"].map((loader) => {
+  const [name, mc] = { fabric: ["fabric", "26.3"], fabric262: ["fabric", "26.2"], forge: ["forge", "1.8.9"] }[loader];
+  const file = `betterbattle-${name}-${mc}-${modVersion}.jar`;
+  const jarPath = path.resolve(WEB, "../mod", `${name}-${mc}`, "build/libs", file);
   if (!fs.existsSync(jarPath)) return [loader, null];
   const body = fs.readFileSync(jarPath);
   return [loader, { body, asset: { file, version: modVersion, size: body.length,
@@ -219,7 +219,7 @@ function weekly() {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
-  const loader = p.match(/^\/download\/(fabric|forge)$/)?.[1];
+  const loader = p.match(/^\/download\/(fabric|fabric262|forge)$/)?.[1];
   if (loader) {
     const jar = modJars[loader];
     if (!jar) return json(res, 503, { error: "download_unavailable" });
@@ -230,7 +230,7 @@ const server = http.createServer((req, res) => {
   if (p.startsWith("/bb/v1/")) {
     const route = p.slice(6);
     if (route === "/mod/latest") return json(res, 200, { version: modVersion, builtAt: new Date().toISOString(),
-      fabric: modJars.fabric?.asset ?? null, forge: modJars.forge?.asset ?? null });
+      fabric: modJars.fabric?.asset ?? null, fabric262: modJars.fabric262?.asset ?? null, forge: modJars.forge?.asset ?? null });
     if (route.startsWith("/auth/") || route === "/me" || route.startsWith("/me/")) return accountRoute(req, res, route, url);
     if (route === "/challenges/submit" && req.method === "POST") return challengeRoute(req, res);
     if (route === "/stats") return json(res, 200, { rankedPlayers: 412806, modUsers: 318 });
