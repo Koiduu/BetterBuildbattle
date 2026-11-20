@@ -282,6 +282,12 @@ public final class BetterBattle {
         return config.website.replaceAll("/+$", "") + "/install";
     }
 
+    /** The newer version's number when one has been released, otherwise null. */
+    public String updateAvailable() {
+        ApiClient.Latest n = newer;
+        return n == null ? null : n.version;
+    }
+
     /** What's New, with a line on top when a newer version is out. */
     public Pages.Page whatsNewPage() {
         Pages.Page page = Pages.whatsNew();

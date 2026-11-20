@@ -145,7 +145,7 @@ Latest jars are served from [the install page](https://battle.aspir3.net/install
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
 
 In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb recap` (last game), `/bb weekly`,
-`/bb news` (What's New), `/bb settings`, `/bb sync`, `/bb palette [3-12]`, `/bb debug`, `/bb credits`.
+`/bb news` (What's New), `/bb settings`, `/bb sync`, `/bb palette [3-12]`, `/bb debug`.
 
 The first B press after an update opens What's New. Patch notes live in `web/updates.json`; run
 `python3 tools/gen-catalog.py` to copy them into the mod.
@@ -202,7 +202,7 @@ Latest jars are served from [the install page](https://battle.aspir3.net/install
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
 
 In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb sync`, `/bb palette [3-12]`,
-`/bb debug`, `/bb credits`.
+`/bb debug`.
 
 Settings live in `config/betterbattle/config.json`:
 

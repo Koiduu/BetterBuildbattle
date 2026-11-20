@@ -17,7 +17,7 @@ import java.util.Map;
 
 /** The main Better Battle screen, built from 1.8.9's own widgets and textures. */
 public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
-    private static final int ACHIEVEMENTS = 0, PROFILE = 1, SYNC = 2, CREDITS = 3, DONE = 4,
+    private static final int ACHIEVEMENTS = 0, PROFILE = 1, SYNC = 2, DONE = 4,
         WHATS_NEW = 5, LAST_GAME = 6, WEEKLY = 7, SETTINGS = 8;
 
     private final GuiScreen parent;
@@ -45,9 +45,8 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         buttonList.add(new GuiButton(WHATS_NEW, cx - 154, y + 24, 100, 20, "What's New"));
         buttonList.add(new GuiButton(LAST_GAME, cx - 50, y + 24, 100, 20, "Last Game"));
         buttonList.add(new GuiButton(WEEKLY, cx + 54, y + 24, 100, 20, "Weekly"));
-        buttonList.add(new GuiButton(SETTINGS, cx - 154, y + 48, 100, 20, "Settings"));
-        buttonList.add(new GuiButton(CREDITS, cx - 50, y + 48, 100, 20, "Credits"));
-        buttonList.add(new GuiButton(DONE, cx + 54, y + 48, 100, 20, "Done"));
+        buttonList.add(new GuiButton(SETTINGS, cx - 104, y + 48, 100, 20, "Settings"));
+        buttonList.add(new GuiButton(DONE, cx + 4, y + 48, 100, 20, "Done"));
     }
 
     private void loadStats() {
@@ -105,9 +104,6 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
                 BetterBattle.get().syncNow();
                 button.enabled = false;
                 syncLine = "Syncing...";
-                break;
-            case CREDITS:
-                mc.displayGuiScreen(new CreditsScreen(this));
                 break;
             case WHATS_NEW:
                 mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().whatsNewPage()));
@@ -192,6 +188,10 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         y += 12;
         String dot = (pending > 0 ? "§e" : "§a") + "● §7";
         drawCenteredString(fontRendererObj, dot + syncLine, cx, y, 0xFFFFFF);
+        String update = BetterBattle.get().updateAvailable();
+        if (update != null) {
+            drawCenteredString(fontRendererObj, "§aUpdate available: §f" + update + " §7- open What's New to download", cx, y + 14, 0xFFFFFF);
+        }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
     }

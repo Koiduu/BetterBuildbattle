@@ -1,6 +1,28 @@
 {
   "updates": [
     {
+      "version": "0.2.2",
+      "date": "2026-11-25",
+      "title": "Update Notices",
+      "summary": "The mod now tells you when a newer version is out, and the menu is a little tidier.",
+      "sections": [
+        {
+          "heading": "Stay up to date",
+          "items": [
+            "A green \"Update available\" line on the main menu whenever a newer version has been released",
+            "A chat message when you join, and a banner on What's New with the release notes and download link",
+            "Nothing downloads automatically; you can switch the chat message off in Settings"
+          ]
+        },
+        {
+          "heading": "Tidy-ups",
+          "items": [
+            "The Credits screen and /bb credits are gone"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.2.1",
       "date": "2026-11-17",
       "title": "Your Next Achievement",
