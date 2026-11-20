@@ -35,6 +35,8 @@ public final class GameStateMachine {
     private long startedAt;
     private String mode;
     private Integer players;
+    /** Teams mode: teams left in the game. Places rank teams, and the in-game sidebar shows no player count. */
+    private Integer teams;
     private int voteRound = -1;
     private String roundBuilder;
     private SpbTracker spb;
@@ -117,6 +119,8 @@ public final class GameStateMachine {
             Integer p = parser.players(line);
             // The lobby keeps shrinking as people leave; the count when voting starts is what matters.
             if (p != null && state != State.VOTING) players = p;
+            Integer teamCount = parser.sidebarInt("TEAMS", line);
+            if (teamCount != null && state != State.VOTING) teams = teamCount;
             if (parser.isBuildTimer(line)) timer = true;
             // Speed Builders shows the round, the build ("Theme") and the build clock in the sidebar
             Integer r = parser.sidebarInt("SPB_ROUND", line);
@@ -348,7 +352,13 @@ public final class GameStateMachine {
         done.playedAt = System.currentTimeMillis();
         done.durationSec = (int) ((done.playedAt - startedAt) / 1000L);
         done.players = players;
-        done.grade = Grades.of(done.placement, done.players, done.crowdScore());
+        boolean teamsMode = "teams".equals(done.mode);
+        // The lobby count is lost when the sidebar blanks as the game starts, and a Teams game only shows
+        // "Teams: N". Two builders a team; a lone player's team counts as two, so the crowd score errs low.
+        if (teamsMode && teams != null && (done.players == null || done.players < teams)) done.players = teams * 2;
+        // In Teams the place is among teams ("14th" of 15 teams), so grade against the team count.
+        Integer field = teamsMode && teams != null ? teams : done.players;
+        done.grade = Grades.of(done.placement, field, done.crowdScore());
         if (spb != null) {
             done.spbRounds.addAll(spb.finish());
             done.spbRoundsJson = SpbTracker.toJson(done.spbRounds);
@@ -372,6 +382,7 @@ public final class GameStateMachine {
         gtbCorrectInRound = false;
         plot = null;
         players = null;
+        teams = null;
         setState(State.IDLE);
     }
 }

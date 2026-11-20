@@ -1,6 +1,6 @@
 {
-  "_note": "Solo and Speed Builders lines are taken from real Hypixel games (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Teams, Pro and Guess the Build may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
-  "version": 4,
+  "_note": "Solo, Teams and Speed Builders lines are taken from real Hypixel games (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Pro and Guess the Build may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
+  "version": 5,
   "title": "BUILD BATTLE",
   "modes": {
     "solo": "solo",
@@ -12,6 +12,7 @@
   "sidebar": {
     "MODE": "^Mode: (.+)$",
     "PLAYERS": "^Players: (\\d+)$",
+    "TEAMS": "^Teams: (\\d+)$",
     "TIME": "^Time: \\d+:\\d+$",
     "SPB_ROUND": "^Round: (\\d+)$",
     "SPB_THEME": "^Theme: (.+)$",

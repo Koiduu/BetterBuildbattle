@@ -31,8 +31,8 @@ mod/
 
 ## What's not finished
 
-- `patterns.json` matches real Solo and Speed Builders games (Nov 2026). Teams, Pro and Guess the Build still need a
-  `/bb debug` log each to confirm their wording.
+- `patterns.json` matches real Solo, Teams and Speed Builders games (Nov 2026). Pro and Guess the Build still need a
+  `/bb debug` log each to confirm their wording. `mod/core/src/test/TeamsResultTest.java` replays the Teams game.
 - The mod has compiled for both versions but needs real play-testing.
 - Hypixel field names for perfect builds and Speed Builders wins in `achievementEngine.ts` need checking against a real API response.
 - Speed Builders tracking is checked against a real game (Nov 2026): rounds, builds and the clock come from the
