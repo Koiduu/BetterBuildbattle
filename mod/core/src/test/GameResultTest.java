@@ -14,6 +14,8 @@ import java.util.List;
  *    "Players: 32/32" isn't read). 14th of 15 teams must still get a player count, crowd score and grade.
  *  - Pro: a podium finish prints no "Your Score:" line; the score is on the podium ("3rd - 28").
  *  - Teams podium: names come as "A, B", and tied teams each get their own line under one place.
+ *  - Guess the Build: the sidebar title is "GUESS THE BUILD" with no "Mode:" line, nothing announces the
+ *    start, and the final sidebar ranks every player. Koidu played nicked as Cool_Ghost (2nd); reaxz was 8th.
  */
 public class GameResultTest {
     private static int checks;
@@ -24,18 +26,24 @@ public class GameResultTest {
     }
 
     private static GameStateMachine machine(final List<MatchRecord> done) {
+        return machine(done, "Koidu");
+    }
+
+    private static GameStateMachine machine(final List<MatchRecord> done, String playerName) {
         ChatParser parser = new ChatParser(new InputStreamReader(
             GameResultTest.class.getResourceAsStream("/betterbattle/patterns.json"), StandardCharsets.UTF_8));
         return new GameStateMachine(parser, new GameStateMachine.Listener() {
             public void onStateChanged(GameStateMachine.State state) {}
             public void onMatchFinished(MatchRecord match) { done.add(match); }
-        }, "26.3", "Koidu");
+        }, "26.3", playerName);
     }
 
     public static void main(String[] args) {
         teamsBelowPodium();
         proPodium();
         teamsPodiumTie();
+        guessTheBuild("Koidu", 2, 18.0, 1);   // nicked as Cool_Ghost, found from the guess reward
+        guessTheBuild("reaxz", 8, 7.0, 0);    // below the podium: only the final sidebar has the place
         System.out.println("GameResultTest: " + checks + " assertions passed");
     }
 
@@ -117,5 +125,38 @@ public class GameResultTest {
         check(m.placement != null && m.placement == 3, "3rd place from the second tied team line, got " + m.placement);
         check(m.score != null && m.score == 144.0, "team score 144 from the podium, got " + m.score);
         check("A".equals(m.grade) || "S".equals(m.grade), "3rd of 15 teams grades well, got " + m.grade);
+    }
+
+    private static void guessTheBuild(String player, int place, double points, int correct) {
+        final List<MatchRecord> done = new ArrayList<MatchRecord>();
+        GameStateMachine game = machine(done, player);
+        String gtb = "GUESS THE BUILD";
+        game.onSidebar(gtb, Arrays.asList("11/20/26  m85AE", "Builder:", "unzf", "", "Starts In: 00:10", "", "Theme:", "???", "www.hypixel.net"));
+        game.onSidebar(gtb, Arrays.asList("11/20/26  m85AE", "Builder:", "unzf", "", "Time: 02:00", "", "Theme:", "???", "www.hypixel.net"));
+        game.onChat("Round: 1/8");
+        game.onChat("The theme is 9 characters long");
+        game.onChat("Cool_Ghost correctly guessed the theme!");
+        if (player.equals("Koidu")) game.onChat("+40 tokens! (Correct Guess)");   // only the guesser gets this
+        game.onChat("+3 points");
+        game.onChat("mooofies correctly guessed the theme!");
+        game.onChat("The theme was: Surfboard!");
+        game.onChat("Builder: reaxz");
+        game.onSidebar(gtb, Arrays.asList("Builder:", "reaxz", "", "Cool_Ghost: 3", "unzf: 3", "mooofies: 2", "", "Time: 02:00", "", "Theme:", "???"));
+        game.onChat("Round: 2/8");
+        for (String line : new String[] {"The theme was: Astronaut!", "+120 tokens! (2nd Place)", "Build Battle", "Winners",
+                "1st - 19", "mooofies", "2nd - 18", "Cool_Ghost", "3rd - 12", "xSuzuya", "Want to play again? Click here!"}) {
+            game.onChat(line);
+        }
+        game.onSidebar(gtb, Arrays.asList("11/20/26  m85AE", "", "1. mooofies: 19", "2. Cool_Ghost: 18", "3. xSuzuya: 12", "4. seirreb: 10",
+            "5. _PuffiGHG: 9", "6. Baumschnaps: 8", "6. unzf: 8", "8. reaxz: 7", "9.", "10.", "", "www.hypixel.net"));
+        game.onChat("Reward Summary");
+
+        check(done.size() == 1, player + ": one Guess the Build game recorded, got " + done.size());
+        MatchRecord m = done.get(0);
+        check("gtb".equals(m.mode), player + ": mode gtb, got " + m.mode);
+        check(m.placement != null && m.placement == place, player + ": place " + place + ", got " + m.placement);
+        check(m.score != null && m.score == points, player + ": " + points + " points, got " + m.score);
+        check(m.players != null && m.players == 8, player + ": 8 players from the final sidebar, got " + m.players);
+        check(m.gtbCorrect == correct, player + ": " + correct + " correct guesses, got " + m.gtbCorrect);
     }
 }

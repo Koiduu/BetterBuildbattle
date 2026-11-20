@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 public final class ChatParser {
     public enum Type {
         THEME, VOTING_START, BUILDER, VOTE, SCORE, PLACEMENT, GAME_END, GTB_CORRECT_GUESS,
+        /** "Cool_Ghost correctly guessed the theme!": anyone's guess, yours included (maybe under a nick). */
+        GTB_GUESSED,
         // Speed Builders (from a real game, Nov 2026)
         SPB_PERFECT, SPB_ACCURACY, SPB_ELIMINATED,
         /** "+120 tokens! (2nd Place)" */
@@ -130,6 +132,22 @@ public final class ChatParser {
         Matcher m = p.matcher(line);
         if (!m.find()) return null;
         return m.groupCount() >= 1 ? m.group(1).trim() : line;
+    }
+
+    /** Every group of a named sidebar pattern, or null if the line doesn't match or the pattern is missing. */
+    public String[] sidebarGroups(String key, String line) {
+        Pattern p = sidebarExtra.get(key);
+        if (p == null) return null;
+        Matcher m = p.matcher(line);
+        if (!m.find()) return null;
+        String[] groups = new String[m.groupCount()];
+        for (int i = 0; i < groups.length; i++) groups[i] = m.group(i + 1);
+        return groups;
+    }
+
+    /** A sidebar title that names its mode ("GUESS THE BUILD" → "gtb"; its sidebar has no "Mode:" line), or null. */
+    public String modeForTitle(String title) {
+        return modes.get(clean(title).toLowerCase(Locale.ROOT));
     }
 
     public Integer sidebarInt(String key, String line) {

@@ -41,6 +41,8 @@ public final class GameStateMachine {
     private String roundBuilder;
     private SpbTracker spb;
     private Integer podiumPlace;
+    /** Guess the Build: who the last "X correctly guessed the theme!" was about, for one line. */
+    private String lastGuesser;
     /** The points shown next to podiumPlace. A podium finish in Solo or Pro prints no "Your Score:" line. */
     private Double podiumScore;
     /** A podium name line: one player ("Koidu") or a team ("Koidu, Teammate"). */
@@ -110,6 +112,8 @@ public final class GameStateMachine {
             return;
         }
         if (state == State.IDLE) setState(State.LOBBY);
+        String titleMode = parser.modeForTitle(title);
+        if (titleMode != null) mode = titleMode;   // Guess the Build names itself only in the title
 
         boolean timer = false;
         String theme = null;
@@ -117,6 +121,7 @@ public final class GameStateMachine {
         Integer spbRound = null, spbTimeLeft = null, spbPlayersLeft = null;
         String spbTheme = null, spbDifficulty = null;
         boolean spbGameOver = false;
+        List<String[]> standings = new java.util.ArrayList<String[]>();
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             String m = parser.mode(line);
@@ -139,9 +144,11 @@ public final class GameStateMachine {
             Integer alive = parser.sidebarInt("SPB_PLAYERS_LEFT", line);
             if (alive != null) spbPlayersLeft = alive;
             if (parser.sidebar("SPB_GAME_OVER", line) != null) spbGameOver = true;
+            String[] standing = parser.sidebarGroups("GTB_STANDING", line);   // "2. Cool_Ghost: 18"
+            if (standing != null) standings.add(standing);
             if (i + 1 < lines.size()) {
                 String next = lines.get(i + 1);
-                if (line.equals("Theme:") && !next.isEmpty() && !next.equals("Vote Now!")) theme = next;
+                if (line.equals("Theme:") && !next.isEmpty() && !next.equals("Vote Now!") && !next.equals("???")) theme = next;
                 if (line.equals("Builder:") && !next.isEmpty()) builder = next;
                 if (line.equals("Winner:") && current != null && current.placement == null
                     && next.toLowerCase(Locale.ROOT).endsWith(playerName.toLowerCase(Locale.ROOT))) {
@@ -149,8 +156,13 @@ public final class GameStateMachine {
                 }
             }
         }
-        // Backup for the chat announcement, e.g. if the mod was turned on mid-game.
-        if (state == State.LOBBY && timer && theme != null && !speedBuilders()) startBuilding(theme);
+        // Backup for the chat announcement, e.g. if the mod was turned on mid-game. Guess the Build has no
+        // announcement at all: a round's clock ("Time: 02:00") is the start, and its theme is hidden ("???").
+        boolean gtb = "gtb".equals(mode);
+        if (state == State.LOBBY && timer && (theme != null || gtb) && !speedBuilders()) {
+            startBuilding(gtb ? null : theme);
+        }
+        if (!standings.isEmpty()) onGtbStandings(standings);
         if (builder != null) startGtbRound(builder);
         if (spbRound != null && spbPlayersLeft != null) {
             onSpeedBuildersSidebar(spbRound, spbTheme, spbDifficulty, spbTimeLeft, spbPlayersLeft, spbGameOver);
@@ -175,11 +187,29 @@ public final class GameStateMachine {
         if (gameOver) finish();
     }
 
+    /**
+     * The final Guess the Build sidebar ranks everyone ("1. mooofies: 19", "2. Cool_Ghost: 18", ...), so it
+     * gives the place and points of every player, not only the podium, and the number of players.
+     */
+    private void onGtbStandings(List<String[]> standings) {
+        if (current == null || !"gtb".equals(current.mode)) return;
+        if (players == null || standings.size() > players) players = standings.size();
+        String nick = nick();
+        for (String[] s : standings) {
+            String name = s[1];
+            if (!name.equalsIgnoreCase(playerName) && (nick == null || !name.equalsIgnoreCase(nick))) continue;
+            if (current.placement == null) current.placement = Integer.valueOf(s[0]);
+            if (current.score == null) current.score = Double.valueOf(s[2]);
+        }
+    }
+
     // ---- chat
 
     /** One chat line, cleaned. Multi-line messages are split by the caller. */
     public void onChat(String line) {
         if (state == State.IDLE) return;
+        String guesser = lastGuesser;   // only the line right before this one counts
+        lastGuesser = null;
         // The end-of-game podium is a place and its points ("3rd - 28"), then one line per player or team on
         // it: "Koidu", or "Koidu, Teammate" in Teams. Tied teams get a line each, so stay on this place
         // until a line that isn't names.
@@ -242,7 +272,16 @@ public final class GameStateMachine {
             case SPB_ACCURACY:
                 if (spb != null) spb.onAccuracy(e.text);
                 break;
+            case GTB_GUESSED:
+                lastGuesser = e.text;
+                break;
             case GTB_CORRECT_GUESS:
+                // The reward comes straight after your own "X correctly guessed the theme!". If X isn't your
+                // name, X is the nick you're playing under.
+                if (guesser != null && !guesser.equalsIgnoreCase(playerName) && nick() == null) {
+                    nicked = true;
+                    nick = guesser;
+                }
                 if (current != null && "gtb".equals(current.mode)
                     && gtbRoundStartedAt > 0 && !gtbCorrectInRound) {
                     int guessMs = (int) (System.currentTimeMillis() - gtbRoundStartedAt);
@@ -393,6 +432,7 @@ public final class GameStateMachine {
         spb = null;
         podiumPlace = null;
         podiumScore = null;
+        lastGuesser = null;
         gtbLastBuilder = null;
         gtbRoundStartedAt = 0;
         gtbCorrectInRound = false;
