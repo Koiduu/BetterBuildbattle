@@ -1,6 +1,6 @@
 {
-  "_note": "Solo and Speed Builders lines are taken from real Hypixel games (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Teams, Pro and Guess the Build may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
-  "version": 4,
+  "_note": "Solo, Teams, Pro, Guess the Build and Speed Builders lines are taken from real Hypixel games (Nov 2026); the GUESS THE BUILD title is assumed. Lines are matched after trimming spaces and removing colour codes. To check wording: run /bb debug, play, and read config/betterbattle/debug.log.",
+  "version": 5,
   "title": "BUILD BATTLE",
   "modes": {
     "solo": "solo",
@@ -12,13 +12,15 @@
   "sidebar": {
     "MODE": "^Mode: (.+)$",
     "PLAYERS": "^Players: (\\d+)$",
+    "TEAMS": "^Teams: (\\d+)$",
     "TIME": "^Time: \\d+:\\d+$",
     "SPB_ROUND": "^Round: (\\d+)$",
     "SPB_THEME": "^Theme: (.+)$",
     "SPB_DIFFICULTY": "^Difficulty: (.+)$",
     "SPB_TIME_LEFT": "^Time Left: (\\d+):(\\d+)$",
     "SPB_PLAYERS_LEFT": "^Players Left: (\\d+)$",
-    "SPB_GAME_OVER": "^Game Over!"
+    "SPB_GAME_OVER": "^Game Over!",
+    "GTB_STANDING": "^(\\d+)\\. ([A-Za-z0-9_]{1,16}): (\\d+)$"
   },
   "chat": {
     "THEME": "^Build something relevant to the theme: (.+)$",
@@ -28,18 +30,20 @@
     "SCORE": "^Your Score: ([\\d.]+)$",
     "PLACEMENT": "^\\((\\d+)(?:st|nd|rd|th) Place\\)$",
     "GAME_END": "^Reward Summary$",
+    "GTB_GUESSED": "^([A-Za-z0-9_]{1,16}) correctly guessed the theme!$",
     "GTB_CORRECT_GUESS": "^\\s*\\+\\d+ .*\\(Correct Guess\\)|^\\s*You (?:correctly )?guessed the (?:theme|build)",
     "SPB_PERFECT": "^([A-Za-z0-9_]{1,16}) got a perfect build in ([\\d.]+)s!$",
     "SPB_ACCURACY": "^Your build was (\\d{1,3})% accurate!$",
     "SPB_ELIMINATED": "^You were eliminated",
     "TOKENS_PLACEMENT": "^\\+[\\d,]+ tokens! \\((\\d+)(?:st|nd|rd|th) Place\\)$",
-    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - [\\d,.]+$",
+    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - ([\\d,.]+)$",
     "NICK_ON": "^You are currently (?:NICKED|nicked)",
     "NICK_SET": "^You are now nicked as ([A-Za-z0-9_]{1,16})!?$",
     "NICK_RESET": "^Your nick has been reset!?$"
   },
   "titles": [
     "BUILD BATTLE",
-    "SPEED BUILDERS"
+    "SPEED BUILDERS",
+    "GUESS THE BUILD"
   ]
 }
