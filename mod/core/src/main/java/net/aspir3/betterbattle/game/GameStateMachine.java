@@ -41,6 +41,11 @@ public final class GameStateMachine {
     private String roundBuilder;
     private SpbTracker spb;
     private Integer podiumPlace;
+    /** The points shown next to podiumPlace. A podium finish in Solo or Pro prints no "Your Score:" line. */
+    private Double podiumScore;
+    /** A podium name line: one player ("Koidu") or a team ("Koidu, Teammate"). */
+    private static final java.util.regex.Pattern PODIUM_NAMES =
+        java.util.regex.Pattern.compile("^[A-Za-z0-9_]{1,16}(?:, [A-Za-z0-9_]{1,16})*$");
     private SpbTracker.Records spbRecords;
 
     public GameStateMachine(ChatParser parser, Listener listener, String mcVersion, String playerName) {
@@ -175,10 +180,19 @@ public final class GameStateMachine {
     /** One chat line, cleaned. Multi-line messages are split by the caller. */
     public void onChat(String line) {
         if (state == State.IDLE) return;
-        // The end-of-game podium is a place ("1st - 7") and then, on its own line, that player's name.
+        // The end-of-game podium is a place and its points ("3rd - 28"), then one line per player or team on
+        // it: "Koidu", or "Koidu, Teammate" in Teams. Tied teams get a line each, so stay on this place
+        // until a line that isn't names.
         if (podiumPlace != null) {
-            if (current != null && current.placement == null && (line.equalsIgnoreCase(playerName) || line.equalsIgnoreCase(nick()))) current.placement = podiumPlace;
-            podiumPlace = null;
+            if (PODIUM_NAMES.matcher(line).matches()) {
+                if (current != null && current.placement == null && namesInclude(line)) {
+                    current.placement = podiumPlace;
+                    if (current.score == null) current.score = podiumScore;
+                }
+            } else {
+                podiumPlace = null;
+                podiumScore = null;
+            }
         }
         Event e = parser.parse(line);
         if (e == null) return;
@@ -214,6 +228,7 @@ public final class GameStateMachine {
                 break;
             case PODIUM:
                 podiumPlace = Integer.valueOf(e.text);
+                podiumScore = parseScore(e.text2);
                 break;
             case SPB_ELIMINATED:
                 if (spb != null) {
@@ -353,8 +368,8 @@ public final class GameStateMachine {
         done.durationSec = (int) ((done.playedAt - startedAt) / 1000L);
         done.players = players;
         boolean teamsMode = "teams".equals(done.mode);
-        // The lobby count is lost when the sidebar blanks as the game starts, and a Teams game only shows
-        // "Teams: N". Two builders a team; a lone player's team counts as two, so the crowd score errs low.
+        // Solo and Pro show "Players: N" in game; Teams shows only "Teams: N". Two builders a team; a lone
+        // player's team counts as two, so the crowd score errs low.
         if (teamsMode && teams != null && (done.players == null || done.players < teams)) done.players = teams * 2;
         // In Teams the place is among teams ("14th" of 15 teams), so grade against the team count.
         Integer field = teamsMode && teams != null ? teams : done.players;
@@ -377,6 +392,7 @@ public final class GameStateMachine {
         current = null;
         spb = null;
         podiumPlace = null;
+        podiumScore = null;
         gtbLastBuilder = null;
         gtbRoundStartedAt = 0;
         gtbCorrectInRound = false;
@@ -384,5 +400,22 @@ public final class GameStateMachine {
         players = null;
         teams = null;
         setState(State.IDLE);
+    }
+
+    private boolean namesInclude(String line) {
+        String nick = nick();
+        for (String name : line.split(", ")) {
+            if (name.equalsIgnoreCase(playerName) || (nick != null && name.equalsIgnoreCase(nick))) return true;
+        }
+        return false;
+    }
+
+    private static Double parseScore(String text) {
+        if (text == null) return null;
+        try {
+            return Double.valueOf(text.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

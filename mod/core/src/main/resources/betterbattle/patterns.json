@@ -1,5 +1,5 @@
 {
-  "_note": "Solo, Teams and Speed Builders lines are taken from real Hypixel games (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Pro and Guess the Build may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
+  "_note": "Solo, Teams, Pro and Speed Builders lines are taken from real Hypixel games (Nov 2026). Lines are matched after trimming spaces and removing colour codes. Guess the Build may need additions: run /bb debug, play, and check config/betterbattle/debug.log.",
   "version": 5,
   "title": "BUILD BATTLE",
   "modes": {
@@ -34,7 +34,7 @@
     "SPB_ACCURACY": "^Your build was (\\d{1,3})% accurate!$",
     "SPB_ELIMINATED": "^You were eliminated",
     "TOKENS_PLACEMENT": "^\\+[\\d,]+ tokens! \\((\\d+)(?:st|nd|rd|th) Place\\)$",
-    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - [\\d,.]+$",
+    "PODIUM": "^(\\d+)(?:st|nd|rd|th) - ([\\d,.]+)$",
     "NICK_ON": "^You are currently (?:NICKED|nicked)",
     "NICK_SET": "^You are now nicked as ([A-Za-z0-9_]{1,16})!?$",
     "NICK_RESET": "^Your nick has been reset!?$"
