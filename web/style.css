@@ -805,3 +805,91 @@ body.cookie-notice-visible { padding-bottom: calc(var(--cookie-notice-height, 0p
 .challenge-form input, .challenge-form select, .challenge-form textarea { font: inherit; }
 .challenge-form textarea { resize: vertical; }
 .challenge-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---------------------------------------------------------------- Motion
+   Short and game-like: things step, fill and tally rather than float. web/skeleton.js decides
+   when; everything below switches off under prefers-reduced-motion. */
+
+:root {
+  --snap: cubic-bezier(0.2, 0.8, 0.2, 1);   /* fast out, soft landing */
+}
+
+/* Skeleton to content. Paired shapes (data-morph) reshape into each other; the rest cross-fades. */
+::view-transition-group(*) { animation-duration: 460ms; animation-timing-function: var(--snap); }
+::view-transition-old(*) { animation: 200ms ease-out both vt-out; }
+::view-transition-new(*) { animation: 360ms var(--snap) 80ms both vt-in; }
+::view-transition-old(root) { animation: 220ms ease-out both vt-out; }
+::view-transition-new(root) { animation: 300ms var(--snap) 60ms both vt-in; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; } }
+
+/* Content that replaces a placeholder without a morph partner */
+.fade-in { animation: fade-in 280ms var(--snap) both; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* Table rows drop in one after another, like an inventory filling */
+.cascade tbody tr { animation: row-in 260ms var(--snap) both; animation-delay: calc(var(--i, 0) * 18ms); }
+@keyframes row-in { from { opacity: 0; transform: translateX(-6px); } }
+
+/* XP bars fill notch by notch (20 steps over 10 notches) */
+.bar > div { animation: bar-fill 900ms steps(20, end) 200ms both; }
+@keyframes bar-fill { from { width: 0; } }
+
+/* The rank line draws itself left to right, then the end label pops in */
+.rank-line { animation: line-draw 900ms var(--snap) 150ms both; }
+@keyframes line-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.end-tip { animation: tip-in 200ms steps(3, end) 950ms both; }
+@keyframes tip-in { from { opacity: 0; } }
+
+/* Buttons: colours ease instead of snapping, and a two-stripe pixel glint sweeps across on hover */
+.btn, .account-link {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.btn::after, .account-link::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 34%;
+  background: linear-gradient(90deg, transparent 0 20%, rgba(255, 255, 255, 0.24) 20% 52%, transparent 52% 66%, rgba(255, 255, 255, 0.24) 66% 80%, transparent 80%);
+  transform: skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.btn:hover:not(:disabled)::after, .account-link:hover::after { animation: glint 480ms steps(10, end) 1; }
+@keyframes glint { from { left: -40%; opacity: 1; } to { left: 120%; opacity: 1; } }
+
+/* Nav: the gold underline grows out from the middle */
+.pills a { position: relative; transition: color 140ms ease-out; }
+.pills a::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -2px;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform 180ms var(--snap);
+}
+.pills a:hover::after { transform: scaleX(1); }
+.pills a[aria-current="page"]::after { display: none; }
+
+/* Small hover lifts */
+.toggle button { transition: background-color 120ms ease-out, color 120ms ease-out; }
+tbody tr td { transition: background-color 120ms ease-out; }
+.tile { transition: transform 140ms var(--snap), border-color 140ms ease-out; }
+.tile:hover { transform: translateY(-2px); }
+.player img { transition: transform 140ms var(--snap); }
+.player:hover img { transform: scale(1.12) rotate(-4deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  .fade-in, .cascade tbody tr, .bar > div, .rank-line, .end-tip { animation: none; }
+  .btn:hover::after, .account-link:hover::after { animation: none; }
+  .btn, .account-link, .pills a, .pills a::after, .toggle button, tbody tr td, .tile, .player img { transition: none; }
+  .tile:hover, .player:hover img { transform: none; }
+}
