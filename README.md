@@ -142,6 +142,7 @@ Commands: `/setup staff-role log-channel`, `/download`, `/verify name`, `/unveri
 Latest jars are served from [the install page](https://battle.aspir3.net/install) and include SHA-256 checksums.
 
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
+- **26.2:** the same, with Fabric Loader and Fabric API for 26.2 and `betterbattle-fabric-26.2-*.jar`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
 
 In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb recap` (last game), `/bb weekly`,
@@ -199,6 +200,7 @@ as `BB_SIGHTINGS_TOKEN`. Without the token the route doesn't exist.
 Latest jars are served from [the install page](https://battle.aspir3.net/install) and include SHA-256 checksums.
 
 - **26.3:** Fabric Loader 0.20.1+ and Fabric API for 26.3, then drop `betterbattle-fabric-26.3-*.jar` into `mods/`.
+- **26.2:** the same, with Fabric Loader and Fabric API for 26.2 and `betterbattle-fabric-26.2-*.jar`.
 - **1.8.9:** Forge 1.8.9 (11.15.1.2318), then drop `betterbattle-forge-1.8.9-*.jar` into `mods/`.
 
 In game: press **B** or type `/bb`. Other commands: `/bb achievements`, `/bb sync`, `/bb palette [3-12]`,

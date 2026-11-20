@@ -18,6 +18,11 @@ test("returns each available loader with its own version and size", async () => 
   ]);
 });
 
+test("offers the Fabric 26.2 build as its own download", async () => {
+  const downloads = await latestDownloads(response({ fabric: asset("fabric"), fabric262: asset("fabric262"), forge: asset("forge") }));
+  assert.deepEqual(downloads.map((d) => d.loader), ["fabric", "fabric262", "forge"]);
+});
+
 test("does not substitute the release version for a different loader build", async () => {
   const downloads = await latestDownloads(response({ version: "0.2.1",
     fabric: asset("fabric", "0.2.0"), forge: asset("forge", "0.1.9") }));

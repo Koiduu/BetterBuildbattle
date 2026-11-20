@@ -229,7 +229,7 @@ function cookiesPage() {
 function supportPage() {
   legalPage("Support", `
     <section><h2>Installing the mod</h2>
-      <p>Put the Fabric 26.3 or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
+      <p>Put the Fabric (26.3 or 26.2) or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
     <section><h2>Linking your account</h2>
       <p>Get a code from the Account page, then run <code>/bb link &lt;code&gt;</code> in game.</p></section>
     <section><h2>The stats server cannot be reached</h2>
@@ -649,7 +649,7 @@ function getModCard() {
     <section class="card get-mod">
       <div>
         <h2>See the rest of this profile with the mod</h2>
-        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3 and Forge 1.8.9.</p>
+        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3, Fabric 26.2 and Forge 1.8.9.</p>
       </div>
       <a class="btn primary" href="/install" data-link>Get the mod</a>
     </section>`;
