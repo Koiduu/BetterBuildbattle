@@ -593,7 +593,10 @@ async function cardCanvas(p, achievementCount) {
   const c = document.createElement("canvas");
   c.width = CARD_W;
   c.height = CARD_H;
-  await document.fonts.load("700 64px 'Pixelify Sans'").catch(() => {});
+  await Promise.all([
+    document.fonts.load("700 64px 'Pixelify Sans'"),
+    document.fonts.load("700 64px 'Geist Pixel Digits'", "0123456789"),
+  ]).catch(() => {});
   const bb = p.betterBattle;
   drawCard(c.getContext("2d"), {
     name: p.name,
@@ -603,7 +606,7 @@ async function cardCanvas(p, achievementCount) {
     url: `${location.host}/p/${p.name}`,
     supporter: p.style?.supporter ?? null,
   }, await loadImage(avatar(p.uuid, 160)), {
-    display: "'Pixelify Sans', 'Courier New', monospace",
+    display: "'Geist Pixel Digits', 'Pixelify Sans', 'Courier New', monospace",
     body: "Verdana, sans-serif",
   }, CARD_THEMES[p.style?.cardTheme] ?? undefined);
   return c;

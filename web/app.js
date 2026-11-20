@@ -6,6 +6,7 @@ import {
   plansPage, insightsPage, wrappedPage, groupsPage, groupPage, resolveVanity, renderPlanCard, supporterChip,
   supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
 } from "./plans.js";
+import { profileSkeleton, leaderboardSkeleton } from "./skeleton.js";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
@@ -372,7 +373,7 @@ async function homePage() {
         <h2>Top builders</h2>
         <a href="/leaderboard" data-link>See all</a>
       </div>
-      <div id="home-top"><div class="loading" style="height:300px"></div></div>
+      <div id="home-top">${leaderboardSkeleton(10)}</div>
     </section>`;
 
   updateBanner(document.getElementById("home-banner"));
@@ -439,7 +440,7 @@ async function leaderboardPage() {
         </div>
         <div class="lb-tools"><span id="lb-pick"></span><div class="pager" id="lb-pager"></div></div>
       </div>
-      <div id="lb-body"><div class="loading" style="height:560px"></div></div>
+      <div id="lb-body">${leaderboardSkeleton(50)}</div>
     </section>`;
 
   const [board, picker] = await Promise.all([
@@ -504,7 +505,7 @@ function meter(left, right, fraction, color) {
 
 async function profilePage(name) {
   document.title = `${name} · Better Battle`;
-  app.innerHTML = `<div class="loading" style="height:160px"></div><div class="loading" style="height:280px"></div>`;
+  app.innerHTML = profileSkeleton();
 
   let p;
   try {

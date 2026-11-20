@@ -2,8 +2,21 @@
   Better Battle
   The look borrows from Minecraft's own menus: hard black outlines, bevelled
   buttons, inventory-slot panels, the 16 chat colours and a pixel face for
-  names and numbers. Body text is plain Verdana so tables stay readable.
+  names. Body text is plain Verdana so tables stay readable.
+
+  Numbers: Pixelify's 3, 8 and 9 blur together at a glance, so digits and number
+  punctuation (# % + , .) come from a subset of Geist Pixel. It is first in the
+  display stack and has no letters, so every other character falls through to Pixelify.
 */
+
+@font-face {
+  font-family: "Geist Pixel Digits";
+  src: url("/fonts/GeistPixelDigits.woff2") format("woff2");
+  font-weight: 400 700;   /* one drawn weight; the range stops browsers faking a smeared bold */
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0023, U+0025, U+002B, U+002C, U+002E, U+0030-0039;
+}
 
 @font-face {
   font-family: "Pixelify Sans";
@@ -30,7 +43,7 @@
   --pink-bg: #3a2030;
   --green: #55ff55;
   --red: #ff5555;
-  --display: "Pixelify Sans", "Courier New", monospace;
+  --display: "Geist Pixel Digits", "Pixelify Sans", "Courier New", monospace;
   --body: Verdana, "DejaVu Sans", Geneva, sans-serif;
 }
 
@@ -235,6 +248,13 @@ footer.footer {
 
 .btn.primary:hover { background: #ee62a2; color: #fff; }
 
+.btn:active:not(:disabled),
+.account-link:active {
+  box-shadow: inset 2px 2px 0 #4f4f4f, inset -2px -2px 0 #a8a8a8;
+  padding-top: 2px;
+}
+.btn.primary:active:not(:disabled) { box-shadow: inset 2px 2px 0 #9a2f61, inset -2px -2px 0 #ff9cc8; }
+
 .btn:disabled,
 .btn:disabled:hover {
   background: #2c2c2c;
@@ -364,6 +384,36 @@ footer.footer {
 .empty { padding: 28px 12px; text-align: center; color: var(--muted); }
 .loading { background: var(--card-2); border: 2px solid var(--edge); }
 
+/* Loading placeholders (web/skeleton.js). Grey shapes where the content will land; they pulse in
+   two hard steps, like a block breaking, rather than a soft shimmer. */
+.sk {
+  display: inline-block;
+  flex: none;
+  max-width: 100%;
+  vertical-align: middle;
+  background: #34343c;
+}
+.sk-block { background: var(--card-2); border: 2px solid var(--edge); }
+.sk, .sk-block, .loading { animation: sk-pulse 1.1s steps(2, jump-none) infinite alternate; }
+.sk-label, .sk-note, .meter-label .sk { margin: 3px 0 4px; }
+.sk-note { margin-top: 5px; }
+.sk-tile { margin-top: 5px; }
+.sk-head { background: #000; }
+.sk-bar { background: #1b1b1f; }
+.sk-bar::after { display: none; }
+.sync-text .sk-note { display: block; }
+.sync-text div > .sk:first-child { display: block; }
+.sk-list { display: flex; flex-direction: column; }
+.sk-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+.sk-row:last-child { border-bottom: 0; }
+.sk-row-text { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+
+@keyframes sk-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk, .sk-block, .loading { animation: none; }
+}
+
 code {
   padding: 0 5px;
   background: #000;
@@ -427,7 +477,8 @@ th.right, td.right { text-align: right; }
   padding: 0 5px;
   background: var(--pink);
   color: #000;
-  font: 700 12px/1.4 var(--display);
+  font: 700 11px/1.55 var(--body);   /* Pixelify's B reads as an 8 at this size */
+  letter-spacing: 0.04em;
 }
 
 .pager { display: flex; align-items: center; gap: 8px; }
@@ -462,7 +513,9 @@ th.right, td.right { text-align: right; }
 /* Progress bars are the XP bar: black frame, notches every tenth */
 
 .meter { display: flex; flex-direction: column; gap: 4px; max-width: 420px; }
-.meter-label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; white-space: nowrap; }
+.meter-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; font-size: 12px; }
+.meter-label > span { white-space: nowrap; }
+.meter-label > :last-child { margin-left: auto; }   /* on a phone the numbers drop to their own line, still right-aligned */
 
 .bar { position: relative; height: 10px; background: #0c2400; border: 2px solid var(--edge); }
 .bar div { height: 100%; background: #80ff20; }
