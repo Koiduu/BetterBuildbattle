@@ -409,8 +409,21 @@ const VOTE_NAMES = { super_poop: "Super Poop", poop: "Poop", meh: "Meh", ok: "OK
 
 export async function wrappedPage() {
   document.title = "Wrapped · Better Battle";
+  // Closed until it opens, for everyone; what's inside stays a surprise until then
+  const [opens] = await Promise.all([get("/wrapped/opens").catch(() => null), meReady]);
+  if (opens && !opens.open) {
+    const when = new Date(opens.opensAt).toLocaleString(undefined, { day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+    app.innerHTML = `
+      <section class="card wrapped-soon">
+        <h1>Build Battle Wrapped</h1>
+        <p class="wrapped-date">Opens ${esc(when)}</p>
+        <p class="muted">What's inside is a surprise. Keep playing: every game you play with the mod counts.</p>
+        ${has("master") ? "" : `<p class="sub">Wrapped comes with <a href="/plans" data-link>Master Builder</a>.</p>`}
+      </section>`;
+    return;
+  }
   const period = new URLSearchParams(location.search).get("period") ?? "year";
-  const w = await gated("master", "Build Battle Wrapped", "Your year in Build Battle, whenever you want it: favourite themes, voting habits, best months.",
+  const w = await gated("master", "Build Battle Wrapped", "Your year in Build Battle.",
     () => get("/me/wrapped?period=" + encodeURIComponent(period)));
   if (!w) return;
   const label = { year: `Your ${new Date().getFullYear()}`, "30d": "Your last 30 days", all: "All time" }[w.period];

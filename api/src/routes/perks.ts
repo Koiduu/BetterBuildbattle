@@ -1,6 +1,7 @@
 // What the paid plans unlock: profile style and vanity links (Architect); insights, Wrapped, CSV
 // export and private leaderboards (Master Builder). Every gate goes through lib/plans.ts.
 import crypto from "node:crypto";
+import { wrappedOpen, wrappedOpensAt } from "../lib/wrapped";
 import { flaggedWord } from "../lib/wordFilter";
 import { z } from "zod";
 import { Raw, Router, fail, type Req } from "../http";
@@ -182,7 +183,11 @@ export function perkRoutes(app: Router) {
   });
 
   /** Build Battle Wrapped for a period: this year, the last 30 days, or everything. */
+  /** When Wrapped opens. Public, so the page can count down without saying what's inside. */
+  app.get("/wrapped/opens", async () => ({ opensAt: wrappedOpensAt().toISOString(), open: wrappedOpen() }));
+
   app.get("/me/wrapped", [requireWebSession], async (req) => {
+    if (!wrappedOpen()) return fail(403, "wrapped_not_yet", { opensAt: wrappedOpensAt().toISOString() });
     await need(req, "wrapped");
     const { period } = z.object({ period: z.enum(["year", "30d", "all"]).default("year") }).parse(req.query);
     const since = period === "year" ? "date_trunc('year', now())" : period === "30d" ? "now() - interval '30 days'" : "'-infinity'::timestamptz";

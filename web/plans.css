@@ -86,3 +86,8 @@ tr.me td { background: var(--pink-bg); }
   .pills { flex-wrap: wrap; row-gap: 0; }
   .pills a { padding: 6px 8px; font-size: 15px; }
 }
+
+/* Wrapped before it opens */
+.wrapped-soon { align-items: center; gap: 10px; padding: 48px 20px; text-align: center; }
+.wrapped-soon h1 { font: 600 clamp(30px, 6vw, 44px)/1 var(--display); color: var(--gold); text-shadow: 3px 3px 0 #000; }
+.wrapped-date { font: 600 20px/1.2 var(--display); }
