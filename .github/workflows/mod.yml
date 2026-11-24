@@ -24,6 +24,13 @@ jobs:
           java-version: 25
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew && ./gradlew build --stacktrace
+      - name: Check mixin targets exist in this Minecraft version
+        run: |
+          find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources || true
+          JAR=$(find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources | grep -F -- "${{ matrix.mc }}" | head -1)
+          echo "Checking against: $JAR"
+          test -n "$JAR"
+          python3 ../../tools/check-mixins.py ../fabric-26.3/src/main/java/net/aspir3/betterbattle/fabric/mixin "$JAR"
       - name: Dump Minecraft API on failure
         if: failure()
         run: |
@@ -72,6 +79,11 @@ jobs:
   release:
     name: Publish test build
     needs: [fabric, forge]
+    # Two merges in a row used to publish at the same moment: one deleted the release while the other
+    # uploaded to it. Queue them; the newest commit still publishes last.
+    concurrency:
+      group: publish-dev-release
+      cancel-in-progress: false
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
