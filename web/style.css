@@ -923,3 +923,4 @@ tbody tr td { transition: background-color 120ms ease-out; }
 @media (max-width: 560px) {
   .launch-inner .btn { margin-left: 0; }
 }
+.auth-sent { padding: 12px 14px; background: var(--card-2); border: 2px solid var(--edge); color: var(--soft); }

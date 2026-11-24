@@ -48,7 +48,7 @@ export function updateLaunchBar(user) {
   const bar = document.getElementById("launch-bar");
   if (!bar) return;
   const now = Date.now();
-  const onAuthPage = /^\/(signup|login)\/?$/.test(location.pathname);
+  const onAuthPage = /^\/(signup|login|forgot|reset)\/?$/.test(location.pathname);
   if (!accountKnown || signedIn || onAuthPage || now > LAUNCH + LIVE_FOR_MS || (now >= LAUNCH && closed())) return hidden(bar);
 
   if (now >= LAUNCH) {

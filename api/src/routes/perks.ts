@@ -1,6 +1,7 @@
 // What the paid plans unlock: profile style and vanity links (Architect); insights, Wrapped, CSV
 // export and private leaderboards (Master Builder). Every gate goes through lib/plans.ts.
 import crypto from "node:crypto";
+import { flaggedWord } from "../lib/wordFilter";
 import { z } from "zod";
 import { Raw, Router, fail, type Req } from "../http";
 import { pool } from "../db/pool";
@@ -72,7 +73,7 @@ export function perkRoutes(app: Router) {
     if (body.vanity !== undefined) {
       if (!can(plan, "vanity")) await need(req, "vanity");
       if (body.vanity !== null) {
-        if (!VANITY.test(body.vanity) || RESERVED.has(body.vanity)) fail(400, "vanity_not_allowed");
+        if (!VANITY.test(body.vanity) || RESERVED.has(body.vanity) || flaggedWord(body.vanity)) fail(400, "vanity_not_allowed");
         // Nobody gets a link that reads as another player's name.
         const other = await pool.query(
           `SELECT 1 FROM tracked_players t WHERE t.mc_name = $1

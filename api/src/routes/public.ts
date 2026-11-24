@@ -1,6 +1,7 @@
 // Read-only routes the website uses. Works for ANY tracked Build Battle player;
 // Better Battle extras (level, games, achievements) appear when the player uses the mod.
 import { Router, Raw, fail, type Req } from "../http";
+import { flaggedWord } from "../lib/wordFilter";
 import { profileCard } from "../services/card";
 import { siteOrigin } from "../lib/site";
 import { BOARDS, boardById, boardPage, positions } from "../services/boards";
@@ -198,7 +199,7 @@ export function publicRoutes(app: Router) {
     let claimed = false;
     if (u.rowCount) {
       const row = u.rows[0];
-      bio = row.bio;
+      bio = flaggedWord(row.bio) ? null : row.bio;   // saved before the word filter existed
       claimed = row.claimed;
       if (row.has_progress) {
         const xp = Number(row.xp ?? 0);
@@ -215,7 +216,7 @@ export function publicRoutes(app: Router) {
         const m = metrics.rows[0];
         betterBattle = {
           memberSince: row.created_at,
-          bio: row.bio,
+          bio,
           level,
           xp,
           xpIntoLevel: xp - totalXpForLevel(level),
