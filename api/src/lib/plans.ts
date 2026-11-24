@@ -70,7 +70,7 @@ export const PERKS: Record<Plan, string[]> = {
   ],
   master: [
     "Everything in Architect",
-    "Build Battle Wrapped whenever you like",
+    "Build Battle Wrapped, from 27 December",
     "Theme analytics: your best and worst themes",
     "Speed Builders analysis: time history and trend for every build",
     "Your full game history, with a spreadsheet (CSV) export",

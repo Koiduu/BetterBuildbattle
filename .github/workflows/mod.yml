@@ -27,7 +27,12 @@ jobs:
       - name: Check mixin targets exist in this Minecraft version
         run: |
           find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources || true
-          JAR=$(find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources | grep -F -- "${{ matrix.mc }}" | head -1)
+          # The whole game (client + server) jar for this version; the server-only jar has no client classes
+          for kind in minecraft-merged-deobf- minecraft-merged minecraft-client; do
+            JAR=$(find ~/.gradle .gradle -name 'minecraft-*.jar' -size +10M 2>/dev/null | grep -v sources \
+              | grep -F -- "${{ matrix.mc }}" | grep -F -- "$kind" | head -1)
+            [ -n "$JAR" ] && break
+          done
           echo "Checking against: $JAR"
           test -n "$JAR"
           python3 ../../tools/check-mixins.py ../fabric-26.3/src/main/java/net/aspir3/betterbattle/fabric/mixin "$JAR"
