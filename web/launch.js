@@ -1,7 +1,7 @@
-// Launch: until LAUNCH, visitors who aren't signed in get a full-screen countdown with "Sign up early"
-// (anyone who already signed up early logs in and uses the site). From LAUNCH a bar says the site is
-// live for a week; it can be closed. Signed-in visitors never see either, and both stay off the
-// sign-up, login and password-reset pages so those keep working.
+// Launch: until LAUNCH, everyone gets a full-screen countdown. Visitors see "Sign up early"; people who
+// have signed up see that they're in, and come back to the countdown, not the site, until it opens.
+// From LAUNCH a bar tells visitors who aren't signed in that the site is live, for a week; it can be
+// closed. The sign-up, login and password-reset pages are never covered, so those keep working.
 
 const LAUNCH = Date.parse("2026-11-25T18:00:00Z");
 const LIVE_FOR_MS = 7 * 24 * 60 * 60 * 1000;
@@ -47,7 +47,7 @@ function screenEl() {
   const unit = (key, label) => `
     <div class="launch-unit"><b data-unit="${key}">00</b><span>${label}</span></div>`;
   el.innerHTML = `
-    <div class="launch-card">
+    <div class="launch-card" data-signed-in="">
       <span class="brand-mark launch-mark" aria-hidden="true">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 20h16"/><path d="M6 20V10l6-6 6 6v10"/><path d="M10 20v-5h4v5"/></svg>
       </span>
@@ -58,18 +58,41 @@ function screenEl() {
       </div>
       <p class="sr-only" id="launch-sr"></p>
       <p class="launch-when">Opens ${localTime()}</p>
-      <div class="launch-actions">
-        <a class="btn primary" href="/signup" data-link>Sign up early</a>
-        <a class="launch-login" href="/login" data-link>Already signed up? Log in</a>
-      </div>
-      <p class="launch-note">Sign up now to claim your profile the moment we open.</p>
+      <div class="launch-actions"></div>
+      <p class="launch-note"></p>
     </div>`;
   document.body.append(el);
   return el;
 }
 
+/** The buttons under the clock: sign up for visitors, "you're in" once they have. */
+function renderActions(el) {
+  const card = el.querySelector(".launch-card");
+  const mode = signedIn ? "in" : "out";
+  if (card.dataset.signedIn === mode) return;
+  card.dataset.signedIn = mode;
+  const actions = el.querySelector(".launch-actions");
+  const note = el.querySelector(".launch-note");
+  if (signedIn) {
+    actions.innerHTML = `
+      <p class="launch-in" role="status">You're signed up. See you at launch!</p>
+      <button class="launch-login launch-logout" type="button">Log out</button>`;
+    note.textContent = "This page opens into the site by itself when the countdown ends.";
+    actions.querySelector(".launch-logout").addEventListener("click", async () => {
+      await fetch("/bb/v1/auth/logout", { method: "POST" }).catch(() => {});
+      location.reload();
+    });
+  } else {
+    actions.innerHTML = `
+      <a class="btn primary" href="/signup" data-link>Sign up early</a>
+      <a class="launch-login" href="/login" data-link>Already signed up? Log in</a>`;
+    note.textContent = "Sign up now to claim your profile the moment we open.";
+  }
+}
+
 function showScreen(now) {
   const el = screenEl();
+  renderActions(el);
   const left = parts(LAUNCH - now);
   for (const [k, v] of Object.entries(left)) {
     const cell = el.querySelector(`[data-unit="${k}"]`);
@@ -129,14 +152,14 @@ export function updateLaunchBar(user) {
   const onAuthPage = /^\/(signup|login|forgot|reset)\/?$/.test(location.pathname);
   const visitor = accountKnown && !signedIn && !onAuthPage;
 
-  if (visitor && now < LAUNCH) {
+  if (accountKnown && !onAuthPage && now < LAUNCH) {
     hideBar();
     showScreen(now);
     if (!timer) timer = setInterval(() => updateLaunchBar(), 1000);
     return;
   }
   hideScreen();
-  if (now < LAUNCH && accountKnown && !signedIn && !timer) {
+  if (now < LAUNCH && accountKnown && !timer) {
     // On the sign-up or login page: keep ticking so the screen comes back if they go elsewhere
     timer = setInterval(() => updateLaunchBar(), 1000);
   }
