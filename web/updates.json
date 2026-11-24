@@ -1,6 +1,22 @@
 {
   "updates": [
     {
+      "version": "0.2.3",
+      "date": "2026-11-25",
+      "title": "Bug Reports",
+      "summary": "Something not right? Type /bb report and tell us what happened. It sends us your last games' game messages and scoreboard, never your chat.",
+      "sections": [
+        {
+          "heading": "Report a bug from in game",
+          "items": [
+            "/bb report what went wrong sends us your last few games so we can see what the mod saw",
+            "Only the game's own messages, the scoreboard and what the mod worked out; chat, private messages, guild, party and friend messages are left out on your PC",
+            "Nothing is sent unless you type the command"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.2.2",
       "date": "2026-11-25",
       "title": "Update Notices",

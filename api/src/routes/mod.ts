@@ -126,6 +126,24 @@ export function modRoutes(app: Router) {
   });
 
   // ---- 3. Sync: idempotent batch insert ----
+  // /bb report: sent only when the player runs the command. The mod has already left out all chat.
+  app.post("/mod/report", [requireModToken, rateLimit(3, 10 * 60_000, "/mod/report")], async (req) => {
+    const body = z.object({
+      modVersion: z.string().max(40),
+      mcVersion: z.string().max(20),
+      note: z.string().max(500).default(""),
+      log: z.string().min(1).max(300_000),
+    }).parse(req.body);
+    const today = await pool.query(
+      "SELECT count(*)::int AS n FROM bug_reports WHERE user_id = $1 AND created_at > now() - interval '1 day'", [req.user.id]);
+    if (today.rows[0].n >= 10) fail(429, "rate_limited");
+    await pool.query("DELETE FROM bug_reports WHERE created_at < now() - interval '90 days'");
+    const r = await pool.query(
+      `INSERT INTO bug_reports (user_id, mod_version, mc_version, note, log) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [req.user.id, body.modVersion, body.mcVersion, body.note.trim(), body.log]);
+    return { id: Number(r.rows[0].id) };
+  });
+
   app.post("/mod/sync", [requireModToken, rateLimit(30, 60_000)],
     async (req) => {
       const userId: number = req.user.id;

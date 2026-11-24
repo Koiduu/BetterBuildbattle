@@ -186,6 +186,12 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                         core.link(StringArgumentType.getString(c, "code"));
                         return 1;
                     })))
+                .then(ClientCommands.literal("report")
+                    .executes(c -> { core.sendReport(""); return 1; })
+                    .then(ClientCommands.argument("what went wrong", StringArgumentType.greedyString()).executes(c -> {
+                        core.sendReport(StringArgumentType.getString(c, "what went wrong"));
+                        return 1;
+                    })))
                 .then(ClientCommands.literal("palette")
                     .executes(c -> palette(6))
                     .then(ClientCommands.argument("size", IntegerArgumentType.integer(3, 12))

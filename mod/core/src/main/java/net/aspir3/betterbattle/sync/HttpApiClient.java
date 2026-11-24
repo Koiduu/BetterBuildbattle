@@ -67,6 +67,17 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(post("/mod/sync", gson.toJson(body)), SyncResult.class);
     }
 
+    public String report(String note, String log) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("modVersion", modVersion);
+        body.put("mcVersion", mcVersion);
+        body.put("note", note.length() > 500 ? note.substring(0, 500) : note);
+        body.put("log", log.length() > 300000 ? log.substring(log.length() - 300000) : log);   // the newest part
+        Map<?, ?> res = gson.fromJson(post("/mod/report", gson.toJson(body)), Map.class);
+        Object id = res == null ? null : res.get("id");
+        return id == null ? null : String.valueOf(id instanceof Number ? ((Number) id).longValue() : id);
+    }
+
     public Latest latest() throws Exception {
         String loader = "1.8.9".equals(mcVersion) ? "forge" : "fabric";
         try {

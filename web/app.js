@@ -157,13 +157,13 @@ function supportContact() {
   return links.length ? links.join(" · ") : "Contact details coming soon";
 }
 
-function legalPage(name, content, showLastUpdated = true) {
+function legalPage(name, content, showLastUpdated = true, updated = "13 November 2026") {
   document.title = `${name} · Better Battle`;
   app.innerHTML = `
     <article class="card legal-page">
       <header class="legal-head">
         <h1>${name}</h1>
-        ${showLastUpdated ? `<p class="sub">Last updated 13 November 2026</p>` : ""}
+        ${showLastUpdated ? `<p class="sub">Last updated ${updated}</p>` : ""}
       </header>
       ${content}
     </article>`;
@@ -185,6 +185,13 @@ function privacyPage() {
       <p>Each sync sends your finished games: time, mode, theme, placement, player count, score, grade, duration, blocks placed and broken, palette, and your votes with the builder name. Votes are visible only to Better Battle admins and are used to check results. Syncs also send local achievement claims, mod and Minecraft version, and the names and UUIDs of players seen in your lobbies.</p>
       <p>For Speed Builders, each round adds the build's name, your time if you got a Perfect Build, accuracy, precision, and blocks placed and broken. Games also carry the names of any one-off challenges they met (used for weekly challenges), and Guess the Build games carry your number of correct guesses. You can stop saving votes, and turn off the timer, recap and other extras, in the mod's Settings screen.</p>
       <p>The mod also saves this information on your PC in a SQLite file. A <code>/bb debug</code> log stays on your PC unless you share it.</p></section>
+    <section><h2>Bug reports (/bb report)</h2>
+      <p>The mod keeps a short log of your last few games in memory so you can send it to us if something goes wrong. It is sent only when you type <code>/bb report</code>, never automatically, and it disappears when you close the game.</p>
+      <p>A report contains the game's own messages (such as the theme, your score and place, votes you cast, rewards and who joined or left), the scoreboard, what the mod worked out from them, your mod and Minecraft versions, and anything you write after the command. It is linked to your Minecraft account.</p>
+      <p>It never contains chat: messages written by you or other players, private messages, and guild, party and friend messages are left out on your PC before anything is kept. If you play nicked, your nick is left out too.</p>
+      <p>Only Better Battle admins can read reports. They are deleted after 90 days, or straight away if you delete your account, and are included when you download your data.</p></section>
+    <section><h2>Password reset emails</h2>
+      <p>If you ask for a password reset, we email a one-time link to the address on your account through our email provider, Resend, who see your email address. The link works for one hour; we store only a hash of it.</p></section>
     <section><h2>Other players and public profiles</h2>
       <p>Better Battle fetches public Build Battle stats from the official Hypixel API by UUID for leaderboard players, players seen in lobbies, and players someone searches for. Players who have never signed up can appear in the global ranking. We keep only their name, UUID and public Hypixel Build Battle stats while they are in the ranking, and do not record who saw them or in which lobby. They can ask us on Discord to be removed.</p>
       <p>Profiles are public. They can show a name, Hypixel stats, rank, bio, pins, Better Battle matches, achievements, weekly challenge progress, Speed Builders best times and heatmap. Your best time on each Speed Builders build also appears with your name on that build's public leaderboard, and anyone can compare two profiles side by side. Email, Discord ID and votes are never public.</p></section>
@@ -197,7 +204,7 @@ function privacyPage() {
     <section><h2>Your choices and age</h2>
       <p>You can delete your account or download a copy of your data from the Account page. To request a correction or removal of account data, contact us on Discord using the link below. Public Hypixel stats can also be removed on request.</p>
       <p>You must be at least 13, or older if your country requires it, to make an account. If we learn that an account belongs to someone under 13, we delete it. Parents or guardians can ask us to do so on Discord.</p>
-      <p class="contact-block">${supportContact()}</p></section>`);
+      <p class="contact-block">${supportContact()}</p></section>`, true, "24 November 2026");
 }
 
 function termsPage() {

@@ -53,6 +53,8 @@ public final class BetterBattle {
     private String lastSidebarTitle = "";
     private List<String> lastSidebar = new ArrayList<String>();
     private PrintWriter debugLog;
+    /** The last games for /bb report, without anything people wrote. Kept in memory across games. */
+    private final net.aspir3.betterbattle.report.ReportLog report = new net.aspir3.betterbattle.report.ReportLog();
     private boolean whatsNewDue, whatsNewAnnounced;
     private volatile ApiClient.Latest newer;      // a version newer than this one, once the server reports it
     private boolean newerAnnounced;
@@ -206,6 +208,7 @@ public final class BetterBattle {
             String line = ChatParser.clean(raw);
             if (line.isEmpty()) continue;
             debug("chat: " + line);
+            report.chat(line, parser);
             ChatParser.Event e = parser.parse(line);
             if (e != null && e.type == ChatParser.Type.NICK_ON) setNick(true, null);
             else if (e != null && e.type == ChatParser.Type.NICK_SET) setNick(true, e.text);
@@ -224,6 +227,8 @@ public final class BetterBattle {
         if (cleanTitle.equals(lastSidebarTitle) && cleaned.equals(lastSidebar)) return;
         if (!cleanTitle.equals(lastSidebarTitle)) debug("sidebar title: " + cleanTitle);
         // The clock line changes every second; leave it out of the log.
+        boolean changed = !cleanTitle.equals(lastSidebarTitle) || !withoutClock(cleaned).equals(withoutClock(lastSidebar));
+        if (changed) report.sidebar(cleanTitle, cleaned);
         if (config.debug && !withoutClock(cleaned).equals(withoutClock(lastSidebar))) debug("sidebar: " + String.join(" | ", cleaned));
         lastSidebarTitle = cleanTitle;
         lastSidebar = cleaned;
@@ -338,6 +343,24 @@ public final class BetterBattle {
         if (sync != null) sync.syncNow();
     }
 
+    /**
+     * /bb report [what went wrong]: sends the last games' game messages, sidebar and the mod's decisions.
+     * Never chat: ReportLog leaves out anything a person wrote before it is kept.
+     */
+    public void sendReport(String note) {
+        if (sync == null) {
+            platform.chat("§d§lBetter Battle §8» §7Join Hypixel first, then run §b/bb report§7 again.");
+            return;
+        }
+        if (report.isEmpty()) {
+            platform.chat("§d§lBetter Battle §8» §7Nothing to send yet. Play a game, then run §b/bb report§7.");
+            return;
+        }
+        platform.chat("§d§lBetter Battle §8» §7Sending a bug report: your last games' game messages and scoreboard. "
+            + "§fNo chat or private messages§7 are included.");
+        sync.report(note == null ? "" : note.trim(), report.text());
+    }
+
     /** /bb link CODE, with the code from the website's account page. */
     public void link(String code) {
         if (sync != null) sync.link(code.trim().toUpperCase());
@@ -358,6 +381,10 @@ public final class BetterBattle {
     }
 
     public void debug(String line) {
+        // The mod's own lines go into /bb report too; chat and sidebar arrive there filtered, separately
+        if (!line.startsWith("chat: ") && !line.startsWith("sidebar")) {
+            report.mod(line.startsWith("nick: ") ? "nick: " + (nicked ? "on" : "off") : line);
+        }
         if (debugLog == null) return;
         debugLog.println(new SimpleDateFormat("HH:mm:ss.SSS").format(new Date()) + "  " + line);
         debugLog.flush();
