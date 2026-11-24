@@ -10,6 +10,7 @@ base {
 sourceSets {
 	main {
 		java.srcDir '../core/src/main/java'
+		java.srcDir 'src/compat/java'   // the few calls that differ between Minecraft versions
 		resources.srcDir '../core/src/main/resources'
 	}
 }

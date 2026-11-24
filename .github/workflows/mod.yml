@@ -34,7 +34,8 @@ jobs:
                    net.minecraft.client.gui.components.AbstractSelectionList net.minecraft.client.gui.components.ObjectSelectionList \
                    net.minecraft.client.gui.components.AbstractScrollArea net.minecraft.client.gui.Gui net.minecraft.client.Minecraft \
                    net.minecraft.client.gui.components.toasts.Toast net.minecraft.client.gui.components.Tooltip \
-                   net.minecraft.client.gui.GuiGraphicsExtractor net.minecraft.client.gui.components.Button\$Builder; do
+                   net.minecraft.client.gui.GuiGraphicsExtractor net.minecraft.client.gui.components.Button\$Builder \
+                   com.mojang.blaze3d.platform.InputConstants\$Type net.minecraft.client.KeyMapping; do
             echo "===== $c"; javap -p -cp "$JAR" "$c" 2>&1 | grep -vE "lambda|synthetic|static \{\}" | head -80
           done
           echo "===== Connection fields"; javap -p -cp "$JAR" net.minecraft.network.Connection | grep -iE "channel" | head
