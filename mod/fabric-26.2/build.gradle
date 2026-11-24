@@ -11,6 +11,7 @@ sourceSets {
 	main {
 		java.srcDir '../core/src/main/java'
 		java.srcDir '../fabric-26.3/src/main/java'
+		java.srcDir 'src/compat/java'   // its own copies of the calls that differ between Minecraft versions
 		resources.srcDir '../core/src/main/resources'
 		resources.srcDir '../fabric-26.3/src/main/resources'
 	}

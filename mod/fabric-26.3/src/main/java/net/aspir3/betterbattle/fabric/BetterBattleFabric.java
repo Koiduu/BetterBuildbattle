@@ -80,7 +80,6 @@ import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
-import org.lwjgl.sdl.SDLScancode;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -115,7 +114,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(BetterBattle.MOD_ID, "main"));
         menuKey = KeyMappingHelper.registerKeyMapping(
-            new KeyMapping("key.betterbattle.menu", InputConstants.Type.KEYBOARD, SDLScancode.SDL_SCANCODE_B, category));
+            net.aspir3.betterbattle.fabric.compat.Keys.menuKey("key.betterbattle.menu", category));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             ServerData server = client.getCurrentServer();
