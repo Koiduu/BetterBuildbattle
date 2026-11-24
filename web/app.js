@@ -7,6 +7,7 @@ import {
   supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
 } from "./plans.js";
 import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
+import { updateLaunchBar } from "./launch.js";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
@@ -119,6 +120,7 @@ async function render() {
   });
   window.scrollTo(0, 0);
   clearInterval(linkPoll);
+  updateLaunchBar();
 
   app.onclick = null;   // pages that listen on the whole page set this; it must not outlive them
 
@@ -474,6 +476,9 @@ function profileError(err, name) {
     return `${esc(err.body.name ?? name)} hasn't played Build Battle yet.`;
   }
   if (err.status === 404) return `There's no Minecraft player called ${esc(name)}.`;
+  if (err.status === 503 && err.body?.error === "mojang_unavailable") {
+    return "Mojang didn't answer, so we couldn't look up that name. Try again in a minute.";
+  }
   if (err.status === 503) {
     return err.body?.reason === "api_key"
       ? "Hypixel rejected our API key, so stats can't be loaded right now. If you run this site, check the logs (bb logs)."
@@ -891,6 +896,7 @@ function faceFor(user, size) {
 }
 
 function renderAccountLink() {
+  updateLaunchBar(me);
   const link = document.getElementById("account-link");
   if (!me) {
     link.href = "/login";

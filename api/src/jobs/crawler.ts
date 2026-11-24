@@ -47,7 +47,7 @@ export async function refreshOne(uuid: string) {
   );
   if (fresh.rowCount) return;
 
-  const res = await fetch(`${HYPIXEL_API}/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY } });
+  const res = await fetch(`${HYPIXEL_API}/v2/player?uuid=${uuid}`, { headers: { "API-Key": KEY }, signal: AbortSignal.timeout(10_000) });
   if (res.status === 429) throw new Error("rate_limited");
   if (res.status === 401 || res.status === 403) {
     // The key is the problem, not this player, so don't push their next check back.
