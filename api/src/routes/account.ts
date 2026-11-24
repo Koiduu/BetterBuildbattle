@@ -1,4 +1,7 @@
 import crypto from "node:crypto";
+import { siteOrigin } from "../lib/site";
+import { emailConfigured, sendEmail } from "../lib/email";
+import { flaggedWord } from "../lib/wordFilter";
 import { hash, verify } from "@node-rs/argon2";
 import { z } from "zod";
 import { pool } from "../db/pool";
@@ -178,6 +181,54 @@ export function accountRoutes(app: Router) {
     return { ok: true };
   });
 
+  // ---- Password reset by email. Always answers the same whether or not the email has an account, so the
+  // form can't be used to find out who has signed up.
+  app.post("/auth/forgot", [rateLimit(5, 60_000, "/auth/forgot")], async (req) => {
+    const { email } = z.object({ email: EMAIL }).parse(req.body);
+    if (!emailConfigured()) return fail(503, "email_unavailable");
+    const r = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    const userId: number | undefined = r.rows[0]?.id;
+    if (userId !== undefined) {
+      // At most one email every two minutes per account, so nobody can flood someone's inbox
+      const recent = await pool.query(
+        "SELECT 1 FROM password_resets WHERE user_id = $1 AND created_at > now() - interval '2 minutes'", [userId]);
+      if (!recent.rowCount) {
+        const token = crypto.randomBytes(32).toString("base64url");
+        await pool.query(
+          `INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '1 hour')`,
+          [crypto.createHash("sha256").update(token).digest(), userId]);
+        const link = `${siteOrigin()}/reset?token=${token}`;
+        // Not awaited: the answer shouldn't take longer when the account exists
+        void sendEmail(email, "Reset your Better Battle password",
+          `Someone asked to reset the password for your Better Battle account.\n\n` +
+          `Choose a new password here (the link works once, for one hour):\n${link}\n\n` +
+          `If it wasn't you, ignore this email: your password stays the same.`,
+          `<p>Someone asked to reset the password for your Better Battle account.</p>` +
+          `<p><a href="${link}">Choose a new password</a>. The link works once, for one hour.</p>` +
+          `<p>If it wasn't you, ignore this email: your password stays the same.</p>`,
+          "password_reset");
+      }
+    }
+    return { ok: true };
+  });
+
+  app.post("/auth/reset", [rateLimit(10, 60_000, "/auth/reset")], async (req) => {
+    const { token, password } = z.object({ token: z.string().min(20).max(200), password: PASSWORD }).parse(req.body);
+    const tokenHash = crypto.createHash("sha256").update(token).digest();
+    // Used up in the same statement that checks it, so a link can't be used twice even at the same moment
+    const used = await pool.query(
+      `UPDATE password_resets SET used_at = now()
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING user_id`, [tokenHash]);
+    if (!used.rowCount) return fail(400, "reset_link_invalid");
+    const userId: number = used.rows[0].user_id;
+    await pool.query("UPDATE users SET password_hash = $2 WHERE id = $1", [userId, await hash(password)]);
+    // Log out every browser (whoever knew the old password too) and retire any other reset links
+    await pool.query("DELETE FROM sessions WHERE user_id = $1 AND kind = 'web'", [userId]);
+    await pool.query("UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL", [userId]);
+    await startWebSession(req, userId);
+    return getMe(userId);
+  });
+
   app.get("/auth/discord", async (req) => {
     if (!configuredDiscord()) return new Redirect("/login?error=discord_off");
     const state = crypto.randomBytes(32).toString("base64url");
@@ -342,6 +393,7 @@ export function accountRoutes(app: Router) {
 
   app.put("/me", [requireWebSession], async (req) => {
     const { bio } = z.object({ bio: z.string().trim().max(1000).nullable() }).parse(req.body);
+    if (flaggedWord(bio)) fail(400, "inappropriate");
     await pool.query("UPDATE users SET bio = $2 WHERE id = $1", [req.user.id, bio?.trim() || null]);
     return getMe(req.user.id);
   });

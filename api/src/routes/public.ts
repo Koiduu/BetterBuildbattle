@@ -1,6 +1,7 @@
 // Read-only routes the website uses. Works for ANY tracked Build Battle player;
 // Better Battle extras (level, games, achievements) appear when the player uses the mod.
 import { Router, Raw, fail, type Req } from "../http";
+import { flaggedWord } from "../lib/wordFilter";
 import { profileCard } from "../services/card";
 import { siteOrigin } from "../lib/site";
 import { BOARDS, boardById, boardPage, positions } from "../services/boards";
@@ -38,7 +39,20 @@ let rarityCache: { at: number; body: unknown } | null = null;
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
 
 /** Find a player by name; if unknown, look them up via Mojang + Hypixel right now. */
-async function resolvePlayer(name: string) {
+// Many visitors opening the same new profile at once share one lookup, so a shared link can't burn
+// the Hypixel key's quota with dozens of identical calls before the first answer is cached.
+const resolving = new Map<string, Promise<any>>();
+function resolvePlayer(name: string) {
+  const key = name.toLowerCase();
+  let pending = resolving.get(key);
+  if (!pending) {
+    pending = lookUpPlayer(name).finally(() => resolving.delete(key));
+    resolving.set(key, pending);
+  }
+  return pending;
+}
+
+async function lookUpPlayer(name: string) {
   const known = await pool.query(
     "SELECT * FROM tracked_players WHERE mc_name = $1 ORDER BY last_checked DESC NULLS LAST LIMIT 1",
     [name],
@@ -48,7 +62,9 @@ async function resolvePlayer(name: string) {
 
   let uuid: string | undefined = cached?.mc_uuid;
   if (!uuid) {
-    const res = await fetch(`${MOJANG_API}/users/profiles/minecraft/${encodeURIComponent(name)}`);
+    const res = await fetch(`${MOJANG_API}/users/profiles/minecraft/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(8000) })
+      .catch(() => null);
+    if (!res) return fail(503, "mojang_unavailable");
     if (res.status !== 200) return null;
     const { id } = (await res.json()) as { id: string };
     uuid = dashUuid(id);
@@ -183,7 +199,7 @@ export function publicRoutes(app: Router) {
     let claimed = false;
     if (u.rowCount) {
       const row = u.rows[0];
-      bio = row.bio;
+      bio = flaggedWord(row.bio) ? null : row.bio;   // saved before the word filter existed
       claimed = row.claimed;
       if (row.has_progress) {
         const xp = Number(row.xp ?? 0);
@@ -200,7 +216,7 @@ export function publicRoutes(app: Router) {
         const m = metrics.rows[0];
         betterBattle = {
           memberSince: row.created_at,
-          bio: row.bio,
+          bio,
           level,
           xp,
           xpIntoLevel: xp - totalXpForLevel(level),

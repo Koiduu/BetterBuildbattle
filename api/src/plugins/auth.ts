@@ -75,11 +75,16 @@ export async function requireModToken(req: Req) {
   req.user = { id: r.rows[0].id, mcUuid: r.rows[0].mc_uuid };
 }
 
-/** Hook factory: fixed-window rate limit per token (or IP) per route. */
+/**
+ * Hook factory: fixed-window rate limit per route, per account once a token or session check before it has
+ * set req.user, otherwise per IP. Never keyed on a raw Authorization header: anyone can send a new one with
+ * every request, which would give every login attempt a fresh limit.
+ */
 const hits = new Map<string, { n: number; reset: number }>();
 export function rateLimit(max: number, windowMs: number, route?: string) {
   return (req: Req) => {
-    const key = (req.headers.authorization ?? req.ip) + " " + req.method + " " + (route ?? req.path.replace(/\/[^/]+$/, "/:x"));
+    const who = req.user?.id != null ? "user:" + req.user.id : "ip:" + req.ip;
+    const key = who + " " + req.method + " " + (route ?? req.path.replace(/\/[^/]+$/, "/:x"));
     const now = Date.now();
     const h = hits.get(key);
     if (!h || h.reset < now) { hits.set(key, { n: 1, reset: now + windowMs }); return; }

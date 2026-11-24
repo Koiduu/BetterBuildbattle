@@ -893,3 +893,34 @@ tbody tr td { transition: background-color 120ms ease-out; }
   .btn, .account-link, .pills a, .pills a::after, .toggle button, tbody tr td, .tile, .player img { transition: none; }
   .tile:hover, .player:hover img { transform: none; }
 }
+
+/* Launch countdown (web/launch.js): visitors who aren't signed in, until a week after launch */
+.launch-bar { background: var(--pink-bg); border-bottom: 2px solid var(--edge); }
+.launch-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  max-width: 1112px;
+  margin: 0 auto;
+  padding: 8px 16px;
+}
+.launch-text { color: var(--soft); }
+.launch-text b { color: var(--text); }
+.launch-clock { font: 600 22px/1 var(--display); color: var(--gold); text-shadow: 2px 2px 0 #000; min-width: 8ch; }
+.launch-when { font-size: 12px; color: var(--muted); }
+.launch-inner .btn { margin-left: auto; }
+.launch-close {
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 500 20px/1 var(--body);
+  cursor: pointer;
+}
+.launch-close:hover { color: #fff; }
+@media (max-width: 560px) {
+  .launch-inner .btn { margin-left: 0; }
+}
+.auth-sent { padding: 12px 14px; background: var(--card-2); border: 2px solid var(--edge); color: var(--soft); }

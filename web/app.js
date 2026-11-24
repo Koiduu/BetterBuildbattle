@@ -7,6 +7,7 @@ import {
   supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
 } from "./plans.js";
 import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
+import { updateLaunchBar } from "./launch.js";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
@@ -88,6 +89,8 @@ const routes = [
   { path: /^\/p\/([A-Za-z0-9_]{1,16})\/?$/, page: profilePage },
   { path: /^\/login\/?$/, page: () => authPage("login") },
   { path: /^\/signup\/?$/, page: () => authPage("signup") },
+  { path: /^\/forgot\/?$/, page: forgotPage },
+  { path: /^\/reset\/?$/, page: resetPage },
   { path: /^\/account\/?$/, page: accountPage },
   { path: /^\/updates\/?$/, page: updatesPage, nav: "updates" },
   { path: /^\/install\/?$/, page: installPage },
@@ -119,6 +122,7 @@ async function render() {
   });
   window.scrollTo(0, 0);
   clearInterval(linkPoll);
+  updateLaunchBar();
 
   app.onclick = null;   // pages that listen on the whole page set this; it must not outlive them
 
@@ -474,6 +478,9 @@ function profileError(err, name) {
     return `${esc(err.body.name ?? name)} hasn't played Build Battle yet.`;
   }
   if (err.status === 404) return `There's no Minecraft player called ${esc(name)}.`;
+  if (err.status === 503 && err.body?.error === "mojang_unavailable") {
+    return "Mojang didn't answer, so we couldn't look up that name. Try again in a minute.";
+  }
   if (err.status === 503) {
     return err.body?.reason === "api_key"
       ? "Hypixel rejected our API key, so stats can't be loaded right now. If you run this site, check the logs (bb logs)."
@@ -891,6 +898,7 @@ function faceFor(user, size) {
 }
 
 function renderAccountLink() {
+  updateLaunchBar(me);
   const link = document.getElementById("account-link");
   if (!me) {
     link.href = "/login";
@@ -918,6 +926,105 @@ function setMe(user) {
 
 function queryError() {
   return new URLSearchParams(location.search).get("error");
+}
+
+// ---- Password reset
+
+async function forgotPage() {
+  document.title = "Reset your password · Better Battle";
+  app.innerHTML = `
+    <section class="card auth">
+      <div class="auth-head">
+        <h1>Reset your password</h1>
+        <p class="sub">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
+      </div>
+      <form class="form" id="forgot-form" novalidate>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="email" required maxlength="254">
+        </label>
+        <p class="form-error" id="forgot-error" role="alert" hidden></p>
+        <button class="btn primary wide" type="submit">Send reset link</button>
+      </form>
+      <p class="auth-switch">Remembered it? <a href="/login" data-link>Log in</a></p>
+    </section>`;
+  const form = document.getElementById("forgot-form");
+  const errorBox = document.getElementById("forgot-error");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = form.email.value.trim();
+    if (!email.includes("@")) {
+      errorBox.textContent = "Enter the email you signed up with.";
+      errorBox.hidden = false;
+      return;
+    }
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      await request("POST", "/auth/forgot", { email });
+      form.outerHTML = `<p class="auth-sent" role="status">If there's an account for <b>${esc(email)}</b>, a reset link is on its way. It works for one hour. Check your spam folder if it doesn't arrive in a few minutes.</p>`;
+    } catch (err) {
+      errorBox.innerHTML = err.message === "email_unavailable"
+        ? `Password reset by email isn't available right now. If you signed up with Discord, <a href="/login" data-link>log in with Discord</a>; otherwise ask on <a href="/support" data-link>Support</a>.`
+        : err.message === "rate_limited" ? AUTH_ERRORS.rate_limited : "Something went wrong. Try again in a minute.";
+      errorBox.hidden = false;
+      button.disabled = false;
+    }
+  });
+}
+
+async function resetPage() {
+  document.title = "Choose a new password · Better Battle";
+  // Keep the token out of the address bar, history and any link this page leads to
+  const token = new URLSearchParams(location.search).get("token") ?? sessionStorage.getItem("bb_reset_token") ?? "";
+  try { if (token) sessionStorage.setItem("bb_reset_token", token); } catch {}
+  if (location.search) history.replaceState(null, "", "/reset");
+  if (!token) {
+    app.innerHTML = `<section class="card auth"><div class="auth-head"><h1>That link isn't complete</h1>
+      <p class="sub">Open the link from your email again, or <a href="/forgot" data-link>ask for a new one</a>.</p></div></section>`;
+    return;
+  }
+  app.innerHTML = `
+    <section class="card auth">
+      <div class="auth-head">
+        <h1>Choose a new password</h1>
+        <p class="sub">You'll be logged out everywhere else.</p>
+      </div>
+      <form class="form" id="reset-form" novalidate>
+        <label class="field">
+          <span>New password</span>
+          <input type="password" name="password" autocomplete="new-password" required minlength="8" maxlength="200">
+          <small>At least 8 characters.</small>
+        </label>
+        <label class="field">
+          <span>Type it again</span>
+          <input type="password" name="again" autocomplete="new-password" required minlength="8" maxlength="200">
+        </label>
+        <p class="form-error" id="reset-error" role="alert" hidden></p>
+        <button class="btn primary wide" type="submit">Save new password</button>
+      </form>
+    </section>`;
+  const form = document.getElementById("reset-form");
+  const errorBox = document.getElementById("reset-error");
+  const show = (html) => { errorBox.innerHTML = html; errorBox.hidden = false; };
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = form.password.value;
+    if (password.length < 8) return show("Use at least 8 characters.");
+    if (password !== form.again.value) return show("The two passwords don't match.");
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      setMe(await request("POST", "/auth/reset", { token, password }));
+      try { sessionStorage.removeItem("bb_reset_token"); } catch {}
+      go("/account");
+    } catch (err) {
+      show(err.message === "reset_link_invalid"
+        ? `This link has expired or was already used. <a href="/forgot" data-link>Ask for a new one</a>.`
+        : err.message === "rate_limited" ? AUTH_ERRORS.rate_limited : "Something went wrong. Try again in a minute.");
+      button.disabled = false;
+    }
+  });
 }
 
 async function authPage(mode) {
@@ -951,7 +1058,7 @@ async function authPage(mode) {
         <label class="field">
           <span>Password</span>
           <input type="password" name="password" autocomplete="${signup ? "new-password" : "current-password"}" required minlength="8" maxlength="200">
-          ${signup ? `<small>At least 8 characters.</small>` : ""}
+          ${signup ? `<small>At least 8 characters.</small>` : `<small><a href="/forgot" data-link>Forgot your password?</a></small>`}
         </label>
         <p class="form-error" id="auth-error" role="alert"${error ? "" : " hidden"}>${error ?? ""}</p>
         <button class="btn primary wide" type="submit">${signup ? "Create account" : "Log in"}</button>
@@ -1238,8 +1345,10 @@ function setUpBio() {
     try {
       setMe(await request("PUT", "/me", { bio: input.value }));
       status.textContent = "Saved";
-    } catch {
-      status.textContent = "Couldn't save. Try again.";
+    } catch (err) {
+      status.textContent = err.body?.error === "inappropriate"
+        ? "Your bio has a word that isn't allowed. Change it and save again."
+        : "Couldn't save. Try again.";
     }
   });
 }
