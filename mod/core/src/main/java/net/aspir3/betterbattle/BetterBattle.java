@@ -491,12 +491,22 @@ public final class BetterBattle {
             });
         }
 
-        public void offline(final int pending) {
+        public void offline(final int pending, final String reason) {
             if (!config.chatMessages) return;
             platform.runOnMainThread(new Runnable() {
                 public void run() {
-                    platform.chat("§d§lBetter Battle §8» §7Can't reach the stats server right now. "
-                        + "Your games are saved and will upload later.");
+                    platform.chat("§d§lBetter Battle §8» §7Couldn't upload your games: " + reason.replace('§', ' ')
+                        + " They're saved and will upload later. Type §b/bb sync§7 to try again now.");
+                }
+            });
+        }
+
+        public void gamesSkipped(final int count) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    platform.chat("§d§lBetter Battle §8» §7" + (count == 1 ? "1 game" : count + " games")
+                        + " couldn't be uploaded: the stats server says " + (count == 1 ? "it isn't" : "they aren't")
+                        + " valid. Skipped so your other games can upload.");
                 }
             });
         }

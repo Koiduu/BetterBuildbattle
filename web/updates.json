@@ -21,7 +21,8 @@
             "Podium finishes in Solo, Pro and Teams now save your score, and tied teams on the podium are recognised",
             "Guess the Build games are now tracked, with your place and points from the final scoreboard even outside the top 3, and while nicked",
             "New Fabric build for Minecraft 26.2, next to 26.3 and Forge 1.8.9",
-            "The Credits screen and /bb credits are gone"
+            "The Credits screen and /bb credits are gone",
+            "When an upload fails, the message now says why and suggests /bb sync; one invalid game no longer holds back the rest"
           ]
         }
       ]
