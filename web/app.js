@@ -234,8 +234,8 @@ function supportPage() {
       <p>Put the Fabric (26.3 or 26.2) or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
     <section><h2>Linking your account</h2>
       <p>Get a code from the Account page, then run <code>/bb link &lt;code&gt;</code> in game.</p></section>
-    <section><h2>The stats server cannot be reached</h2>
-      <p>If you see “Can't reach the stats server” or HTTP 502, games are saved locally and upload on your next <code>/bb sync</code>.</p></section>
+    <section><h2>“Couldn't upload your games”</h2>
+      <p>Your games are saved on your computer and upload by themselves once the server answers. The message says why the upload failed. Run <code>/bb sync</code> to try again straight away; it tells you if it worked. If a single game is invalid, the mod skips it so the rest can upload.</p></section>
     <section><h2>Stats are not updating</h2>
       <p>Hypixel totals refresh every few days.</p></section>
     <section><h2>Getting a copy of your data</h2>

@@ -22,7 +22,10 @@ public final class SyncService {
     public interface Listener {
         /** The game asks Mojang's session server to confirm this player; runs off the main thread. */
         void joinServer(String serverId) throws Exception;
-        void offline(int pendingGames);
+        /** An upload failed; the games stay saved. reason is explain()'s wording, for the player. */
+        void offline(int pendingGames, String reason);
+        /** The server called these games invalid on their own, so they were set aside instead of retried forever. */
+        void gamesSkipped(int count);
         /** Result of something the player asked for by hand (/bb sync, /bb link). */
         void manualResult(boolean ok, String message);
         void synced(ApiClient.SyncResult result);
@@ -117,9 +120,12 @@ public final class SyncService {
         if (e instanceof ApiClient.Unauthorized) return "login expired. Try again.";
         if (m.contains("bad_code")) return "that code is wrong or has expired.";
         if (m.contains("already_claimed") || m.contains("already_linked")) return "this Minecraft account is already linked.";
+        if (m.startsWith("mojang: ")) return "Mojang's login check didn't go through. Their servers may be busy.";
         if (m.contains("not_verified")) return "Mojang couldn't confirm your account. Restart the game and try again.";
         if (m.contains("HTTP 5") || m.contains("HTTP 1033") || m.contains("HTTP 530")) return "the stats server is having trouble (" + m.split(":")[0] + ").";
-        return m;
+        if (m.startsWith("HTTP 400")) return "the stats server turned the upload down. The mod or the server may need updating.";
+        if (m.startsWith("HTTP ")) return "the stats server answered " + m.split(":")[0] + ".";
+        return shorten(m, 120);
     }
 
     public void addSeenPlayers(List<String> uuids) {
@@ -132,7 +138,11 @@ public final class SyncService {
         String token = db.getMeta("token", null);
         if (token == null) {
             String serverId = api.challenge();
-            listener.joinServer(serverId);
+            try {
+                listener.joinServer(serverId);
+            } catch (Exception e) {
+                throw new Exception("mojang: " + e.getMessage(), e);
+            }
             token = api.verify(playerName, serverId);
             db.setMeta("token", token);
         }
@@ -152,29 +162,16 @@ public final class SyncService {
                 synchronized (seenPlayers) {
                     seen = new ArrayList<String>(seenPlayers.subList(0, Math.min(2000, seenPlayers.size())));
                 }
-                ApiClient.SyncResult res;
                 try {
-                    res = api.sync(batch, db.unlockedIds(), seen);
+                    apply(api.sync(batch, db.unlockedIds(), seen));
                 } catch (ApiClient.Unauthorized e) {
                     db.setMeta("token", null);
                     throw e;
+                } catch (Exception e) {
+                    if (!isBadRequest(e) || batch.isEmpty()) throw e;
+                    uploadOneByOne(batch, seen);   // one invalid game shouldn't hold back the rest
                 }
                 synchronized (seenPlayers) { seenPlayers.subList(0, seen.size()).clear(); }
-                db.markSynced(res.accepted);
-                for (ApiClient.Rejection r : res.rejected) db.markRejected(r.nonce, r.reason);
-                for (String id : res.confirmed) {
-                    if (db.unlockLocal(id, System.currentTimeMillis())) listener.achievementConfirmed(id);
-                    db.setAchievementState(id, "confirmed");
-                }
-                for (String id : res.revoked) {
-                    db.setAchievementState(id, "revoked");
-                    listener.achievementRevoked(id);
-                }
-                if (res.level != null) db.setMeta("level", String.valueOf(res.level));
-                if (res.xp != null) db.setMeta("xp", String.valueOf(res.xp));
-                if (res.globalRank != null) db.setMeta("rank", String.valueOf(res.globalRank));
-                if (res.rankedPlayers != null) db.setMeta("ranked_players", String.valueOf(res.rankedPlayers));
-                listener.synced(res);
             } while (batch.size() == BATCH && ++rounds < 20);
             db.setMeta("last_sync_at", Long.toString(System.currentTimeMillis()));
             if (System.currentTimeMillis() - lastBootstrapAt > BOOTSTRAP_EVERY_MS) {
@@ -201,9 +198,56 @@ public final class SyncService {
                 offline = true;
                 int pending = -1;
                 try { pending = db.countPending(); } catch (Exception ignored) { }
-                listener.offline(pending);
+                listener.offline(pending, explain(e));
             }
         }
+    }
+
+    private void apply(ApiClient.SyncResult res) throws Exception {
+        db.markSynced(res.accepted);
+        for (ApiClient.Rejection r : res.rejected) db.markRejected(r.nonce, r.reason);
+        for (String id : res.confirmed) {
+            if (db.unlockLocal(id, System.currentTimeMillis())) listener.achievementConfirmed(id);
+            db.setAchievementState(id, "confirmed");
+        }
+        for (String id : res.revoked) {
+            db.setAchievementState(id, "revoked");
+            listener.achievementRevoked(id);
+        }
+        if (res.level != null) db.setMeta("level", String.valueOf(res.level));
+        if (res.xp != null) db.setMeta("xp", String.valueOf(res.xp));
+        if (res.globalRank != null) db.setMeta("rank", String.valueOf(res.globalRank));
+        if (res.rankedPlayers != null) db.setMeta("ranked_players", String.valueOf(res.rankedPlayers));
+        listener.synced(res);
+    }
+
+    /** The server answers 400 when what we sent doesn't pass its checks. */
+    static boolean isBadRequest(Exception e) {
+        return String.valueOf(e.getMessage()).startsWith("HTTP 400");
+    }
+
+    /**
+     * The server turned down a batch. First send it no games: if that is turned down too, the problem isn't
+     * the games (say the server predates this mod version) and nothing is set aside. Otherwise send the games
+     * one at a time and set aside only those turned down on their own, so they stop blocking the queue.
+     */
+    private void uploadOneByOne(List<MatchRecord> batch, List<String> seen) throws Exception {
+        apply(api.sync(new ArrayList<MatchRecord>(), db.unlockedIds(), seen));
+        int skipped = 0;
+        for (MatchRecord m : batch) {
+            try {
+                apply(api.sync(java.util.Collections.singletonList(m), db.unlockedIds(), new ArrayList<String>()));
+            } catch (Exception e) {
+                if (!isBadRequest(e)) throw e;
+                db.markRejected(m.nonce, "invalid: " + shorten(String.valueOf(e.getMessage()), 200));
+                skipped++;
+            }
+        }
+        if (skipped > 0) listener.gamesSkipped(skipped);
+    }
+
+    private static String shorten(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
     public void shutdown() {
