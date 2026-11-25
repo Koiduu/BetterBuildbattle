@@ -450,7 +450,10 @@ async function leaderboardPage() {
           <h2>Leaderboard</h2>
           <p class="sub" id="lb-sub">Ranked by Build Battle score</p>
         </div>
-        <div class="lb-tools"><span id="lb-pick"></span><div class="pager" id="lb-pager"></div></div>
+      </div>
+      <div class="lb-bar">
+        <span class="lb-pick" id="lb-pick"></span>
+        <div class="pager" id="lb-pager"></div>
       </div>
       <form class="lb-find" id="lb-find" role="search">
         <label class="sr-only" for="lb-q">Find a player or position</label>

@@ -988,3 +988,10 @@ body.launch-locked { overflow: hidden; }
 tr.lb-hit td { background: rgba(255,170,0,.14); }
 .lb-periods { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 8px; vertical-align: middle; }
 .lb-periods .chip { text-decoration: none; cursor: pointer; }
+
+/* leaderboard toolbar: the picker always starts at the same spot, under the title */
+.lb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 12px; }
+.lb-pick { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lb-pick select { width: 340px; max-width: 100%; }
+.lb-bar .pager { margin-left: auto; }
+.lb-pick .lb-periods { margin-left: 0; }
