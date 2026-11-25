@@ -271,6 +271,49 @@ public final class Pages {
         return new Page("Weekly Challenges", out);
     }
 
+    private static String winRate(int wins, int games) {
+        return games == 0 ? "\u2013" : String.format(Locale.US, "%.1f%%", 100.0 * wins / games);
+    }
+
+    private static String duration(long seconds) {
+        long h = seconds / 3600, m = (seconds % 3600) / 60;
+        return h > 0 ? h + "h " + m + "m" : m + "m";
+    }
+
+    /** Your own numbers, counted from the games saved on this PC. */
+    public static Page stats(net.aspir3.betterbattle.store.LocalDatabase.LocalStats all,
+                             java.util.Map<String, net.aspir3.betterbattle.store.LocalDatabase.LocalStats> modes,
+                             List<String[]> themes, long level, long xpInto, long xpNeeded) {
+        List<String> out = new ArrayList<String>();
+        if (all == null || all.games == 0) {
+            out.add("\u00a77No games saved yet.");
+            out.add("\u00a78Play a Build Battle game on Hypixel and your numbers show up here.");
+            return new Page("My Stats", out);
+        }
+        out.add("\u00a76Overall");
+        out.add("\u00a77Games \u00a7f" + all.games + "  \u00a77Wins \u00a7f" + all.wins + "  \u00a77Win rate \u00a7f" + winRate(all.wins, all.games));
+        out.add("\u00a77Time building \u00a7f" + duration(all.playtimeSec)
+            + "  \u00a77Average score \u00a7f" + String.format(Locale.US, "%.1f", all.totalScore / all.games));
+        out.add("\u00a77Grades \u00a7bSS " + all.ss + "  \u00a7eS " + all.s + "  \u00a7aA " + all.a);
+        out.add("\u00a77Aspiring Level \u00a7f" + level + "  \u00a78(" + xpInto + " / " + xpNeeded + " XP)");
+        out.add("");
+        out.add("\u00a76By mode");
+        for (java.util.Map.Entry<String, net.aspir3.betterbattle.store.LocalDatabase.LocalStats> e : modes.entrySet()) {
+            net.aspir3.betterbattle.store.LocalDatabase.LocalStats m = e.getValue();
+            if (m.games == 0) continue;
+            out.add("\u00a7e" + modeName(e.getKey()) + "  \u00a77games \u00a7f" + m.games + "  \u00a77wins \u00a7f" + m.wins
+                + "  \u00a77win rate \u00a7f" + winRate(m.wins, m.games));
+        }
+        if (themes != null && !themes.isEmpty()) {
+            out.add("");
+            out.add("\u00a76Themes you build most");
+            for (String[] t : themes) out.add("\u00a7f" + t[0] + " \u00a78x" + t[1]);
+        }
+        out.add("");
+        out.add("\u00a78Counted from the games saved on this PC. For ranks and comparisons use /bb rank and /bb compare.");
+        return new Page("My Stats", out);
+    }
+
     public static List<ApiClient.Weekly> weeklyFromJson(String json) {
         if (json == null) return Collections.emptyList();
         try {

@@ -1,6 +1,45 @@
 {
   "updates": [
     {
+      "version": "0.2.5",
+      "date": "2026-11-25",
+      "title": "Stats, Ranks and Minecraft 26.1",
+      "summary": "Check your own numbers and your rank in game, compare with a friend, keep a picture of every build, and play on Minecraft 26.1.",
+      "sections": [
+        {
+          "heading": "New commands",
+          "items": [
+            "/bb help lists every command",
+            "/bb stats (and My Stats in the B menu): your games, wins and win rate by mode, grades and the themes you build most, counted from the games saved on your PC",
+            "/bb rank: where you stand today, this week, this month and all time",
+            "/bb compare <name>: you next to another player, with the better number in green"
+          ]
+        },
+        {
+          "heading": "Round screenshots",
+          "items": [
+            "A picture of your build is saved when the building time ends. Turn it off in Settings",
+            "/bb shots (or Round Screenshots in the B menu) lets you look through them in game and delete any you don't want",
+            "They are deleted after 15 days. Only your own game screen is saved",
+            "Fabric only for now"
+          ]
+        },
+        {
+          "heading": "Minecraft 26.1",
+          "items": [
+            "Better Battle now has a Fabric build for Minecraft 26.1, next to 26.3 and 26.2"
+          ]
+        },
+        {
+          "heading": "Lighter on slower PCs",
+          "items": [
+            "New Low-end mode in /bb settings: the Head Database draws far fewer heads at once",
+            "The Head Database now draws at most 150 heads at a time, even on a big window with a small GUI scale"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.2.4",
       "date": "2026-11-25",
       "title": "Smoother Syncing",

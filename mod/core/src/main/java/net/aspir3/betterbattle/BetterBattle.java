@@ -8,6 +8,7 @@ import net.aspir3.betterbattle.game.SpbTracker;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.parse.ChatParser;
 import net.aspir3.betterbattle.progress.Level;
+import net.aspir3.betterbattle.shots.RoundShots;
 import net.aspir3.betterbattle.store.LocalDatabase;
 import net.aspir3.betterbattle.sync.ApiClient;
 import net.aspir3.betterbattle.sync.HttpApiClient;
@@ -58,6 +59,7 @@ public final class BetterBattle {
     private boolean whatsNewDue, whatsNewAnnounced;
     private volatile ApiClient.Latest newer;      // a version newer than this one, once the server reports it
     private boolean newerAnnounced;
+    private GameStateMachine.State lastState = GameStateMachine.State.IDLE;
     private long joinedAt;
 
     private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
@@ -67,6 +69,11 @@ public final class BetterBattle {
         this.modVersion = modVersion;
         this.mcVersion = mcVersion;
         this.config = Config.load(dir);
+        // screenshots are only kept for 15 days
+        try {
+            RoundShots.prune(RoundShots.dir(dir), RoundShots.KEEP_DAYS, System.currentTimeMillis());
+        } catch (Throwable ignored) {
+        }
         this.parser = new ChatParser(new InputStreamReader(
             BetterBattle.class.getResourceAsStream("/betterbattle/patterns.json"), StandardCharsets.UTF_8));
     }
@@ -328,6 +335,64 @@ public final class BetterBattle {
         return new Pages.Page("Last Game", lines);
     }
 
+    /** Your own numbers from the games on this PC. */
+    public Pages.Page statsPage() {
+        if (db == null) return new Pages.Page("My Stats", java.util.Arrays.asList("\u00a77Join Hypixel to see your stats."));
+        try {
+            java.util.Map<String, LocalDatabase.LocalStats> modes = new java.util.LinkedHashMap<String, LocalDatabase.LocalStats>();
+            for (String m : new String[] {"solo", "teams", "pro", "gtb", "speed_builders"}) modes.put(m, db.stats(m));
+            long[] lv = levelProgress();
+            return Pages.stats(db.stats(null), modes, db.topThemes(5), lv[0], lv[1], lv[2]);
+        } catch (Exception e) {
+            debug("stats page failed: " + e);
+            return new Pages.Page("My Stats", java.util.Arrays.asList("\u00a7cCouldn't read your games. Try again."));
+        }
+    }
+
+    /** /bb rank */
+    public void rank() {
+        if (sync == null) {
+            platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a77Join Hypixel first, then run \u00a7b/bb rank\u00a77 again.");
+            return;
+        }
+        sync.rank();
+    }
+
+    /** /bb compare name */
+    public void compare(String name) {
+        if (sync == null) {
+            platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a77Join Hypixel first, then run \u00a7b/bb compare\u00a77 again.");
+            return;
+        }
+        sync.compare(name);
+    }
+
+    /** /bb help. headsAndBanners: the Fabric build has the Head Database and banners; Forge doesn't. */
+    public List<String> helpLines(boolean headsAndBanners) {
+        List<String> out = new ArrayList<String>();
+        out.add("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a76Commands");
+        out.add("\u00a7b/bb \u00a77Open the menu (or press B)");
+        out.add("\u00a7b/bb stats \u00a77Your own numbers: games, wins, win rate by mode");
+        out.add("\u00a7b/bb rank \u00a77Where you stand today, this week, this month and all time");
+        out.add("\u00a7b/bb compare <name> \u00a77You next to another player");
+        if (headsAndBanners) out.add("\u00a7b/bb shots \u00a77Your round screenshots, kept for 15 days");
+        out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
+        out.add("\u00a7b/bb recap \u00a77Your last game in full");
+        out.add("\u00a7b/bb weekly \u00a77This week's challenges");
+        out.add("\u00a7b/bb news \u00a77What's new in this version");
+        if (headsAndBanners) {
+            out.add("\u00a7b/bb heads [search] \u00a77The Head Database");
+            out.add("\u00a7b/bb banners \u00a77Banner designs");
+        }
+        out.add("\u00a7b/bb palette [size] \u00a77A random block palette to build with");
+        out.add("\u00a7b/bb settings \u00a77Switch features on and off, including Low-end mode");
+        out.add("\u00a7b/bb sync \u00a77Upload your games now");
+        out.add("\u00a7b/bb link <code> \u00a77Connect your website account");
+        out.add("\u00a7b/bb report [what went wrong] \u00a77Send a bug report");
+        out.add("\u00a7b/bb debug \u00a77Turn the debug log on or off");
+        return out;
+    }
+
     public Pages.Page weeklyPage() {
         String json = null, ends = null;
         try {
@@ -422,6 +487,22 @@ public final class BetterBattle {
     private final class GameListener implements GameStateMachine.Listener {
         public void onStateChanged(GameStateMachine.State state) {
             debug("state: " + state);
+            GameStateMachine.State before = lastState;
+            lastState = state;
+            // Building time just ran out: take a picture of the build.
+            if (before == GameStateMachine.State.BUILDING && state == GameStateMachine.State.VOTING && config.roundScreenshots) {
+                final File file = new File(RoundShots.dir(dir), RoundShots.fileName(System.currentTimeMillis(), game.mode(), game.theme()));
+                platform.runOnMainThread(new Runnable() {
+                    public void run() {
+                        file.getParentFile().mkdirs();
+                        try {
+                            platform.screenshot(file);
+                        } catch (Throwable t) {
+                            debug("round screenshot failed: " + t);
+                        }
+                    }
+                });
+            }
         }
 
         public void onMatchFinished(MatchRecord m) {
@@ -521,6 +602,14 @@ public final class BetterBattle {
             platform.runOnMainThread(new Runnable() {
                 public void run() {
                     platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb " + (ok ? "\u00a7a" : "\u00a7c") + message);
+                }
+            });
+        }
+
+        public void lines(final List<String> lines) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    for (String line : lines) platform.chat(line);
                 }
             });
         }

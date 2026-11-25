@@ -4,7 +4,7 @@ import { Router, Raw, fail, type Req } from "../http";
 import { flaggedWord } from "../lib/wordFilter";
 import { profileCard } from "../services/card";
 import { siteOrigin } from "../lib/site";
-import { BOARDS, boardById, boardPage, positions } from "../services/boards";
+import { BOARDS, boardById, boardPage, listPosition, positions, winsBreakdown } from "../services/boards";
 import { FEATURES, can, limit, planOf, type Plan } from "../lib/plans";
 import { publicStyle } from "../lib/style";
 import { readWebSession } from "../plugins/auth";
@@ -93,7 +93,7 @@ export function publicRoutes(app: Router) {
   });
 
   /** The list of leaderboards, for the board picker. */
-  app.get("/boards", async () => BOARDS.map((b) => ({ id: b.id, name: b.name, short: b.short, group: b.group })));
+  app.get("/boards", async () => BOARDS.map((b) => ({ id: b.id, name: b.name, short: b.short, group: b.group, period: b.period, base: b.base })));
 
   /** Any board other than score. (Score keeps its own handler below, with wins and level columns.) */
   const otherBoard = async (id: string, page: number) => {
@@ -101,11 +101,13 @@ export function publicRoutes(app: Router) {
     if (!board) return fail(400, "unknown_board");
     const { total, rows } = await boardPage(id, page);
     return {
-      page, total, board: { id: board.id, name: board.name, short: board.short },
+      page, total, board: { id: board.id, name: board.name, short: board.short, unit: board.unit },
       rows: rows.map((r) => ({
         rank: r.rank, uuid: r.uuid, name: r.info?.mc_name ?? null, value: r.value,
         score: r.info?.bb_score ?? null, title: titleProgress(r.info?.bb_score ?? 0).current,
         usesMod: !!r.info?.uses_mod, supporter: supporterOf(r.info),
+        // the win rate board also shows wins in each mode
+        ...(id === "winrate" ? { wins: winsBreakdown(r.info?.hypixel_bb) } : {}),
       })),
     };
   };
@@ -130,6 +132,31 @@ export function publicRoutes(app: Router) {
       boards: unlocked ? all : all.filter((b) => b.id === "score"),
       lockedBoards: unlocked ? [] : all.filter((b) => b.id !== "score").map((b) => ({ id: b.id, name: b.name, group: b.group })),
     };
+  });
+
+  /** Jump to a spot on a board: by position ("250") or by player name. Answers with the page to show. */
+  app.get("/leaderboard/find", [rateLimit(60, 60_000)], async (req) => {
+    const { board, q } = z.object({
+      board: z.string().regex(/^[a-z]{1,16}$/).default("score"),
+      q: z.string().trim().min(1).max(16),
+    }).parse(req.query);
+    if (board !== "score" && !boardById(board)) return fail(400, "unknown_board");
+    const per = 50;
+    const key = board === "score" ? "lb:bb_score" : `lb:bb:${board}`;
+    if (/^#?\d{1,7}$/.test(q)) {
+      const total = await redis.zcard(key);
+      if (!total) return fail(404, "not_found");
+      const rank = Math.min(Math.max(1, Number(q.replace("#", ""))), total);
+      return { rank, page: Math.ceil(rank / per), total, name: null };
+    }
+    if (!NAME.test(q)) return fail(400, "bad_name");
+    const p = await pool.query(
+      `SELECT mc_uuid, mc_name FROM tracked_players
+       WHERE mc_name = $1 AND NOT no_bb_stats ORDER BY last_checked DESC NULLS LAST LIMIT 1`, [q]);
+    if (!p.rowCount) return fail(404, "not_found");
+    const pos = await listPosition(board, p.rows[0].mc_uuid);
+    if (!pos) return fail(404, "not_on_board");
+    return { rank: pos.rank, page: Math.ceil(pos.rank / per), total: pos.total, name: p.rows[0].mc_name };
   });
 
   app.get("/leaderboard", async (req) => {

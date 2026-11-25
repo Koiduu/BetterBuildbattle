@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.aspir3.betterbattle.fabric.BetterBattleFabric;
 import net.aspir3.betterbattle.heads.BannerLibrary;
@@ -156,6 +157,6 @@ public final class BannersScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.gui.setScreen(parent);
+        Compat.setScreen(minecraft, parent);
     }
 }

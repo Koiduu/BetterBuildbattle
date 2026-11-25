@@ -88,6 +88,36 @@ public final class HttpApiClient implements ApiClient {
         }
     }
 
+    /** The server nests all-time and period standings; this flattens them into Rank. */
+    private static final class RawRank {
+        Integer globalRank;
+        int rankedPlayers;
+        java.util.Map<String, Standing> allTime;
+        java.util.Map<String, PeriodStanding> periods;
+    }
+
+    public Rank rank() throws Exception {
+        RawRank raw = gson.fromJson(request("GET", "/mod/rank", null), RawRank.class);
+        Rank r = new Rank();
+        r.globalRank = raw.globalRank;
+        r.rankedPlayers = raw.rankedPlayers;
+        if (raw.allTime != null) {
+            r.allTimeScore = raw.allTime.get("score");
+            r.allTimeLevel = raw.allTime.get("level");
+            r.allTimeWinRate = raw.allTime.get("winRate");
+        }
+        if (raw.periods != null) {
+            r.day = raw.periods.get("day");
+            r.week = raw.periods.get("week");
+            r.month = raw.periods.get("month");
+        }
+        return r;
+    }
+
+    public Compare compare(String name) throws Exception {
+        return gson.fromJson(request("GET", "/mod/compare?name=" + java.net.URLEncoder.encode(name, "UTF-8"), null), Compare.class);
+    }
+
     public Bootstrap bootstrap() throws Exception {
         return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
     }

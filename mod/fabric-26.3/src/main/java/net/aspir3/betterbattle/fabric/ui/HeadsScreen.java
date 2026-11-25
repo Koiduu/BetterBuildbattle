@@ -1,5 +1,7 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
+import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.fabric.BetterBattleFabric;
 import net.aspir3.betterbattle.heads.HeadLibrary;
 import net.aspir3.betterbattle.heads.SkinSwap;
@@ -88,8 +90,22 @@ public final class HeadsScreen extends Screen {
         return y + 17;
     }
 
-    private int columns() { return Math.max(1, (width - SIDE - 20) / CELL); }
-    private int visibleRows() { return Math.max(1, (height - TOP - 34) / CELL); }
+    /** Heads drawn at once: every one is a full item model, so a small GUI scale on a big window gets very heavy. */
+    private static final int MAX_HEADS = 150, MAX_HEADS_LOW_END = 40;
+
+    private int columns() {
+        int fit = Math.max(1, (width - SIDE - 20) / CELL);
+        return Math.min(fit, maxHeads());
+    }
+
+    private int visibleRows() {
+        int fit = Math.max(1, (height - TOP - 34) / CELL);
+        return Math.max(1, Math.min(fit, maxHeads() / columns()));
+    }
+
+    private static int maxHeads() {
+        return BetterBattle.get().config().lowEndMode ? MAX_HEADS_LOW_END : MAX_HEADS;
+    }
 
     @Override
     public void tick() {
@@ -143,7 +159,7 @@ public final class HeadsScreen extends Screen {
     private static ItemStack item(HeadLibrary.Head h) {
         ItemStack s = ITEMS.get(h.hash);
         if (s == null) {
-            if (ITEMS.size() > 4000) ITEMS.clear();
+            if (ITEMS.size() > 600) ITEMS.clear();
             s = BetterBattleFabric.headItem(h);
             ITEMS.put(h.hash, s);
         }
@@ -200,6 +216,6 @@ public final class HeadsScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.gui.setScreen(parent);
+        Compat.setScreen(minecraft, parent);
     }
 }

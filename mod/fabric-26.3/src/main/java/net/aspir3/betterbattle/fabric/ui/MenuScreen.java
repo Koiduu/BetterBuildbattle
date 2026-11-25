@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.pages.Pages;
@@ -45,7 +46,7 @@ public final class MenuScreen extends Screen {
 
         LinearLayout rows = layout.addToFooter(LinearLayout.vertical().spacing(4));
         LinearLayout top = rows.addChild(LinearLayout.horizontal().spacing(8));
-        top.addChild(Button.builder(Component.literal("Achievements"), b -> minecraft.gui.setScreen(new AchievementsScreen(this))).width(100).build());
+        top.addChild(Button.builder(Component.literal("Achievements"), b -> Compat.setScreen(minecraft, new AchievementsScreen(this))).width(100).build());
         top.addChild(Button.builder(Component.literal("View Profile"), b -> openProfile()).width(100).build());
         Button sync = top.addChild(Button.builder(Component.literal("Sync Now"), b -> {
             BetterBattle.get().syncNow();
@@ -56,16 +57,19 @@ public final class MenuScreen extends Screen {
 
         BetterBattle core = BetterBattle.get();
         LinearLayout middle = rows.addChild(LinearLayout.horizontal().spacing(8));
-        middle.addChild(Button.builder(Component.literal("What's New"), b -> minecraft.gui.setScreen(new TextPageScreen(this, BetterBattle.get().whatsNewPage()))).width(100).build());
-        middle.addChild(Button.builder(Component.literal("Last Game"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.lastGamePage()))).width(100).build());
-        middle.addChild(Button.builder(Component.literal("Weekly"), b -> minecraft.gui.setScreen(new TextPageScreen(this, core.weeklyPage()))).width(100).build());
+        middle.addChild(Button.builder(Component.literal("What's New"), b -> Compat.setScreen(minecraft, new TextPageScreen(this, BetterBattle.get().whatsNewPage()))).width(76).build());
+        middle.addChild(Button.builder(Component.literal("Last Game"), b -> Compat.setScreen(minecraft, new TextPageScreen(this, core.lastGamePage()))).width(76).build());
+        middle.addChild(Button.builder(Component.literal("My Stats"), b -> Compat.setScreen(minecraft, new TextPageScreen(this, core.statsPage()))).width(76).build());
+        middle.addChild(Button.builder(Component.literal("Weekly"), b -> Compat.setScreen(minecraft, new TextPageScreen(this, core.weeklyPage()))).width(76).build());
 
         LinearLayout heads = rows.addChild(LinearLayout.horizontal().spacing(8));
-        heads.addChild(Button.builder(Component.literal("Head Database"), b -> minecraft.gui.setScreen(new HeadsScreen(this, ""))).width(154).build());
-        heads.addChild(Button.builder(Component.literal("Banner Database"), b -> minecraft.gui.setScreen(new BannersScreen(this))).width(154).build());
+        heads.addChild(Button.builder(Component.literal("Head Database"), b -> Compat.setScreen(minecraft, new HeadsScreen(this, ""))).width(154).build());
+        heads.addChild(Button.builder(Component.literal("Banner Database"), b -> Compat.setScreen(minecraft, new BannersScreen(this))).width(154).build());
+        LinearLayout shots = rows.addChild(LinearLayout.horizontal().spacing(8));
+        shots.addChild(Button.builder(Component.literal("Round Screenshots"), b -> Compat.setScreen(minecraft, new ScreenshotsScreen(this))).width(316).build());
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
-        bottom.addChild(Button.builder(Component.literal("Settings"), b -> minecraft.gui.setScreen(new SettingsScreen(this))).width(100).build());
+        bottom.addChild(Button.builder(Component.literal("Settings"), b -> Compat.setScreen(minecraft, new SettingsScreen(this))).width(100).build());
         bottom.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(100).build());
 
         layout.visitWidgets(this::addRenderableWidget);
@@ -201,6 +205,6 @@ public final class MenuScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.gui.setScreen(parent);
+        Compat.setScreen(minecraft, parent);
     }
 }

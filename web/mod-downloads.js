@@ -3,7 +3,7 @@ export async function latestDownloads(fetcher = fetch) {
     const response = await fetcher("/bb/v1/mod/latest", { signal: AbortSignal.timeout(6000) });
     if (!response.ok) return [];
     const release = await response.json();
-    return ["fabric", "fabric262", "forge"].flatMap((loader) => {
+    return ["fabric", "fabric262", "fabric261", "forge"].flatMap((loader) => {
       const asset = release?.[loader];
       if (!asset || typeof asset.version !== "string" || !asset.version.trim()
           || typeof asset.sha256 !== "string" || !/^[a-f0-9]{64}$/i.test(asset.sha256)

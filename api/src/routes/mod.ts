@@ -10,8 +10,9 @@ import { MOJANG_SESSION, dashUuid } from "../lib/upstream";
 import { queuePlayers, globalRank, refreshOne } from "../jobs/crawler";
 import { weeklyProgress } from "../services/weekly";
 import { worldRecords } from "../services/speedBuilders";
-import { updateProgressBoards } from "../services/boards";
+import { updateProgressBoards, updateModeWinRates } from "../services/boards";
 import { recordBroken, type RecordBroken } from "../lib/events";
+import { rankSummary, playerSummary } from "../services/modInfo";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -60,7 +61,7 @@ const MatchIn = z.object({
 // every later game from ever arriving; a game turned down on its own is marked rejected on the PC instead.
 const SyncBody = z.object({
   modVersion: z.string(),
-  mcVersion: z.enum(["26.3", "26.2", "1.8.9"]),
+  mcVersion: z.enum(["26.3", "26.2", "26.1", "1.8.9"]),
   matches: z.array(z.unknown()).max(50),
   localAchievements: z.array(z.string()).max(500).default([]),
   // UUIDs of other players seen in this player's lobbies since last sync (tab list). Feeds the global ranking.
@@ -152,6 +153,24 @@ export function modRoutes(app: Router) {
       // Times only: the mod shows them next to its timer. No placements, so nothing can guide a build.
       worldRecords: records.map((r) => ({ build: r.build, name: r.name, holder: r.holder, timeMs: r.timeMs })),
     };
+  });
+
+  // /bb rank: where this player stands on the leaderboards, today, this week, this month and all time.
+  app.get("/mod/rank", [requireModToken, rateLimit(30, 60_000, "/mod/rank")], async (req) => {
+    const uuid = req.user.mcUuid;
+    if (!uuid) return fail(404, "not_found");
+    return rankSummary(uuid);
+  });
+
+  // /bb compare <name>: this player next to another one.
+  app.get("/mod/compare", [requireModToken, rateLimit(20, 60_000, "/mod/compare")], async (req) => {
+    const { name } = z.object({ name: z.string().regex(/^[A-Za-z0-9_]{1,16}$/) }).parse(req.query);
+    const uuid = req.user.mcUuid;
+    if (!uuid) return fail(404, "you_not_found");
+    const [me, them] = await Promise.all([playerSummary({ uuid }), playerSummary({ name })]);
+    if (!me) fail(404, "you_not_found");
+    if (!them) fail(404, "not_found");
+    return { me, them };
   });
 
   // ---- 3. Sync: idempotent batch insert ----
@@ -265,6 +284,7 @@ export function modRoutes(app: Router) {
         const { rank, of } = await globalRank(uuid);
         const totals = await pool.query("SELECT xp, ap FROM user_progress WHERE user_id = $1", [userId]);
         await updateProgressBoards(uuid, Number(totals.rows[0]?.xp ?? 0), Number(totals.rows[0]?.ap ?? 0)).catch(() => {});
+        await updateModeWinRates(uuid, userId).catch(() => {});
         return { accepted, rejected, confirmed, revoked, level, xp: Number(prog.rows[0].xp),
                  globalRank: rank, rankedPlayers: of,
                  weekly: weekly.weekly, weekEndsAt: weekly.weekEndsAt, weeklyCompleted: weekly.completedNow };

@@ -266,7 +266,7 @@ export async function loadPositions(name) {
     <a class="tile pos${b.rank && b.rank <= 3 ? " podium" : ""}" href="/leaderboard?board=${esc(b.id)}" data-link>
       <span>${esc(b.name)}</span>
       <b>${b.rank ? "#" + num(b.rank) : "–"}</b>
-      <small>${b.rank ? `${num(b.value)} · of ${num(b.of)}` : "not ranked"}</small>
+      <small>${b.rank ? `${boardValue(b.unit, b.value)} · of ${num(b.of)}` : "not ranked"}</small>
     </a>`;
   el.innerHTML = `<div class="tiles positions">${data.boards.filter((b) => b.rank || b.group !== "Better Battle").map(tile).join("")}</div>`
     + (data.locked ? upsell(data.requires, `${num(data.lockedBoards.length)} more leaderboards`,
@@ -278,27 +278,42 @@ export async function loadPositions(name) {
 /** The board picker and, for boards other than score, the table. */
 export async function boardPicker(current) {
   const boards = await get("/boards").catch(() => []);
-  const groups = [...new Set(boards.map((b) => b.group))];
+  const cur = boards.find((b) => b.id === current);
+  const stat = cur?.base ?? current;                       // the all-time board this one belongs to
+  const main = boards.filter((b) => !b.period);            // today / week / month boards live in the tabs below
+  const groups = [...new Set(main.map((b) => b.group))];
+  const periods = ["day", "week", "month"].map((p) => boards.find((b) => b.base === stat && b.period === p)).filter(Boolean);
+  const LABEL = { day: "Today", week: "This week", month: "This month" };
+  const href = (id) => `/leaderboard${id === "score" ? "" : `?board=${id}`}`;
+  const tab = (id, label) => `<a class="chip${id === current ? " pink" : ""}" href="${href(id)}" data-link aria-current="${id === current}">${label}</a>`;
   return `
     <label class="sr-only" for="board-pick">Leaderboard</label>
     <select id="board-pick">
-      ${groups.map((g) => `<optgroup label="${esc(g)}">${boards.filter((b) => b.group === g)
-        .map((b) => `<option value="${esc(b.id)}"${b.id === current ? " selected" : ""}>${esc(b.name)}</option>`).join("")}</optgroup>`).join("")}
-    </select>`;
+      ${groups.map((g) => `<optgroup label="${esc(g)}">${main.filter((b) => b.group === g)
+        .map((b) => `<option value="${esc(b.id)}"${b.id === stat ? " selected" : ""}>${esc(b.name)}</option>`).join("")}</optgroup>`).join("")}
+    </select>
+    ${periods.length ? `<span class="lb-periods" role="group" aria-label="Time period">${tab(stat, "All time")}${periods.map((b) => tab(b.id, LABEL[b.period])).join("")}</span>` : ""}`;
 }
+
+/** A board value as shown: win rate is a percentage, everything else a plain number. */
+const boardValue = (unit, v) => (unit === "percent" && v != null ? Number(v).toFixed(1) + "%" : num(v));
+
+const MODE_COLS = [["wins", "Wins"], ["games", "Games"], ["solo", "Solo"], ["teams", "Teams"], ["pro", "Pro"], ["gtb", "GTB"], ["spb", "SPB"]];
 
 export function boardTable(board) {
   if (!board.rows.length) return `<div class="empty">Nobody is on this leaderboard yet.</div>`;
+  const withModes = board.board.id === "winrate";   // win rate also lists wins in every mode
   return `
     <div class="table-scroll"><table>
-      <thead><tr><th>#</th><th>Player</th><th class="right">${esc(board.board.short)}</th><th class="right">Score</th></tr></thead>
+      <thead><tr><th>#</th><th>Player</th><th class="right">${esc(board.board.short)}</th>${withModes ? MODE_COLS.map(([, label]) => `<th class="right">${label}</th>`).join("") : ""}<th class="right">Score</th></tr></thead>
       <tbody>${board.rows.map((r) => `
-        <tr>
+        <tr data-rank="${r.rank}">
           <td class="num">${num(r.rank)}</td>
           <td><a class="player" href="/p/${esc(r.name)}" data-link>
             <img src="${avatar(r.uuid, 32)}" alt="" width="28" height="28" loading="lazy">${esc(r.name ?? "Unknown")}
             ${r.usesMod ? `<span class="bb-tag" title="Uses Better Battle">BB</span>` : ""}${supporterMark(r.supporter)}</a></td>
-          <td class="right num">${num(r.value)}</td>
+          <td class="right num">${boardValue(board.board.unit, r.value)}</td>
+          ${withModes ? MODE_COLS.map(([key]) => `<td class="right">${num(r.wins?.[key])}</td>`).join("") : ""}
           <td class="right muted">${num(r.score)}</td>
         </tr>`).join("")}</tbody>
     </table></div>`;

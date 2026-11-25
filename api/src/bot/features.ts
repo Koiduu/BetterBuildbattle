@@ -101,11 +101,13 @@ async function download(interaction: ChatInputCommandInteraction) {
     .addFields(
       { name: "Fabric 26.3", value: "Install Fabric Loader 0.20.1+ for Minecraft 26.3, Fabric API, and Java 25+. Drop the jar into `.minecraft/mods`, then launch the game." },
       { name: "Fabric 26.2", value: "Install Fabric Loader 0.20.1+ for Minecraft 26.2, Fabric API, and Java 25+. Drop the jar into `.minecraft/mods`, then launch the game." },
+      { name: "Fabric 26.1", value: "Install Fabric Loader 0.20.1+ for Minecraft 26.1, Fabric API, and Java 25+. Drop the jar into `.minecraft/mods`, then launch the game." },
       { name: "Forge 1.8.9", value: "Install Forge 1.8.9 (11.15.1.2318), drop the jar into `.minecraft/mods`, then launch the game." },
     );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setLabel("Fabric 26.3").setStyle(ButtonStyle.Link).setURL(`${origin}/download/fabric`),
     new ButtonBuilder().setLabel("Fabric 26.2").setStyle(ButtonStyle.Link).setURL(`${origin}/download/fabric262`),
+    new ButtonBuilder().setLabel("Fabric 26.1").setStyle(ButtonStyle.Link).setURL(`${origin}/download/fabric261`),
     new ButtonBuilder().setLabel("Forge 1.8.9").setStyle(ButtonStyle.Link).setURL(`${origin}/download/forge`),
   );
   return interaction.editReply({ embeds: [embed], components: [row] });

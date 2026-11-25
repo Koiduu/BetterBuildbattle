@@ -29,6 +29,49 @@ public interface ApiClient {
         public String version, sha256, notes;
     }
 
+    /** One place on a leaderboard. rank is null when the player isn't on it. */
+    final class Standing {
+        public Integer rank;
+        public int of;
+        public Double value;
+    }
+
+    final class PeriodStanding {
+        public Standing score, wins, winRate;
+    }
+
+    /** /bb rank: where this player stands, all time and today / this week / this month. */
+    final class Rank {
+        public Integer globalRank;
+        public int rankedPlayers;
+        public Standing allTimeScore, allTimeLevel, allTimeWinRate;
+        public PeriodStanding day, week, month;
+    }
+
+    /** One side of /bb compare. */
+    final class Side {
+        public String name;
+        public long score, wins, games;
+        public Integer globalRank;
+        public int rankedPlayers;
+        public Double winRate;
+        public Integer level, ap;
+    }
+
+    final class Compare {
+        public Side me, them;
+    }
+
+    /** Where this player stands on the leaderboards. Needs a newer server; older ones answer 404. */
+    default Rank rank() throws Exception {
+        throw new UnsupportedOperationException("rank");
+    }
+
+    /** This player next to another one. */
+    default Compare compare(String name) throws Exception {
+        throw new UnsupportedOperationException("compare");
+    }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 

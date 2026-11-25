@@ -68,6 +68,9 @@ public final class GameStateMachine {
     /** "solo", "gtb", "speed_builders"... from the sidebar, or null. */
     public String mode() { return mode; }
 
+    /** The theme of the game being played, or null if it isn't known yet. */
+    public String theme() { return current == null ? null : current.theme; }
+
     private boolean nicked;
     private String nick;
 

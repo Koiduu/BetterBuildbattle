@@ -1,0 +1,48 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+	archivesName = 'betterbattle-fabric-26.1'
+}
+
+// The shared, version-independent code lives in ../core. The Fabric adapter itself is shared with the 26.3 build.
+sourceSets {
+	main {
+		java.srcDir '../core/src/main/java'
+		java.srcDir '../fabric-26.3/src/main/java'
+		java.srcDir 'src/compat/java'   // its own copies of the calls that differ between Minecraft versions
+		resources.srcDir '../core/src/main/resources'
+		resources.srcDir '../fabric-26.3/src/main/resources'
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// The mod's local database. Bundled inside the jar.
+	implementation "org.xerial:sqlite-jdbc:${project.sqlite_version}"
+	include "org.xerial:sqlite-jdbc:${project.sqlite_version}"
+}
+
+processResources {
+	def version = project.version
+	def minecraftRange = project.minecraft_range
+	inputs.property "version", version
+	inputs.property "minecraftRange", minecraftRange
+	filesMatching("fabric.mod.json") {
+		expand "version": version, "minecraft_range": minecraftRange
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

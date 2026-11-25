@@ -242,7 +242,7 @@ function cookiesPage() {
 function supportPage() {
   legalPage("Support", `
     <section><h2>Installing the mod</h2>
-      <p>Put the Fabric (26.3 or 26.2) or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
+      <p>Put the Fabric (26.3, 26.2 or 26.1) or Forge 1.8.9 jar in your Minecraft <code>mods</code> folder. The <a href="/install" data-link>install page</a> has step-by-step instructions for each.</p></section>
     <section><h2>Linking your account</h2>
       <p>Get a code from the Account page, then run <code>/bb link &lt;code&gt;</code> in game.</p></section>
     <section><h2>“Couldn't upload your games”</h2>
@@ -411,7 +411,7 @@ function leaderboardTable(rows) {
     return `<div class="empty">Nobody ranked yet. Players show up here as they're found.</div>`;
   }
   const body = rows.map((r) => `
-    <tr>
+    <tr data-rank="${r.rank}">
       <td class="num">${num(r.rank)}</td>
       <td>
         <a class="player" href="/p/${esc(r.name)}" data-link>
@@ -450,8 +450,17 @@ async function leaderboardPage() {
           <h2>Leaderboard</h2>
           <p class="sub" id="lb-sub">Ranked by Build Battle score</p>
         </div>
-        <div class="lb-tools"><span id="lb-pick"></span><div class="pager" id="lb-pager"></div></div>
       </div>
+      <div class="lb-bar">
+        <span class="lb-pick" id="lb-pick"></span>
+        <div class="pager" id="lb-pager"></div>
+      </div>
+      <form class="lb-find" id="lb-find" role="search">
+        <label class="sr-only" for="lb-q">Find a player or position</label>
+        <input id="lb-q" type="search" placeholder="Find a player or position, e.g. Koidu or 250" maxlength="16" autocomplete="off">
+        <button class="btn" type="submit">Find</button>
+        <span class="muted" id="lb-find-msg" role="status"></span>
+      </form>
       <div id="lb-body">${leaderboardSkeleton(50)}</div>
     </section>`;
 
@@ -472,6 +481,24 @@ async function leaderboardPage() {
   document.getElementById("lb-sub").textContent =
     `Ranked by ${board.board ? board.board.name : "Build Battle score"}, ${num(board.total)} players`;
   document.getElementById("lb-body").innerHTML = board.board ? boardTable(board) : leaderboardTable(board.rows);
+  const find = Number(query.get("find")) || 0;
+  const hit = find ? app.querySelector(`tr[data-rank="${find}"]`) : null;
+  if (hit) { hit.classList.add("lb-hit"); hit.scrollIntoView({ block: "center" }); }
+  document.getElementById("lb-find").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = document.getElementById("lb-q").value.trim();
+    const msg = document.getElementById("lb-find-msg");
+    if (!q) return;
+    msg.textContent = "Looking…";
+    try {
+      const r = await get(`/leaderboard/find?board=${boardId}&q=${encodeURIComponent(q)}`);
+      msg.textContent = "";
+      go(`/leaderboard?${boardId === "score" ? "" : `board=${boardId}&`}page=${r.page}&find=${r.rank}`);
+    } catch (err) {
+      msg.textContent = err.body?.error === "not_on_board" ? `${q} isn't on this leaderboard.`
+        : err.body?.error === "not_found" ? "No player with that name." : "Couldn't search. Try again.";
+    }
+  });
   document.getElementById("lb-pager").innerHTML = `
     ${page > 1 ? `<a class="btn" href="${link(page - 1)}" data-link>Previous</a>` : ""}
     <span class="muted">Page ${num(page)} of ${num(pages)}</span>
@@ -666,7 +693,7 @@ function getModCard() {
     <section class="card get-mod">
       <div>
         <h2>See the rest of this profile with the mod</h2>
-        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3, Fabric 26.2 and Forge 1.8.9.</p>
+        <p>Better Battle adds your recent games, levels, achievements, weekly challenges and Speed Builders best times. Fabric 26.3, 26.2 and 26.1, and Forge 1.8.9.</p>
       </div>
       <a class="btn primary" href="/install" data-link>Get the mod</a>
     </section>`;

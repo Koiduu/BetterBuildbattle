@@ -31,7 +31,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [achievements|recap|weekly|news|settings|sync|link|report|palette|debug]";
+        return "/bb [help|stats|rank|compare|achievements|recap|weekly|news|settings|sync|link|report|palette|debug]";
     }
 
     @Override
@@ -46,7 +46,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "recap", "weekly", "news", "settings", "sync", "link", "report", "palette", "debug");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "achievements", "recap", "weekly", "news", "settings", "sync", "link", "report", "palette", "debug");
         return null;
     }
 
@@ -56,6 +56,15 @@ final class BbCommand extends CommandBase {
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
         if (sub.isEmpty()) {
             mod.openLater(mod.menu());
+        } else if (sub.equals("help")) {
+            for (String line : core.helpLines(false)) mod.chat(line);
+        } else if (sub.equals("stats")) {
+            mod.openLater(new TextPageScreen(null, core.statsPage()));
+        } else if (sub.equals("rank")) {
+            core.rank();
+        } else if (sub.equals("compare")) {
+            if (args.length < 2) mod.chat(P + "Usage: §b/bb compare <name>");
+            else core.compare(args[1]);
         } else if (sub.equals("achievements")) {
             mod.openLater(new AchievementsScreen(null));
         } else if (sub.equals("recap")) {
