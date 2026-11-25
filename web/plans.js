@@ -299,7 +299,7 @@ export function boardTable(board) {
     <div class="table-scroll"><table>
       <thead><tr><th>#</th><th>Player</th><th class="right">${esc(board.board.short)}</th>${withModes ? MODE_COLS.map(([, label]) => `<th class="right">${label}</th>`).join("") : ""}<th class="right">Score</th></tr></thead>
       <tbody>${board.rows.map((r) => `
-        <tr>
+        <tr data-rank="${r.rank}">
           <td class="num">${num(r.rank)}</td>
           <td><a class="player" href="/p/${esc(r.name)}" data-link>
             <img src="${avatar(r.uuid, 32)}" alt="" width="28" height="28" loading="lazy">${esc(r.name ?? "Unknown")}

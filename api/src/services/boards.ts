@@ -14,7 +14,21 @@ export interface Board {
   fields?: string[];
   /** "percent": the stored value is 0-100 and shown with a % sign. */
   unit?: "percent";
+  /** A Better Battle board: win rate in one mode, from games the mod synced (placement 1 = a win). */
+  winMode?: "solo" | "teams" | "pro" | "gtb" | "speed_builders";
+  /** Win rate over all modes for the current UTC day, week (from Monday) or month. Resets at each boundary. */
+  period?: "day" | "week" | "month";
+  /** What a period board counts. Default "winrate". */
+  metric?: "winrate" | "wins" | "games" | "xp";
 }
+
+/** Games needed in the period before a win rate shows. Short periods need fewer. */
+const PERIOD_MIN_GAMES = { day: 3, week: 5, month: 10 } as const;
+/** Start of the current UTC day / week / month. Weeks start Monday 00:00 UTC, like the weekly challenges. */
+const PERIOD_START = (p: "day" | "week" | "month") => `date_trunc('${p}', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`;
+
+/** Per-mode win rate needs fewer games than the overall one: only synced games count, so samples are small. */
+export const MODE_WINRATE_MIN_GAMES = 10;
 
 /** Win rate only ranks players with at least this many games, so 1 win from 1 game isn't 100%. */
 export const WINRATE_MIN_GAMES = 100;
@@ -34,10 +48,37 @@ export const BOARDS: Board[] = [
   { id: "gtb", name: "Guess the Build wins", short: "GTB wins", group: "Modes", fields: ["wins_guess_the_build"] },
   { id: "guesses", name: "Correct guesses", short: "Guesses", group: "Modes", fields: ["correct_guesses"] },
   { id: "spb", name: "Speed Builders wins", short: "SPB wins", group: "Modes", fields: ["wins_speed_builders"] },
+  { id: "wrsolo", name: `Solo win rate (${MODE_WINRATE_MIN_GAMES}+ games)`, short: "Solo win %", group: "Better Battle", unit: "percent", winMode: "solo" },
+  { id: "wrteams", name: `Teams win rate (${MODE_WINRATE_MIN_GAMES}+ games)`, short: "Teams win %", group: "Better Battle", unit: "percent", winMode: "teams" },
+  { id: "wrpro", name: `Pro win rate (${MODE_WINRATE_MIN_GAMES}+ games)`, short: "Pro win %", group: "Better Battle", unit: "percent", winMode: "pro" },
+  { id: "wrgtb", name: `Guess the Build win rate (${MODE_WINRATE_MIN_GAMES}+ games)`, short: "GTB win %", group: "Better Battle", unit: "percent", winMode: "gtb" },
+  { id: "wrspb", name: `Speed Builders win rate (${MODE_WINRATE_MIN_GAMES}+ games)`, short: "SPB win %", group: "Better Battle", unit: "percent", winMode: "speed_builders" },
   { id: "level", name: "Aspiring Level (XP)", short: "Level XP", group: "Better Battle" },
   { id: "ap", name: "Aspiring Points", short: "AP", group: "Better Battle" },
   { id: "records", name: "Speed Builders records held", short: "Records", group: "Better Battle" },
 ];
+
+/** Today / this week / this month versions of win rate, wins, games played and XP earned, from games the mod synced. */
+const PERIODS = [
+  { p: "day", label: "today", reset: "resets 00:00 UTC" },
+  { p: "week", label: "this week", reset: "resets Monday" },
+  { p: "month", label: "this month", reset: "resets on the 1st" },
+] as const;
+const METRICS = [
+  { m: "winrate", id: "wr", name: "Win rate", short: "win %", unit: "percent" as const },
+  { m: "wins", id: "wins", name: "Wins", short: "wins", unit: undefined },
+  { m: "games", id: "games", name: "Games played", short: "games", unit: undefined },
+  { m: "xp", id: "xp", name: "XP earned", short: "XP", unit: undefined },
+] as const;
+for (const { m, id, name, short, unit } of METRICS) {
+  for (const { p, label, reset } of PERIODS) {
+    const min = m === "winrate" ? ` ${PERIOD_MIN_GAMES[p]}+ games,` : "";
+    BOARDS.push({
+      id: `${id}${p}`, name: `${name} ${label} (${min} ${reset})`.replace("( ", "("), short: `${p === "day" ? "Today" : p === "week" ? "Week" : "Month"} ${short}`,
+      group: "Better Battle", unit, period: p, metric: m,
+    });
+  }
+}
 
 export const boardById = (id: string) => BOARDS.find((b) => b.id === id);
 /** The score board keeps its original key so the existing global rank code is untouched. */
@@ -93,6 +134,47 @@ export async function updateProgressBoards(uuid: string | null, xp: number, ap: 
   await multi.exec();
 }
 
+/** Win rate per mode for one player, from the games they've synced. Called after each sync. */
+export async function updateModeWinRates(uuid: string | null, userId: number) {
+  if (!uuid) return;
+  const r = await pool.query(
+    `SELECT mode::text AS mode, count(*)::int AS games, count(*) FILTER (WHERE placement = 1)::int AS wins
+     FROM matches WHERE user_id = $1 AND NOT flagged AND (mode <> 'gtb' OR placement IS NOT NULL)
+     GROUP BY mode`, [userId]);
+  const byMode = new Map<string, { games: number; wins: number }>(r.rows.map((x: any) => [x.mode, x]));
+  const multi = redis.multi();
+  // today / this week / this month, all modes together
+  const periods = await pool.query(
+    `SELECT count(*) FILTER (WHERE played_at >= ${PERIOD_START("day")})::int AS day_games,
+            count(*) FILTER (WHERE played_at >= ${PERIOD_START("day")} AND placement = 1)::int AS day_wins,
+            count(*) FILTER (WHERE played_at >= ${PERIOD_START("week")})::int AS week_games,
+            count(*) FILTER (WHERE played_at >= ${PERIOD_START("week")} AND placement = 1)::int AS week_wins,
+            count(*)::int AS month_games, count(*) FILTER (WHERE placement = 1)::int AS month_wins,
+            coalesce(sum(xp_earned) FILTER (WHERE played_at >= ${PERIOD_START("day")}), 0)::int AS day_xp,
+            coalesce(sum(xp_earned) FILTER (WHERE played_at >= ${PERIOD_START("week")}), 0)::int AS week_xp,
+            coalesce(sum(xp_earned), 0)::int AS month_xp
+     FROM matches WHERE user_id = $1 AND NOT flagged AND (mode <> 'gtb' OR placement IS NOT NULL)
+       AND played_at >= ${PERIOD_START("month")}`, [userId]);
+  const pr = periods.rows[0] ?? {};
+  for (const board of BOARDS) {
+    if (!board.period) continue;
+    const games = Number(pr[`${board.period}_games`] ?? 0), wins = Number(pr[`${board.period}_wins`] ?? 0);
+    const xp = Number(pr[`${board.period}_xp`] ?? 0);
+    const metric = board.metric ?? "winrate";
+    const v = metric === "winrate" ? (games >= PERIOD_MIN_GAMES[board.period] && wins > 0 ? Math.round((wins / games) * 10000) / 100 : 0)
+      : metric === "wins" ? wins : metric === "games" ? games : xp;
+    if (v > 0) multi.zadd(boardKey(board.id), v, uuid);
+    else multi.zrem(boardKey(board.id), uuid);
+  }
+  for (const board of BOARDS) {
+    if (!board.winMode) continue;
+    const s = byMode.get(board.winMode);
+    if (s && s.games >= MODE_WINRATE_MIN_GAMES && s.wins > 0) multi.zadd(boardKey(board.id), Math.round((s.wins / s.games) * 10000) / 100, uuid);
+    else multi.zrem(boardKey(board.id), uuid);
+  }
+  await multi.exec();
+}
+
 async function fill(key: string, rows: { mc_uuid: string; v: number | string }[]) {
   const tmp = `${key}:rebuild`;
   await redis.del(tmp);
@@ -115,6 +197,31 @@ export async function rebuildBoards() {
       rows = (await pool.query(
         `SELECT mc_uuid, ${expr} AS v FROM tracked_players
          WHERE hypixel_bb IS NOT NULL AND NOT no_bb_stats AND ${expr} > 0`, board.fields)).rows;
+    } else if (board.period) {
+      const metric = board.metric ?? "winrate";
+      const value = metric === "winrate" ? "round(100.0 * count(*) FILTER (WHERE m.placement = 1) / count(*), 2)"
+        : metric === "wins" ? "count(*) FILTER (WHERE m.placement = 1)"
+        : metric === "games" ? "count(*)" : "coalesce(sum(m.xp_earned), 0)";
+      const having = metric === "winrate"
+        ? "count(*) >= $1 AND count(*) FILTER (WHERE m.placement = 1) > 0"
+        : metric === "wins" ? "count(*) FILTER (WHERE m.placement = 1) > 0 AND $1 >= 0"
+        : metric === "games" ? "count(*) > 0 AND $1 >= 0" : "coalesce(sum(m.xp_earned), 0) > 0 AND $1 >= 0";
+      rows = (await pool.query(
+        `SELECT u.mc_uuid, ${value} AS v
+         FROM matches m JOIN users u ON u.id = m.user_id
+         WHERE m.played_at >= ${PERIOD_START(board.period)} AND NOT m.flagged AND NOT u.flagged AND u.mc_uuid IS NOT NULL
+           AND (m.mode <> 'gtb' OR m.placement IS NOT NULL)
+         GROUP BY u.mc_uuid HAVING ${having}`,
+        [PERIOD_MIN_GAMES[board.period]])).rows;
+    } else if (board.winMode) {
+      rows = (await pool.query(
+        `SELECT u.mc_uuid, round(100.0 * count(*) FILTER (WHERE m.placement = 1) / count(*), 2) AS v
+         FROM matches m JOIN users u ON u.id = m.user_id
+         WHERE m.mode = $1::bb_mode AND NOT m.flagged AND NOT u.flagged AND u.mc_uuid IS NOT NULL
+           AND (m.mode <> 'gtb' OR m.placement IS NOT NULL)
+         GROUP BY u.mc_uuid
+         HAVING count(*) >= $2 AND count(*) FILTER (WHERE m.placement = 1) > 0`,
+        [board.winMode, MODE_WINRATE_MIN_GAMES])).rows;
     } else if (board.id === "winrate") {
       rows = (await pool.query(
         `SELECT mc_uuid,
@@ -144,22 +251,29 @@ export async function ensureBoards() {
   const [score, wins, rate] = await Promise.all([
     redis.zcard(boardKey("score")), redis.zcard(boardKey("wins")), redis.zcard(boardKey("winrate"))]);
   // also when only the newest board (win rate) is missing, so it fills in on the first boot after an update
-  if (score > 0 && (wins === 0 || rate === 0)) await rebuildBoards();
+  const modeRatesBuilt = await redis.exists("lb:meta:winrates-v3");
+  if (score > 0 && (wins === 0 || rate === 0 || !modeRatesBuilt)) {
+    await rebuildBoards();
+    await redis.set("lb:meta:winrates-v3", "1");
+  }
 }
 
 export interface Position { id: string; name: string; short: string; group: string; unit?: "percent"; rank: number | null; of: number; value: number | null; top: number | null }
 
 /** Where one player stands on every board. Ties share a rank. */
+/** Boards that make sense as a standing; the resetting today/week/month boards would just clutter a profile. */
+const standingBoards = () => BOARDS.filter((b) => !b.period);
+
 export async function positions(uuid: string): Promise<Position[]> {
-  const scores = await redis.multi(BOARDS.map((b) => ["zscore", boardKey(b.id), uuid])).exec();
+  const scores = await redis.multi(standingBoards().map((b) => ["zscore", boardKey(b.id), uuid])).exec();
   const multi = redis.multi();
-  BOARDS.forEach((b, i) => {
+  standingBoards().forEach((b, i) => {
     const s = scores?.[i]?.[1] as string | null;
     multi.zcard(boardKey(b.id));
     multi.zcount(boardKey(b.id), s === null ? "+inf" : `(${s}`, "+inf");
   });
   const res = await multi.exec();
-  return BOARDS.map((b, i) => {
+  return standingBoards().map((b, i) => {
     const s = scores?.[i]?.[1] as string | null;
     const of = Number(res?.[i * 2]?.[1] ?? 0);
     const above = Number(res?.[i * 2 + 1]?.[1] ?? 0);
@@ -170,6 +284,12 @@ export async function positions(uuid: string): Promise<Position[]> {
       top: rank === null || !of ? null : rank / of,
     };
   });
+}
+
+/** Where a player sits on one board, counting from 1 in list order (the same numbers the table shows). */
+export async function listPosition(id: string, uuid: string): Promise<{ rank: number; total: number } | null> {
+  const [idx, total] = await Promise.all([redis.zrevrank(boardKey(id), uuid), redis.zcard(boardKey(id))]);
+  return idx === null ? null : { rank: idx + 1, total };
 }
 
 /** A page of one board, best first. */
