@@ -17,4 +17,8 @@ public interface Platform {
 
     /** Open a text page (What's New, Last Game...). Called on the main thread. */
     void openPage(net.aspir3.betterbattle.pages.Pages.Page page);
+
+    /** Save a picture of the game screen to this file (a round screenshot). Called on the main thread; Forge does nothing. */
+    default void screenshot(java.io.File file) {
+    }
 }

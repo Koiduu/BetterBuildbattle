@@ -23,6 +23,8 @@ public final class Compat {
 
     public static net.minecraft.client.multiplayer.chat.ChatListener chatListener(Minecraft client) { return client.getChatListener(); }
 
+    public static com.mojang.blaze3d.pipeline.RenderTarget mainTarget(Minecraft client) { return client.getMainRenderTarget(); }
+
     public static Item wool(DyeColor c) { return switch (c) {
         case WHITE -> Items.WHITE_WOOL; case RED -> Items.RED_WOOL; case CYAN -> Items.CYAN_WOOL;
         default -> throw new IllegalArgumentException(c.toString()); }; }

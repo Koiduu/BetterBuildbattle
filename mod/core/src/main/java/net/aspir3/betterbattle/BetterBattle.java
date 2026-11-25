@@ -8,6 +8,7 @@ import net.aspir3.betterbattle.game.SpbTracker;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.parse.ChatParser;
 import net.aspir3.betterbattle.progress.Level;
+import net.aspir3.betterbattle.shots.RoundShots;
 import net.aspir3.betterbattle.store.LocalDatabase;
 import net.aspir3.betterbattle.sync.ApiClient;
 import net.aspir3.betterbattle.sync.HttpApiClient;
@@ -58,6 +59,7 @@ public final class BetterBattle {
     private boolean whatsNewDue, whatsNewAnnounced;
     private volatile ApiClient.Latest newer;      // a version newer than this one, once the server reports it
     private boolean newerAnnounced;
+    private GameStateMachine.State lastState = GameStateMachine.State.IDLE;
     private long joinedAt;
 
     private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
@@ -67,6 +69,11 @@ public final class BetterBattle {
         this.modVersion = modVersion;
         this.mcVersion = mcVersion;
         this.config = Config.load(dir);
+        // screenshots are only kept for 15 days
+        try {
+            RoundShots.prune(RoundShots.dir(dir), RoundShots.KEEP_DAYS, System.currentTimeMillis());
+        } catch (Throwable ignored) {
+        }
         this.parser = new ChatParser(new InputStreamReader(
             BetterBattle.class.getResourceAsStream("/betterbattle/patterns.json"), StandardCharsets.UTF_8));
     }
@@ -368,6 +375,7 @@ public final class BetterBattle {
         out.add("\u00a7b/bb stats \u00a77Your own numbers: games, wins, win rate by mode");
         out.add("\u00a7b/bb rank \u00a77Where you stand today, this week, this month and all time");
         out.add("\u00a7b/bb compare <name> \u00a77You next to another player");
+        if (headsAndBanners) out.add("\u00a7b/bb shots \u00a77Your round screenshots, kept for 15 days");
         out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
         out.add("\u00a7b/bb recap \u00a77Your last game in full");
         out.add("\u00a7b/bb weekly \u00a77This week's challenges");
@@ -479,6 +487,22 @@ public final class BetterBattle {
     private final class GameListener implements GameStateMachine.Listener {
         public void onStateChanged(GameStateMachine.State state) {
             debug("state: " + state);
+            GameStateMachine.State before = lastState;
+            lastState = state;
+            // Building time just ran out: take a picture of the build.
+            if (before == GameStateMachine.State.BUILDING && state == GameStateMachine.State.VOTING && config.roundScreenshots) {
+                final File file = new File(RoundShots.dir(dir), RoundShots.fileName(System.currentTimeMillis(), game.mode(), game.theme()));
+                platform.runOnMainThread(new Runnable() {
+                    public void run() {
+                        file.getParentFile().mkdirs();
+                        try {
+                            platform.screenshot(file);
+                        } catch (Throwable t) {
+                            debug("round screenshot failed: " + t);
+                        }
+                    }
+                });
+            }
         }
 
         public void onMatchFinished(MatchRecord m) {

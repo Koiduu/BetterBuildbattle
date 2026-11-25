@@ -65,6 +65,8 @@ public final class MenuScreen extends Screen {
         LinearLayout heads = rows.addChild(LinearLayout.horizontal().spacing(8));
         heads.addChild(Button.builder(Component.literal("Head Database"), b -> Compat.setScreen(minecraft, new HeadsScreen(this, ""))).width(154).build());
         heads.addChild(Button.builder(Component.literal("Banner Database"), b -> Compat.setScreen(minecraft, new BannersScreen(this))).width(154).build());
+        LinearLayout shots = rows.addChild(LinearLayout.horizontal().spacing(8));
+        shots.addChild(Button.builder(Component.literal("Round Screenshots"), b -> Compat.setScreen(minecraft, new ScreenshotsScreen(this))).width(316).build());
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
         bottom.addChild(Button.builder(Component.literal("Settings"), b -> Compat.setScreen(minecraft, new SettingsScreen(this))).width(100).build());

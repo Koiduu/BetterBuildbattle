@@ -33,6 +33,7 @@ import net.aspir3.betterbattle.fabric.ui.AchievementToast;
 import net.aspir3.betterbattle.fabric.ui.AchievementsScreen;
 import net.aspir3.betterbattle.fabric.ui.MenuScreen;
 import net.aspir3.betterbattle.fabric.ui.PinnedAchievementsHud;
+import net.aspir3.betterbattle.fabric.ui.ScreenshotsScreen;
 import net.aspir3.betterbattle.fabric.ui.SettingsScreen;
 import net.aspir3.betterbattle.fabric.ui.SpbTimerToast;
 import net.aspir3.betterbattle.fabric.ui.TextPageScreen;
@@ -170,6 +171,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                         core.compare(StringArgumentType.getString(c, "name"));
                         return 1;
                     })))
+                .then(ClientCommands.literal("shots").executes(c -> open(() -> new ScreenshotsScreen(null))))
                 .then(ClientCommands.literal("recap").executes(c -> open(() -> new TextPageScreen(null, core.lastGamePage()))))
                 .then(ClientCommands.literal("weekly").executes(c -> open(() -> new TextPageScreen(null, core.weeklyPage()))))
                 .then(ClientCommands.literal("news").executes(c -> open(() -> new TextPageScreen(null, BetterBattle.get().whatsNewPage()))))
@@ -504,6 +506,21 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     @Override
     public void openPage(Pages.Page page) {
         pendingScreen = () -> new TextPageScreen(null, page);
+    }
+
+    @Override
+    public void screenshot(java.io.File file) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null) return;
+        net.minecraft.client.Screenshot.takeScreenshot(Compat.mainTarget(client), image -> {
+            try {
+                image.writeToFile(file);
+            } catch (Exception e) {
+                core.debug("round screenshot not saved: " + e);
+            } finally {
+                image.close();
+            }
+        });
     }
 
     @Override
