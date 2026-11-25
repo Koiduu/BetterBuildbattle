@@ -19,7 +19,9 @@ export interface Board {
   /** Win rate over all modes for the current UTC day, week (from Monday) or month. Resets at each boundary. */
   period?: "day" | "week" | "month";
   /** What a period board counts. Default "winrate". */
-  metric?: "winrate" | "wins" | "games" | "xp";
+  metric?: "winrate" | "wins" | "games" | "xp" | "score";
+  /** For a period board: the all-time board it is the today/week/month version of. */
+  base?: string;
 }
 
 /** Games needed in the period before a win rate shows. Short periods need fewer. */
@@ -65,17 +67,19 @@ const PERIODS = [
   { p: "month", label: "this month", reset: "resets on the 1st" },
 ] as const;
 const METRICS = [
-  { m: "winrate", id: "wr", name: "Win rate", short: "win %", unit: "percent" as const },
-  { m: "wins", id: "wins", name: "Wins", short: "wins", unit: undefined },
-  { m: "games", id: "games", name: "Games played", short: "games", unit: undefined },
-  { m: "xp", id: "xp", name: "XP earned", short: "XP", unit: undefined },
+  { m: "winrate", id: "wr", base: "winrate", name: "Win rate", short: "win %", unit: "percent" as const },
+  { m: "wins", id: "wins", base: "wins", name: "Wins", short: "wins", unit: undefined },
+  { m: "games", id: "games", base: "games", name: "Games played", short: "games", unit: undefined },
+  { m: "xp", id: "xp", base: "level", name: "XP earned", short: "XP", unit: undefined },
+  // points from votes in games the mod synced; Hypixel's own score only refreshes when a player is looked up
+  { m: "score", id: "score", base: "score", name: "Game score", short: "score", unit: undefined },
 ] as const;
-for (const { m, id, name, short, unit } of METRICS) {
+for (const { m, id, base, name, short, unit } of METRICS) {
   for (const { p, label, reset } of PERIODS) {
     const min = m === "winrate" ? ` ${PERIOD_MIN_GAMES[p]}+ games,` : "";
     BOARDS.push({
       id: `${id}${p}`, name: `${name} ${label} (${min} ${reset})`.replace("( ", "("), short: `${p === "day" ? "Today" : p === "week" ? "Week" : "Month"} ${short}`,
-      group: "Better Battle", unit, period: p, metric: m,
+      group: "Better Battle", unit, period: p, metric: m, base,
     });
   }
 }
@@ -150,6 +154,9 @@ export async function updateModeWinRates(uuid: string | null, userId: number) {
             count(*) FILTER (WHERE played_at >= ${PERIOD_START("week")})::int AS week_games,
             count(*) FILTER (WHERE played_at >= ${PERIOD_START("week")} AND placement = 1)::int AS week_wins,
             count(*)::int AS month_games, count(*) FILTER (WHERE placement = 1)::int AS month_wins,
+            coalesce(round(sum(score) FILTER (WHERE played_at >= ${PERIOD_START("day")})), 0)::int AS day_score,
+            coalesce(round(sum(score) FILTER (WHERE played_at >= ${PERIOD_START("week")})), 0)::int AS week_score,
+            coalesce(round(sum(score)), 0)::int AS month_score,
             coalesce(sum(xp_earned) FILTER (WHERE played_at >= ${PERIOD_START("day")}), 0)::int AS day_xp,
             coalesce(sum(xp_earned) FILTER (WHERE played_at >= ${PERIOD_START("week")}), 0)::int AS week_xp,
             coalesce(sum(xp_earned), 0)::int AS month_xp
@@ -159,10 +166,10 @@ export async function updateModeWinRates(uuid: string | null, userId: number) {
   for (const board of BOARDS) {
     if (!board.period) continue;
     const games = Number(pr[`${board.period}_games`] ?? 0), wins = Number(pr[`${board.period}_wins`] ?? 0);
-    const xp = Number(pr[`${board.period}_xp`] ?? 0);
+    const xp = Number(pr[`${board.period}_xp`] ?? 0), score = Number(pr[`${board.period}_score`] ?? 0);
     const metric = board.metric ?? "winrate";
     const v = metric === "winrate" ? (games >= PERIOD_MIN_GAMES[board.period] && wins > 0 ? Math.round((wins / games) * 10000) / 100 : 0)
-      : metric === "wins" ? wins : metric === "games" ? games : xp;
+      : metric === "wins" ? wins : metric === "games" ? games : metric === "score" ? score : xp;
     if (v > 0) multi.zadd(boardKey(board.id), v, uuid);
     else multi.zrem(boardKey(board.id), uuid);
   }
@@ -201,11 +208,12 @@ export async function rebuildBoards() {
       const metric = board.metric ?? "winrate";
       const value = metric === "winrate" ? "round(100.0 * count(*) FILTER (WHERE m.placement = 1) / count(*), 2)"
         : metric === "wins" ? "count(*) FILTER (WHERE m.placement = 1)"
-        : metric === "games" ? "count(*)" : "coalesce(sum(m.xp_earned), 0)";
+        : metric === "games" ? "count(*)" : metric === "score" ? "coalesce(round(sum(m.score)::numeric), 0)" : "coalesce(sum(m.xp_earned), 0)";
       const having = metric === "winrate"
         ? "count(*) >= $1 AND count(*) FILTER (WHERE m.placement = 1) > 0"
         : metric === "wins" ? "count(*) FILTER (WHERE m.placement = 1) > 0 AND $1 >= 0"
-        : metric === "games" ? "count(*) > 0 AND $1 >= 0" : "coalesce(sum(m.xp_earned), 0) > 0 AND $1 >= 0";
+        : metric === "games" ? "count(*) > 0 AND $1 >= 0"
+        : metric === "score" ? "coalesce(sum(m.score), 0) > 0 AND $1 >= 0" : "coalesce(sum(m.xp_earned), 0) > 0 AND $1 >= 0";
       rows = (await pool.query(
         `SELECT u.mc_uuid, ${value} AS v
          FROM matches m JOIN users u ON u.id = m.user_id
@@ -251,10 +259,10 @@ export async function ensureBoards() {
   const [score, wins, rate] = await Promise.all([
     redis.zcard(boardKey("score")), redis.zcard(boardKey("wins")), redis.zcard(boardKey("winrate"))]);
   // also when only the newest board (win rate) is missing, so it fills in on the first boot after an update
-  const modeRatesBuilt = await redis.exists("lb:meta:winrates-v3");
+  const modeRatesBuilt = await redis.exists("lb:meta:winrates-v4");
   if (score > 0 && (wins === 0 || rate === 0 || !modeRatesBuilt)) {
     await rebuildBoards();
-    await redis.set("lb:meta:winrates-v3", "1");
+    await redis.set("lb:meta:winrates-v4", "1");
   }
 }
 

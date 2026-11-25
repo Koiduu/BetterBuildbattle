@@ -93,7 +93,7 @@ export function publicRoutes(app: Router) {
   });
 
   /** The list of leaderboards, for the board picker. */
-  app.get("/boards", async () => BOARDS.map((b) => ({ id: b.id, name: b.name, short: b.short, group: b.group })));
+  app.get("/boards", async () => BOARDS.map((b) => ({ id: b.id, name: b.name, short: b.short, group: b.group, period: b.period, base: b.base })));
 
   /** Any board other than score. (Score keeps its own handler below, with wins and level columns.) */
   const otherBoard = async (id: string, page: number) => {

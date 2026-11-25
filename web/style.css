@@ -986,3 +986,5 @@ body.launch-locked { overflow: hidden; }
 .lb-find { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
 .lb-find input { flex: 1 1 260px; max-width: 420px; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.1); background: var(--card); color: var(--text); font: inherit; }
 tr.lb-hit td { background: rgba(255,170,0,.14); }
+.lb-periods { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 8px; vertical-align: middle; }
+.lb-periods .chip { text-decoration: none; cursor: pointer; }

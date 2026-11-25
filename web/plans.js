@@ -278,13 +278,21 @@ export async function loadPositions(name) {
 /** The board picker and, for boards other than score, the table. */
 export async function boardPicker(current) {
   const boards = await get("/boards").catch(() => []);
-  const groups = [...new Set(boards.map((b) => b.group))];
+  const cur = boards.find((b) => b.id === current);
+  const stat = cur?.base ?? current;                       // the all-time board this one belongs to
+  const main = boards.filter((b) => !b.period);            // today / week / month boards live in the tabs below
+  const groups = [...new Set(main.map((b) => b.group))];
+  const periods = ["day", "week", "month"].map((p) => boards.find((b) => b.base === stat && b.period === p)).filter(Boolean);
+  const LABEL = { day: "Today", week: "This week", month: "This month" };
+  const href = (id) => `/leaderboard${id === "score" ? "" : `?board=${id}`}`;
+  const tab = (id, label) => `<a class="chip${id === current ? " pink" : ""}" href="${href(id)}" data-link aria-current="${id === current}">${label}</a>`;
   return `
     <label class="sr-only" for="board-pick">Leaderboard</label>
     <select id="board-pick">
-      ${groups.map((g) => `<optgroup label="${esc(g)}">${boards.filter((b) => b.group === g)
-        .map((b) => `<option value="${esc(b.id)}"${b.id === current ? " selected" : ""}>${esc(b.name)}</option>`).join("")}</optgroup>`).join("")}
-    </select>`;
+      ${groups.map((g) => `<optgroup label="${esc(g)}">${main.filter((b) => b.group === g)
+        .map((b) => `<option value="${esc(b.id)}"${b.id === stat ? " selected" : ""}>${esc(b.name)}</option>`).join("")}</optgroup>`).join("")}
+    </select>
+    ${periods.length ? `<span class="lb-periods" role="group" aria-label="Time period">${tab(stat, "All time")}${periods.map((b) => tab(b.id, LABEL[b.period])).join("")}</span>` : ""}`;
 }
 
 /** A board value as shown: win rate is a percentage, everything else a plain number. */
