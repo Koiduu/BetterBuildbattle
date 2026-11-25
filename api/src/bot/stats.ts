@@ -287,7 +287,7 @@ async function recent(interaction: ChatInputCommandInteraction) {
   if (!player) return;
   const r = player.userId
     ? await pool.query(
-        `SELECT played_at, mode, theme, placement, players, grade, crowd_score, xp_earned
+        `SELECT played_at, mode, theme, placement, players, grade, (CASE WHEN score IS NOT NULL THEN crowd_score END) AS crowd_score, xp_earned
          FROM matches WHERE user_id = $1 ORDER BY played_at DESC LIMIT 8`, [player.userId])
     : { rows: [] as any[] };
   if (!r.rows.length) {
