@@ -54,7 +54,7 @@ export async function profileCard(name: string, origin: string): Promise<Buffer 
   let stats: [string, string][];
   if (p.level != null) {
     const m = await pool.query(
-      `SELECT avg(crowd_score) AS crowd,
+      `SELECT avg(CASE WHEN score IS NOT NULL THEN crowd_score END) AS crowd,
               (SELECT count(*) FROM user_achievements WHERE user_id = $1)::int AS achievements
        FROM matches WHERE user_id = $1`, [p.user_id]);
     const crowd = m.rows[0].crowd;

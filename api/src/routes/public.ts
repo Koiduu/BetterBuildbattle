@@ -233,7 +233,7 @@ export function publicRoutes(app: Router) {
         const level = levelForXp(xp);
         const metrics = await pool.query(
           `SELECT count(*)::int AS games,
-                  avg(crowd_score) AS crowd_score,
+                  avg(CASE WHEN score IS NOT NULL THEN crowd_score END) AS crowd_score,
                   count(DISTINCT lower(theme))::int AS themes,
                   count(*) FILTER (WHERE grade = 'SS')::int AS ss,
                   count(*) FILTER (WHERE grade = 'S')::int AS s,
@@ -317,7 +317,7 @@ export function publicRoutes(app: Router) {
     const owner = await pool.query("SELECT plan, plan_until, plan_comped FROM users WHERE id = $1", [id]);
     const cap = limit(planOf(owner.rows[0]), "historyGames");
     const r = await pool.query(
-      `SELECT id, played_at, mode, theme, placement, players, score, grade, crowd_score, xp_earned
+      `SELECT id, played_at, mode, theme, placement, players, score, grade, (CASE WHEN score IS NOT NULL THEN crowd_score END) AS crowd_score, xp_earned
        FROM (SELECT * FROM matches WHERE user_id = $1 ORDER BY played_at DESC LIMIT $4) recent
        WHERE ($2::bb_mode IS NULL OR mode = $2) AND ($3::timestamptz IS NULL OR played_at < $3)
        ORDER BY played_at DESC LIMIT 25`, [id, q.mode ?? null, q.before ?? null, Number.isFinite(cap) ? cap : null]);

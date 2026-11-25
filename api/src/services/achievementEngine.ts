@@ -71,7 +71,7 @@ async function localTotals(client: PoolClient, userId: number): Promise<Record<s
   const r = await client.query(
     `SELECT count(DISTINCT lower(theme))                       AS themes_built,
             count(*) FILTER (WHERE grade = 'SS')               AS ss_grades,
-            count(*) FILTER (WHERE crowd_score >= 0.9)         AS crowd_90,
+            count(*) FILTER (WHERE score IS NOT NULL AND crowd_score >= 0.9) AS crowd_90,
             count(DISTINCT date_trunc('day', played_at))       AS days_played,
             coalesce(sum((SELECT count(*) FROM jsonb_array_elements(CASE WHEN jsonb_typeof(spb_rounds) = 'array' THEN spb_rounds ELSE '[]'::jsonb END) e
                           WHERE coalesce((e->>'precision')::float, (e->>'accuracy')::float) >= 1

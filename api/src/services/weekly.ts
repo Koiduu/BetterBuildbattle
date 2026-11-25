@@ -15,7 +15,7 @@ const IN_WEEK = inWeek();
 const PROGRESS: Record<string, { target: number; count: (db: Db, userId: number, week: string) => Promise<number> }> = {
   w_wood_win: { target: 1, count: tagged("all_wood") },
   w_palette: { target: 1, count: tagged("random_palette_win") },
-  w_crowd_85: { target: 3, count: countWhere("crowd_score >= 0.85") },
+  w_crowd_85: { target: 3, count: countWhere("score IS NOT NULL AND crowd_score >= 0.85") },
   w_pro_win: { target: 1, count: countWhere("mode = 'pro' AND placement = 1") },
   w_teams_3: { target: 3, count: countWhere("mode = 'teams' AND placement = 1") },
   w_themes_10: {
