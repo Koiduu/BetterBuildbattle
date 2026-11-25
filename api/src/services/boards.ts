@@ -272,16 +272,23 @@ export interface Position { id: string; name: string; short: string; group: stri
 /** Boards that make sense as a standing; the resetting today/week/month boards would just clutter a profile. */
 const standingBoards = () => BOARDS.filter((b) => !b.period);
 
-export async function positions(uuid: string): Promise<Position[]> {
-  const scores = await redis.multi(standingBoards().map((b) => ["zscore", boardKey(b.id), uuid])).exec();
+/** Where one player stands on every board. Ties share a rank. */
+export const positions = (uuid: string) => standingsFor(uuid, standingBoards());
+
+/** Where one player stands on the boards with these ids (for the mod's /bb rank). Ties share a rank. */
+export const standings = (uuid: string, ids: string[]) =>
+  standingsFor(uuid, ids.map((id) => boardById(id)).filter((b): b is Board => !!b));
+
+async function standingsFor(uuid: string, list: Board[]): Promise<Position[]> {
+  const scores = await redis.multi(list.map((b) => ["zscore", boardKey(b.id), uuid])).exec();
   const multi = redis.multi();
-  standingBoards().forEach((b, i) => {
+  list.forEach((b, i) => {
     const s = scores?.[i]?.[1] as string | null;
     multi.zcard(boardKey(b.id));
     multi.zcount(boardKey(b.id), s === null ? "+inf" : `(${s}`, "+inf");
   });
   const res = await multi.exec();
-  return standingBoards().map((b, i) => {
+  return list.map((b, i) => {
     const s = scores?.[i]?.[1] as string | null;
     const of = Number(res?.[i * 2]?.[1] ?? 0);
     const above = Number(res?.[i * 2 + 1]?.[1] ?? 0);

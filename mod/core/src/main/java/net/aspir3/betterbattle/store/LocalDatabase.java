@@ -319,6 +319,19 @@ public final class LocalDatabase implements AutoCloseable {
         return out;
     }
 
+    /** The themes built most often, with how many times: {theme, count}. */
+    public synchronized List<String[]> topThemes(int limit) throws SQLException {
+        List<String[]> out = new ArrayList<String[]>();
+        try (PreparedStatement p = conn.prepareStatement(
+                "SELECT theme, count(*) AS n FROM matches WHERE theme IS NOT NULL AND theme != '' GROUP BY lower(theme) ORDER BY n DESC, theme LIMIT ?")) {
+            p.setInt(1, limit);
+            try (ResultSet r = p.executeQuery()) {
+                while (r.next()) out.add(new String[] {r.getString(1), String.valueOf(r.getInt(2))});
+            }
+        }
+        return out;
+    }
+
     // ---------------- meta ----------------
 
     public synchronized java.util.Map<String, Long> modeMatchCounts() throws SQLException {

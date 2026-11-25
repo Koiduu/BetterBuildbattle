@@ -328,6 +328,63 @@ public final class BetterBattle {
         return new Pages.Page("Last Game", lines);
     }
 
+    /** Your own numbers from the games on this PC. */
+    public Pages.Page statsPage() {
+        if (db == null) return new Pages.Page("My Stats", java.util.Arrays.asList("\u00a77Join Hypixel to see your stats."));
+        try {
+            java.util.Map<String, LocalDatabase.LocalStats> modes = new java.util.LinkedHashMap<String, LocalDatabase.LocalStats>();
+            for (String m : new String[] {"solo", "teams", "pro", "gtb", "speed_builders"}) modes.put(m, db.stats(m));
+            long[] lv = levelProgress();
+            return Pages.stats(db.stats(null), modes, db.topThemes(5), lv[0], lv[1], lv[2]);
+        } catch (Exception e) {
+            debug("stats page failed: " + e);
+            return new Pages.Page("My Stats", java.util.Arrays.asList("\u00a7cCouldn't read your games. Try again."));
+        }
+    }
+
+    /** /bb rank */
+    public void rank() {
+        if (sync == null) {
+            platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a77Join Hypixel first, then run \u00a7b/bb rank\u00a77 again.");
+            return;
+        }
+        sync.rank();
+    }
+
+    /** /bb compare name */
+    public void compare(String name) {
+        if (sync == null) {
+            platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a77Join Hypixel first, then run \u00a7b/bb compare\u00a77 again.");
+            return;
+        }
+        sync.compare(name);
+    }
+
+    /** /bb help. headsAndBanners: the Fabric build has the Head Database and banners; Forge doesn't. */
+    public List<String> helpLines(boolean headsAndBanners) {
+        List<String> out = new ArrayList<String>();
+        out.add("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a76Commands");
+        out.add("\u00a7b/bb \u00a77Open the menu (or press B)");
+        out.add("\u00a7b/bb stats \u00a77Your own numbers: games, wins, win rate by mode");
+        out.add("\u00a7b/bb rank \u00a77Where you stand today, this week, this month and all time");
+        out.add("\u00a7b/bb compare <name> \u00a77You next to another player");
+        out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
+        out.add("\u00a7b/bb recap \u00a77Your last game in full");
+        out.add("\u00a7b/bb weekly \u00a77This week's challenges");
+        out.add("\u00a7b/bb news \u00a77What's new in this version");
+        if (headsAndBanners) {
+            out.add("\u00a7b/bb heads [search] \u00a77The Head Database");
+            out.add("\u00a7b/bb banners \u00a77Banner designs");
+        }
+        out.add("\u00a7b/bb palette [size] \u00a77A random block palette to build with");
+        out.add("\u00a7b/bb settings \u00a77Switch features on and off, including Low-end mode");
+        out.add("\u00a7b/bb sync \u00a77Upload your games now");
+        out.add("\u00a7b/bb link <code> \u00a77Connect your website account");
+        out.add("\u00a7b/bb report [what went wrong] \u00a77Send a bug report");
+        out.add("\u00a7b/bb debug \u00a77Turn the debug log on or off");
+        return out;
+    }
+
     public Pages.Page weeklyPage() {
         String json = null, ends = null;
         try {
@@ -521,6 +578,14 @@ public final class BetterBattle {
             platform.runOnMainThread(new Runnable() {
                 public void run() {
                     platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb " + (ok ? "\u00a7a" : "\u00a7c") + message);
+                }
+            });
+        }
+
+        public void lines(final List<String> lines) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    for (String line : lines) platform.chat(line);
                 }
             });
         }

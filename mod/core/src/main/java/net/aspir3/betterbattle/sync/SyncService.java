@@ -28,6 +28,8 @@ public final class SyncService {
         void gamesSkipped(int count);
         /** Result of something the player asked for by hand (/bb sync, /bb link). */
         void manualResult(boolean ok, String message);
+        /** Several chat lines in answer to /bb rank or /bb compare. */
+        void lines(List<String> lines);
         void synced(ApiClient.SyncResult result);
         void achievementConfirmed(String id);
         void achievementRevoked(String id);
@@ -124,6 +126,43 @@ public final class SyncService {
                     listener.manualResult(true, "Linked to your website account.");
                 } catch (Exception e) {
                     listener.manualResult(false, "Couldn't link: " + explain(e));
+                }
+            }
+        });
+    }
+
+    /** /bb rank: asks the server where this player stands and shows it in chat. */
+    public void rank() {
+        exec.execute(new Runnable() {
+            public void run() {
+                try {
+                    ensureToken();
+                    listener.lines(net.aspir3.betterbattle.pages.RankText.rank(api.rank()));
+                } catch (UnsupportedOperationException e) {
+                    listener.manualResult(false, "This stats server can't show ranks yet.");
+                } catch (Exception e) {
+                    listener.manualResult(false, "Couldn't get your rank: " + explain(e));
+                }
+            }
+        });
+    }
+
+    /** /bb compare: this player next to another one. */
+    public void compare(final String name) {
+        exec.execute(new Runnable() {
+            public void run() {
+                try {
+                    ensureToken();
+                    listener.lines(net.aspir3.betterbattle.pages.RankText.compare(api.compare(name)));
+                } catch (UnsupportedOperationException e) {
+                    listener.manualResult(false, "This stats server can't compare players yet.");
+                } catch (Exception e) {
+                    String m = String.valueOf(e.getMessage());
+                    if (m.contains("not_found") && !m.contains("you_not_found")) {
+                        listener.manualResult(false, "I haven't seen " + name + " play Build Battle.");
+                    } else {
+                        listener.manualResult(false, "Couldn't compare: " + explain(e));
+                    }
                 }
             }
         });

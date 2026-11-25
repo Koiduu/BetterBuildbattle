@@ -58,6 +58,7 @@ public class SyncServiceTest {
         public void offline(int pendingGames, String reason) { offlineReason = reason; }
         public void gamesSkipped(int count) { skipped += count; }
         public void manualResult(boolean ok, String message) {}
+        public void lines(List<String> lines) {}
         public void synced(ApiClient.SyncResult result) {}
         public void achievementConfirmed(String id) {}
         public void achievementRevoked(String id) {}

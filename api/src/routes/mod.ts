@@ -12,6 +12,7 @@ import { weeklyProgress } from "../services/weekly";
 import { worldRecords } from "../services/speedBuilders";
 import { updateProgressBoards, updateModeWinRates } from "../services/boards";
 import { recordBroken, type RecordBroken } from "../lib/events";
+import { rankSummary, playerSummary } from "../services/modInfo";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -152,6 +153,24 @@ export function modRoutes(app: Router) {
       // Times only: the mod shows them next to its timer. No placements, so nothing can guide a build.
       worldRecords: records.map((r) => ({ build: r.build, name: r.name, holder: r.holder, timeMs: r.timeMs })),
     };
+  });
+
+  // /bb rank: where this player stands on the leaderboards, today, this week, this month and all time.
+  app.get("/mod/rank", [requireModToken, rateLimit(30, 60_000, "/mod/rank")], async (req) => {
+    const uuid = req.user.mcUuid;
+    if (!uuid) return fail(404, "not_found");
+    return rankSummary(uuid);
+  });
+
+  // /bb compare <name>: this player next to another one.
+  app.get("/mod/compare", [requireModToken, rateLimit(20, 60_000, "/mod/compare")], async (req) => {
+    const { name } = z.object({ name: z.string().regex(/^[A-Za-z0-9_]{1,16}$/) }).parse(req.query);
+    const uuid = req.user.mcUuid;
+    if (!uuid) return fail(404, "you_not_found");
+    const [me, them] = await Promise.all([playerSummary({ uuid }), playerSummary({ name })]);
+    if (!me) fail(404, "you_not_found");
+    if (!them) fail(404, "not_found");
+    return { me, them };
   });
 
   // ---- 3. Sync: idempotent batch insert ----

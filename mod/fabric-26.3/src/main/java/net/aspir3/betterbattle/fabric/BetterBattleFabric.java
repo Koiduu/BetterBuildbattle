@@ -158,6 +158,17 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             ClientCommands.literal("bb")
                 .executes(c -> open(this::menu))
                 .then(ClientCommands.literal("achievements").executes(c -> open(() -> new AchievementsScreen(null))))
+                .then(ClientCommands.literal("help").executes(c -> {
+                    for (String line : core.helpLines(true)) chat(line);
+                    return 1;
+                }))
+                .then(ClientCommands.literal("stats").executes(c -> open(() -> new TextPageScreen(null, core.statsPage()))))
+                .then(ClientCommands.literal("rank").executes(c -> { core.rank(); return 1; }))
+                .then(ClientCommands.literal("compare")
+                    .then(ClientCommands.argument("name", StringArgumentType.word()).executes(c -> {
+                        core.compare(StringArgumentType.getString(c, "name"));
+                        return 1;
+                    })))
                 .then(ClientCommands.literal("recap").executes(c -> open(() -> new TextPageScreen(null, core.lastGamePage()))))
                 .then(ClientCommands.literal("weekly").executes(c -> open(() -> new TextPageScreen(null, core.weeklyPage()))))
                 .then(ClientCommands.literal("news").executes(c -> open(() -> new TextPageScreen(null, BetterBattle.get().whatsNewPage()))))
