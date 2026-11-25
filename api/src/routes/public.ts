@@ -4,7 +4,7 @@ import { Router, Raw, fail, type Req } from "../http";
 import { flaggedWord } from "../lib/wordFilter";
 import { profileCard } from "../services/card";
 import { siteOrigin } from "../lib/site";
-import { BOARDS, boardById, boardPage, positions } from "../services/boards";
+import { BOARDS, boardById, boardPage, positions, winsBreakdown } from "../services/boards";
 import { FEATURES, can, limit, planOf, type Plan } from "../lib/plans";
 import { publicStyle } from "../lib/style";
 import { readWebSession } from "../plugins/auth";
@@ -106,6 +106,8 @@ export function publicRoutes(app: Router) {
         rank: r.rank, uuid: r.uuid, name: r.info?.mc_name ?? null, value: r.value,
         score: r.info?.bb_score ?? null, title: titleProgress(r.info?.bb_score ?? 0).current,
         usesMod: !!r.info?.uses_mod, supporter: supporterOf(r.info),
+        // the win rate board also shows wins in each mode
+        ...(id === "winrate" ? { wins: winsBreakdown(r.info?.hypixel_bb) } : {}),
       })),
     };
   };

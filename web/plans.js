@@ -290,11 +290,14 @@ export async function boardPicker(current) {
 /** A board value as shown: win rate is a percentage, everything else a plain number. */
 const boardValue = (unit, v) => (unit === "percent" && v != null ? Number(v).toFixed(1) + "%" : num(v));
 
+const MODE_COLS = [["wins", "Wins"], ["games", "Games"], ["solo", "Solo"], ["teams", "Teams"], ["pro", "Pro"], ["gtb", "GTB"], ["spb", "SPB"]];
+
 export function boardTable(board) {
   if (!board.rows.length) return `<div class="empty">Nobody is on this leaderboard yet.</div>`;
+  const withModes = board.board.id === "winrate";   // win rate also lists wins in every mode
   return `
     <div class="table-scroll"><table>
-      <thead><tr><th>#</th><th>Player</th><th class="right">${esc(board.board.short)}</th><th class="right">Score</th></tr></thead>
+      <thead><tr><th>#</th><th>Player</th><th class="right">${esc(board.board.short)}</th>${withModes ? MODE_COLS.map(([, label]) => `<th class="right">${label}</th>`).join("") : ""}<th class="right">Score</th></tr></thead>
       <tbody>${board.rows.map((r) => `
         <tr>
           <td class="num">${num(r.rank)}</td>
@@ -302,6 +305,7 @@ export function boardTable(board) {
             <img src="${avatar(r.uuid, 32)}" alt="" width="28" height="28" loading="lazy">${esc(r.name ?? "Unknown")}
             ${r.usesMod ? `<span class="bb-tag" title="Uses Better Battle">BB</span>` : ""}${supporterMark(r.supporter)}</a></td>
           <td class="right num">${boardValue(board.board.unit, r.value)}</td>
+          ${withModes ? MODE_COLS.map(([key]) => `<td class="right">${num(r.wins?.[key])}</td>`).join("") : ""}
           <td class="right muted">${num(r.score)}</td>
         </tr>`).join("")}</tbody>
     </table></div>`;

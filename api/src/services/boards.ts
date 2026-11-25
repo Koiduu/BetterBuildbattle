@@ -50,6 +50,17 @@ const winRate = (bb: Record<string, unknown>) => {
   return games >= WINRATE_MIN_GAMES && wins > 0 ? Math.round(Math.min(wins / games, 1) * 10000) / 100 : null;
 };
 
+/** Total wins, games and wins in each mode from a player's Hypixel Build Battle stats. */
+export function winsBreakdown(bb: Record<string, unknown> | null | undefined) {
+  const n = (v: unknown) => (typeof v === "number" ? v : 0);
+  const stats = bb ?? {};
+  return {
+    wins: n(stats.wins), games: n(stats.games_played),
+    solo: n(stats.wins_solo_normal), teams: n(stats.wins_teams_normal), pro: n(stats.wins_solo_pro),
+    gtb: n(stats.wins_guess_the_build), spb: n(stats.wins_speed_builders),
+  };
+}
+
 const valueOf = (board: Board, bb: Record<string, unknown>) => {
   for (const f of board.fields ?? []) if (typeof bb[f] === "number") return bb[f] as number;
   return 0;
@@ -170,7 +181,7 @@ export async function boardPage(id: string, page: number, per = 50) {
   for (let i = 0; i < raw.length; i += 2) { uuids.push(raw[i]); values.set(raw[i], Number(raw[i + 1])); }
   const info = uuids.length
     ? await pool.query(
-        `SELECT t.mc_uuid, t.mc_name, t.bb_score, (u.id IS NOT NULL) AS uses_mod, u.plan, u.plan_until, u.plan_comped
+        `SELECT t.mc_uuid, t.mc_name, t.bb_score, t.hypixel_bb, (u.id IS NOT NULL) AS uses_mod, u.plan, u.plan_until, u.plan_comped
          FROM tracked_players t LEFT JOIN users u ON u.mc_uuid = t.mc_uuid
          WHERE t.mc_uuid = ANY($1::uuid[])`, [uuids])
     : { rows: [] as any[] };
