@@ -13,6 +13,13 @@
             "Only the game's own messages, the scoreboard and what the mod worked out; chat, private messages, guild, party and friend messages are left out on your PC",
             "Nothing is sent unless you type the command"
           ]
+        },
+        {
+          "heading": "Fixes",
+          "items": [
+            "Teams games in big lobbies could stop all your games from uploading; they upload again now",
+            "Your votes in Teams are saved round by round, and never on your own plot"
+          ]
         }
       ]
     },

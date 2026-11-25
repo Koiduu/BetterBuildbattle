@@ -1,6 +1,6 @@
 {
   "_note": "Solo, Teams, Pro, Guess the Build and Speed Builders lines are taken from real Hypixel games (Nov 2026); the GUESS THE BUILD title is assumed. Lines are matched after trimming spaces and removing colour codes. To check wording: run /bb debug, play, and read config/betterbattle/debug.log.",
-  "version": 5,
+  "version": 6,
   "title": "BUILD BATTLE",
   "modes": {
     "solo": "solo",
@@ -26,6 +26,7 @@
     "THEME": "^Build something relevant to the theme: (.+)$",
     "VOTING_START": "^Vote for your competitors' plots!$",
     "BUILDER": "^Builder: ([A-Za-z0-9_]{1,16})$",
+    "BUILDERS": "^Builders: ([A-Za-z0-9_]{1,16}), ([A-Za-z0-9_]{1,16})$",
     "VOTE": "^Confirmed vote: (.+)$",
     "SCORE": "^Your Score: ([\\d.]+)$",
     "PLACEMENT": "^\\((\\d+)(?:st|nd|rd|th) Place\\)$",

@@ -42,6 +42,7 @@ public class GameResultTest {
         teamsBelowPodium();
         proPodium();
         teamsPodiumTie();
+        teamsVotesAndBigLobby();
         guessTheBuild("Koidu", 2, 18.0, 1);   // nicked as Cool_Ghost, found from the guess reward
         guessTheBuild("reaxz", 8, 7.0, 0);    // below the podium: only the final sidebar has the place
         System.out.println("GameResultTest: " + checks + " assertions passed");
@@ -158,5 +159,43 @@ public class GameResultTest {
         check(m.score != null && m.score == points, player + ": " + points + " points, got " + m.score);
         check(m.players != null && m.players == 8, player + ": 8 players from the final sidebar, got " + m.players);
         check(m.gtbCorrect == correct, player + ": " + correct + " correct guesses, got " + m.gtbCorrect);
+    }
+
+    /**
+     * Teams voting rounds say "Builders: A, B" (a team of one gets "Builder: A"). Each is its own round, your
+     * own team's plot takes no vote, and a lobby of 17 teams (players without a teammate count as one) must not
+     * come out as 34 players: the server only takes up to 32.
+     */
+    private static void teamsVotesAndBigLobby() {
+        final List<MatchRecord> done = new ArrayList<MatchRecord>();
+        GameStateMachine game = machine(done, "KP");
+        String bb = "BUILD BATTLE";
+        game.onSidebar(bb, Arrays.asList("Time: 07:00", "", "Theme:", "Volcano", "", "Teams: 17", "", "Teammate:", "Mate", "", "Mode: Teams"));
+        game.onChat("Build something relevant to the theme: Volcano");
+        game.onChat("Vote for your competitors' plots!");
+        for (String line : new String[] {
+            "Builders: KP, Mate",                                   // own plot: no vote
+            "Builders: Alpha, Bravo", "Confirmed vote: OK",
+            "Builders: Charlie, Delta",                             // didn't vote
+            "Builders: Echo, Foxtrot", "Confirmed vote: MEH", "Confirmed vote: EPIC",   // changed their mind
+            "Builder: Golf", "Confirmed vote: LEGENDARY",           // a team of one
+            "Your Score: 120", "(10th Place)",
+        }) {
+            game.onChat(line);
+        }
+        game.onChat("Reward Summary");
+
+        check(done.size() == 1, "one Teams game recorded, got " + done.size());
+        MatchRecord m = done.get(0);
+        check(m.players != null && m.players == 32, "17 teams cap at 32 players, got " + m.players);
+        check(m.placement != null && m.placement == 10, "10th, got " + m.placement);
+        check(m.votes.size() == 3, "three votes, got " + m.votes.size());
+        String[][] want = {{"Alpha", "ok"}, {"Echo", "epic"}, {"Golf", "legendary"}};
+        for (int i = 0; i < want.length && i < m.votes.size(); i++) {
+            check(want[i][0].equals(m.votes.get(i).builder) && want[i][1].equals(m.votes.get(i).vote),
+                "vote " + i + " is " + want[i][1] + " for " + want[i][0] + ", got " + m.votes.get(i).vote + " for " + m.votes.get(i).builder);
+        }
+        boolean distinct = m.votes.size() < 2 || (m.votes.get(0).round != m.votes.get(1).round && m.votes.get(1).round != m.votes.get(2).round);
+        check(distinct, "each vote in its own round");
     }
 }
