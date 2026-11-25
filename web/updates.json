@@ -1,6 +1,20 @@
 {
   "updates": [
     {
+      "version": "0.2.4",
+      "date": "2026-11-25",
+      "title": "Smoother Syncing",
+      "summary": "No more \"Couldn't upload your games: database connection closed\" after every game.",
+      "sections": [
+        {
+          "heading": "Fixes",
+          "items": [
+            "Going back to the lobby right after a game no longer interrupts its upload or shows an upload error; your games were always saved, now they also upload without the scare"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.2.3",
       "date": "2026-11-25",
       "title": "Bug Reports",

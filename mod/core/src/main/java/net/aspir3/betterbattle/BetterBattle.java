@@ -184,10 +184,17 @@ public final class BetterBattle {
         if (rejoining) return;
         // Hypixel moves you between servers all the time; keep a game that was cut short.
         if (game != null) game.leave();
-        if (sync != null) sync.shutdown();
-        if (db != null) {
-            try { db.close(); } catch (Exception ignored) { }
-        }
+        // Close the database only after the sync thread is done with it
+        final LocalDatabase closing = db;
+        Runnable close = new Runnable() {
+            public void run() {
+                if (closing != null) {
+                    try { closing.close(); } catch (Exception ignored) { }
+                }
+            }
+        };
+        if (sync != null) sync.shutdown(close);
+        else close.run();
         if (debugLog != null) debugLog.close();
         sync = null;
         db = null;
