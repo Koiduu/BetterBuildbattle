@@ -46,6 +46,8 @@ public final class Config {
     public boolean weeklyAlerts = true;
     /** Say in chat when a newer version of the mod is out. Nothing is ever downloaded automatically. */
     public boolean updateNotices = true;
+    /** For slower PCs: far fewer heads drawn at once in the Head Database, which is the heaviest screen. */
+    public boolean lowEndMode = false;
     /** The version whose What's New page was last shown. */
     public String lastSeenVersion = "";
 
@@ -83,6 +85,7 @@ public final class Config {
 
     /** Everything the Settings screen lets you switch, in order. */
     public static final java.util.List<Toggle> TOGGLES = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
+        new Toggle("lowEndMode", "Low-end mode", "Fewer heads on screen at once in the Head Database, for slower PCs"),
         new Toggle("spbTimer", "Speed Builders timer", "A stopwatch with your best time while you build"),
         new Toggle("spbShowRecord", "Show world record", "Put the Better Battle record on the timer too"),
         new Toggle("pinnedAchievementsHud", "Pinned achievements HUD", "Keep up to three achievement goals on screen"),
