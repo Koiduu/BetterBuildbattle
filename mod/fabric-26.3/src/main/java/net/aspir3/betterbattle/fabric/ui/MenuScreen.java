@@ -62,11 +62,11 @@ public final class MenuScreen extends Screen {
         middle.addChild(Button.builder(Component.literal("My Stats"), b -> Compat.setScreen(minecraft, new TextPageScreen(this, core.statsPage()))).width(76).build());
         middle.addChild(Button.builder(Component.literal("Weekly"), b -> Compat.setScreen(minecraft, new TextPageScreen(this, core.weeklyPage()))).width(76).build());
 
+        // Three across, like the top row, so the menu keeps four rows and Settings / Done stay on screen
         LinearLayout heads = rows.addChild(LinearLayout.horizontal().spacing(8));
-        heads.addChild(Button.builder(Component.literal("Head Database"), b -> Compat.setScreen(minecraft, new HeadsScreen(this, ""))).width(154).build());
-        heads.addChild(Button.builder(Component.literal("Banner Database"), b -> Compat.setScreen(minecraft, new BannersScreen(this))).width(154).build());
-        LinearLayout shots = rows.addChild(LinearLayout.horizontal().spacing(8));
-        shots.addChild(Button.builder(Component.literal("Round Screenshots"), b -> Compat.setScreen(minecraft, new ScreenshotsScreen(this))).width(316).build());
+        heads.addChild(Button.builder(Component.literal("Head Database"), b -> Compat.setScreen(minecraft, new HeadsScreen(this, ""))).width(100).build());
+        heads.addChild(Button.builder(Component.literal("Banner Database"), b -> Compat.setScreen(minecraft, new BannersScreen(this))).width(100).build());
+        heads.addChild(Button.builder(Component.literal("Screenshots"), b -> Compat.setScreen(minecraft, new ScreenshotsScreen(this))).width(100).build());
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
         bottom.addChild(Button.builder(Component.literal("Settings"), b -> Compat.setScreen(minecraft, new SettingsScreen(this))).width(100).build());
