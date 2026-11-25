@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Router, fail, type Req } from "../http";
 import { pool } from "../db/pool";
 import { announcePlanChange } from "../services/stripe";
+import { planOf } from "../lib/plans";
 
 const VOTES = ["super_poop", "poop", "meh", "ok", "good", "epic", "legendary"] as const;
 
@@ -28,6 +29,16 @@ export function adminRoutes(app: Router) {
     if (!r.rowCount) fail(404, "no_such_user_or_has_subscription");
     announcePlanChange(r.rows[0].id);
     return r.rows[0];
+  });
+
+  // What plan an account has right now, so the admin page can show which tier you are previewing.
+  app.get("/admin/plan/:name", [requireAdmin], async (req) => {
+    const { name } = z.object({ name: z.string().regex(/^[A-Za-z0-9_]{1,16}$/) }).parse(req.params);
+    const r = await pool.query(
+      "SELECT mc_name, plan, plan_until, plan_comped, stripe_subscription_id FROM users WHERE mc_name = $1", [name]);
+    if (!r.rowCount) fail(404, "no_such_user");
+    const row = r.rows[0];
+    return { name: row.mc_name, plan: planOf(row), comped: !!row.plan_comped, hasSubscription: !!row.stripe_subscription_id };
   });
 
   // Bug reports from /bb report, newest first.
