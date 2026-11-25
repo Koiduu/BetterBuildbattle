@@ -22,23 +22,23 @@ import java.util.Map;
 
 /**
  * The head database. Categories on the left, a grid of heads on the right. Clicking a head gets it
- * with /skull (your skin wears it for a moment); right-click to favourite.
+ * in your hotbar during the build phase (creative); right-click to favourite.
  */
 public final class HeadsScreen extends Screen {
     private static final int CELL = 20, SIDE = 92, TOP = 58;
+    private static final String BUILD_PHASE_ONLY = "Heads only work during the build phase (creative mode). Open this again once building starts.";
     private static final java.util.regex.Pattern USERNAME = java.util.regex.Pattern.compile("^[A-Za-z0-9_]{3,16}$");
     private static final Map<String, ItemStack> ITEMS = new HashMap<>();
 
     private final Screen parent;
     private final String startQuery;
     private EditBox search;
-    private Button playerHead, cancel;
+    private Button playerHead;
     private final List<Button> categoryButtons = new ArrayList<>();
     private String category = "all";
     private List<HeadLibrary.Head> shown = new ArrayList<>();
     private int scrollRow, lastLoaded = -1;
     private String lastQuery = null, lastCategory = null;
-    private HeadLibrary.Head confirming;
     private String given;
 
     public HeadsScreen(Screen parent, String query) {
@@ -75,7 +75,6 @@ public final class HeadsScreen extends Screen {
         y += 4;
         for (HeadLibrary.Category c : HeadLibrary.CATEGORIES) y = categoryButton(c.id, c.label, y);
 
-        cancel = addRenderableWidget(Button.builder(Component.literal("Cancel"), b -> swap().cancel()).bounds(width - 214, height - 26, 100, 20).build());
         addRenderableWidget(Button.builder(parent == null ? CommonComponents.GUI_DONE : CommonComponents.GUI_BACK, b -> onClose()).bounds(width - 108, height - 26, 100, 20).build());
     }
 
@@ -105,8 +104,6 @@ public final class HeadsScreen extends Screen {
             scrollRow = Math.min(scrollRow, maxRow);
         }
         playerHead.active = !swap().busy() && USERNAME.matcher(q.trim()).matches();
-        SkinSwap.Step step = swap().step();
-        cancel.active = step == SkinSwap.Step.RECONNECTING || step == SkinSwap.Step.WAITING || step == SkinSwap.Step.ASKED;
     }
 
     @Override
@@ -134,21 +131,11 @@ public final class HeadsScreen extends Screen {
             return true;
         }
         if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
-        // In creative (Build Battle's build phase) the head goes straight into your hotbar. Shift-click uses /skull instead.
-        if (!event.hasShiftDown() && BetterBattleFabric.giveCreative(BetterBattleFabric.headItem(h))) {
+        if (BetterBattleFabric.giveCreative(BetterBattleFabric.headItem(h))) {
             library().addRecent(h);
-            confirming = null;
             given = "Put " + h.name + " in your hotbar.";
-            return true;
-        }
-        if (swap().busy()) return true;
-        if (confirming != null && confirming.hash.equals(h.hash)) {
-            confirming = null;
-            library().addRecent(h);
-            swap().start(h);
         } else {
-            confirming = h;
-            given = null;
+            given = BUILD_PHASE_ONLY;
         }
         return true;
     }
@@ -180,7 +167,7 @@ public final class HeadsScreen extends Screen {
         String err = HeadLibrary.CATEGORIES.stream().map(c -> library().error(c.id)).filter(e -> e != null).findFirst().orElse(null);
         if (shown.isEmpty() && anyLoading) info = "Loading heads...";
         else if (shown.isEmpty() && err != null) info = "Couldn't load heads: " + err;
-        else info = String.format("%,d heads", shown.size()) + (anyLoading ? " (still loading)" : "") + "  ·  click twice to get one, right-click to favourite";
+        else info = String.format("%,d heads", shown.size()) + (anyLoading ? " (still loading)" : "") + "  ·  click to put one in your hotbar, right-click to favourite";
         graphics.text(font, Component.literal(info).withStyle(ChatFormatting.GRAY), x0, TOP - 12, 0xFFFFFFFF, false);
 
         graphics.fill(x0 - 2, TOP - 2, x0 + cols * CELL + 2, TOP + rows * CELL + 2, 0x66000000);
@@ -192,8 +179,7 @@ public final class HeadsScreen extends Screen {
                 HeadLibrary.Head h = shown.get(i);
                 int x = x0 + c * CELL, y = TOP + r * CELL;
                 if (h == hover) graphics.fill(x, y, x + CELL, y + CELL, 0x40FFFFFF);
-                if (confirming != null && confirming.hash.equals(h.hash)) graphics.outline(x, y, CELL, CELL, 0xFF55FF55);
-                else if (library().isFavourite(h)) graphics.outline(x, y, CELL, CELL, 0xAAFFD700);
+                if (library().isFavourite(h)) graphics.outline(x, y, CELL, CELL, 0xAAFFD700);
                 graphics.item(item(h), x + 2, y + 2);
             }
         }
@@ -202,15 +188,13 @@ public final class HeadsScreen extends Screen {
             List<Component> lines = new ArrayList<>();
             lines.add(Component.literal(hover.name));
             if (hover.tags != null && !hover.tags.isEmpty()) lines.add(Component.literal(hover.tags).withStyle(ChatFormatting.DARK_GRAY));
-            lines.add(Component.literal(confirming == hover ? "Click again to get it with /skull" : "Click to get · Shift-click: /skull · Right-click: favourite").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.literal("Click: put in hotbar · Right-click: favourite").withStyle(ChatFormatting.GRAY));
             graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY);
         }
 
-        String status = swap().status();
-        if (given != null && confirming == null && !swap().busy()) status = given;
-        if (confirming != null && !swap().busy())
-            status = "Get " + confirming.name + "? You'll briefly rejoin Hypixel wearing it as your skin, then it changes back. Click it again.";
-        graphics.text(font, Component.literal(status).withStyle(swap().busy() ? ChatFormatting.YELLOW : ChatFormatting.GRAY), 8, height - 20, 0xFFFFFFFF, false);
+        String status = given != null && !swap().busy() ? given : swap().status();
+        ChatFormatting statusColour = swap().busy() ? ChatFormatting.YELLOW : BUILD_PHASE_ONLY.equals(given) ? ChatFormatting.RED : ChatFormatting.GRAY;
+        graphics.text(font, Component.literal(status).withStyle(statusColour), 8, height - 20, 0xFFFFFFFF, false);
         graphics.text(font, Component.literal(HeadLibrary.CREDIT).withStyle(ChatFormatting.DARK_GRAY), 8, height - 36, 0xFFFFFFFF, false);
     }
 
