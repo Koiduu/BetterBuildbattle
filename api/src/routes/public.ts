@@ -101,7 +101,7 @@ export function publicRoutes(app: Router) {
     if (!board) return fail(400, "unknown_board");
     const { total, rows } = await boardPage(id, page);
     return {
-      page, total, board: { id: board.id, name: board.name, short: board.short },
+      page, total, board: { id: board.id, name: board.name, short: board.short, unit: board.unit },
       rows: rows.map((r) => ({
         rank: r.rank, uuid: r.uuid, name: r.info?.mc_name ?? null, value: r.value,
         score: r.info?.bb_score ?? null, title: titleProgress(r.info?.bb_score ?? 0).current,

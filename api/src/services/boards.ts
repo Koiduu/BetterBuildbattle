@@ -12,7 +12,12 @@ export interface Board {
   group: "Overall" | "Modes" | "Better Battle";
   /** Hypixel BuildBattle stat names, first one present wins. Absent for Better Battle's own boards. */
   fields?: string[];
+  /** "percent": the stored value is 0-100 and shown with a % sign. */
+  unit?: "percent";
 }
+
+/** Win rate only ranks players with at least this many games, so 1 win from 1 game isn't 100%. */
+export const WINRATE_MIN_GAMES = 100;
 
 // NOTE: "tokens" is stored by Hypixel as "coins". Field names other than score and wins should be
 // checked against a real /v2/player response (see README).
@@ -20,6 +25,7 @@ export const BOARDS: Board[] = [
   { id: "score", name: "Build Battle score", short: "Score", group: "Overall", fields: ["score"] },
   { id: "wins", name: "Total wins", short: "Wins", group: "Overall", fields: ["wins"] },
   { id: "games", name: "Games played", short: "Games", group: "Overall", fields: ["games_played"] },
+  { id: "winrate", name: `Win rate (${WINRATE_MIN_GAMES}+ games)`, short: "Win rate", group: "Overall", unit: "percent" },
   { id: "tokens", name: "Tokens", short: "Tokens", group: "Overall", fields: ["coins", "tokens"] },
   { id: "votes", name: "Votes cast", short: "Votes", group: "Overall", fields: ["total_votes"] },
   { id: "solo", name: "Solo wins", short: "Solo", group: "Modes", fields: ["wins_solo_normal"] },
@@ -37,6 +43,13 @@ export const boardById = (id: string) => BOARDS.find((b) => b.id === id);
 /** The score board keeps its original key so the existing global rank code is untouched. */
 export const boardKey = (id: string) => (id === "score" ? "lb:bb_score" : `lb:bb:${id}`);
 
+/** Wins as a percentage of games played, to 2 decimals; null under the minimum number of games. */
+const winRate = (bb: Record<string, unknown>) => {
+  const wins = typeof bb.wins === "number" ? bb.wins : 0;
+  const games = typeof bb.games_played === "number" ? bb.games_played : 0;
+  return games >= WINRATE_MIN_GAMES && wins > 0 ? Math.round(Math.min(wins / games, 1) * 10000) / 100 : null;
+};
+
 const valueOf = (board: Board, bb: Record<string, unknown>) => {
   for (const f of board.fields ?? []) if (typeof bb[f] === "number") return bb[f] as number;
   return 0;
@@ -46,6 +59,12 @@ const valueOf = (board: Board, bb: Record<string, unknown>) => {
 export async function updateHypixelBoards(uuid: string, bb: Record<string, unknown>) {
   const multi = redis.multi();
   for (const board of BOARDS) {
+    if (board.id === "winrate") {
+      const w = winRate(bb);
+      if (w !== null) multi.zadd(boardKey(board.id), w, uuid);
+      else multi.zrem(boardKey(board.id), uuid);
+      continue;
+    }
     if (!board.fields || board.id === "score") continue;   // score is written by the crawler itself
     const v = valueOf(board, bb);
     if (v > 0) multi.zadd(boardKey(board.id), v, uuid);
@@ -85,6 +104,14 @@ export async function rebuildBoards() {
       rows = (await pool.query(
         `SELECT mc_uuid, ${expr} AS v FROM tracked_players
          WHERE hypixel_bb IS NOT NULL AND NOT no_bb_stats AND ${expr} > 0`, board.fields)).rows;
+    } else if (board.id === "winrate") {
+      rows = (await pool.query(
+        `SELECT mc_uuid,
+                round(least(100.0 * (hypixel_bb->>'wins')::numeric / (hypixel_bb->>'games_played')::numeric, 100), 2) AS v
+         FROM tracked_players
+         WHERE hypixel_bb IS NOT NULL AND NOT no_bb_stats
+           AND coalesce((hypixel_bb->>'games_played')::numeric, 0) >= $1
+           AND coalesce((hypixel_bb->>'wins')::numeric, 0) > 0`, [WINRATE_MIN_GAMES])).rows;
     } else if (board.id === "records") {
       rows = (await pool.query(
         `SELECT u.mc_uuid, count(*)::int AS v FROM spb_builds b
@@ -103,11 +130,13 @@ export async function rebuildBoards() {
 
 /** First boot after this feature ships: the score board exists but the others don't yet. */
 export async function ensureBoards() {
-  const [score, wins] = await Promise.all([redis.zcard(boardKey("score")), redis.zcard(boardKey("wins"))]);
-  if (score > 0 && wins === 0) await rebuildBoards();
+  const [score, wins, rate] = await Promise.all([
+    redis.zcard(boardKey("score")), redis.zcard(boardKey("wins")), redis.zcard(boardKey("winrate"))]);
+  // also when only the newest board (win rate) is missing, so it fills in on the first boot after an update
+  if (score > 0 && (wins === 0 || rate === 0)) await rebuildBoards();
 }
 
-export interface Position { id: string; name: string; short: string; group: string; rank: number | null; of: number; value: number | null; top: number | null }
+export interface Position { id: string; name: string; short: string; group: string; unit?: "percent"; rank: number | null; of: number; value: number | null; top: number | null }
 
 /** Where one player stands on every board. Ties share a rank. */
 export async function positions(uuid: string): Promise<Position[]> {
@@ -125,7 +154,7 @@ export async function positions(uuid: string): Promise<Position[]> {
     const above = Number(res?.[i * 2 + 1]?.[1] ?? 0);
     const rank = s === null ? null : above + 1;
     return {
-      id: b.id, name: b.name, short: b.short, group: b.group, rank, of,
+      id: b.id, name: b.name, short: b.short, group: b.group, unit: b.unit, rank, of,
       value: s === null ? null : Number(s),
       top: rank === null || !of ? null : rank / of,
     };

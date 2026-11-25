@@ -28,6 +28,9 @@ const PINK = 0xff66aa;
 const MODES: Record<string, string> = { solo: "Solo", teams: "Teams", pro: "Pro", gtb: "Guess the Build", speed_builders: "Speed Builders" };
 
 const num = (n: number | null | undefined) => (n == null ? "–" : Number(n).toLocaleString("en-US"));
+/** A board value: win rate is a percentage, everything else a plain number. */
+const boardNum = (unit: "percent" | undefined, n: number | null | undefined) =>
+  unit === "percent" && n != null ? `${Number(n).toFixed(1)}%` : num(n);
 const secs = (ms: number) => (ms / 1000).toFixed(2) + "s";
 const head = (uuid: string) => `https://mc-heads.net/avatar/${uuid}/128`;
 const site = (path = "") => siteOrigin() + path;
@@ -131,7 +134,7 @@ async function leaderboards(interaction: ChatInputCommandInteraction) {
     if (b.rank === null) return `▫️ **${b.short}** · not ranked`;
     // "top 4%" only means something on a board with a real crowd on it
     const pct = b.top === null || b.of < 100 ? ` · of ${num(b.of)}` : ` · top ${b.top < 0.01 ? "<1" : Math.ceil(b.top * 100)}%`;
-    return `${medal(b.rank)} **${b.short}** · ${num(b.value)}${pct}`;
+    return `${medal(b.rank)} **${b.short}** · ${boardNum(b.unit, b.value)}${pct}`;
   };
 
   if (!unlocked) {
@@ -160,7 +163,7 @@ async function topMessage(boardId: string, page: number) {
   const pages = Math.max(1, Math.ceil(total / TOP_PER));
   const e = embed(`Top players · ${board.name}`).setURL(site(`/leaderboard?board=${board.id}`));
   e.setDescription(rows.length
-    ? rows.map((r) => `${medal(r.rank)} **${r.info?.mc_name ?? "Unknown"}**${can(planOf(r.info), "badge") ? " ⭐" : ""} · ${num(r.value)}`).join("\n")
+    ? rows.map((r) => `${medal(r.rank)} **${r.info?.mc_name ?? "Unknown"}**${can(planOf(r.info), "badge") ? " ⭐" : ""} · ${boardNum(board.unit, r.value)}`).join("\n")
     : "Nobody is on this leaderboard yet.");
   e.setFooter({ text: `Page ${page} of ${num(pages)} · ${num(total)} players · Better Battle` });
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

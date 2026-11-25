@@ -266,7 +266,7 @@ export async function loadPositions(name) {
     <a class="tile pos${b.rank && b.rank <= 3 ? " podium" : ""}" href="/leaderboard?board=${esc(b.id)}" data-link>
       <span>${esc(b.name)}</span>
       <b>${b.rank ? "#" + num(b.rank) : "–"}</b>
-      <small>${b.rank ? `${num(b.value)} · of ${num(b.of)}` : "not ranked"}</small>
+      <small>${b.rank ? `${boardValue(b.unit, b.value)} · of ${num(b.of)}` : "not ranked"}</small>
     </a>`;
   el.innerHTML = `<div class="tiles positions">${data.boards.filter((b) => b.rank || b.group !== "Better Battle").map(tile).join("")}</div>`
     + (data.locked ? upsell(data.requires, `${num(data.lockedBoards.length)} more leaderboards`,
@@ -287,6 +287,9 @@ export async function boardPicker(current) {
     </select>`;
 }
 
+/** A board value as shown: win rate is a percentage, everything else a plain number. */
+const boardValue = (unit, v) => (unit === "percent" && v != null ? Number(v).toFixed(1) + "%" : num(v));
+
 export function boardTable(board) {
   if (!board.rows.length) return `<div class="empty">Nobody is on this leaderboard yet.</div>`;
   return `
@@ -298,7 +301,7 @@ export function boardTable(board) {
           <td><a class="player" href="/p/${esc(r.name)}" data-link>
             <img src="${avatar(r.uuid, 32)}" alt="" width="28" height="28" loading="lazy">${esc(r.name ?? "Unknown")}
             ${r.usesMod ? `<span class="bb-tag" title="Uses Better Battle">BB</span>` : ""}${supporterMark(r.supporter)}</a></td>
-          <td class="right num">${num(r.value)}</td>
+          <td class="right num">${boardValue(board.board.unit, r.value)}</td>
           <td class="right muted">${num(r.score)}</td>
         </tr>`).join("")}</tbody>
     </table></div>`;
