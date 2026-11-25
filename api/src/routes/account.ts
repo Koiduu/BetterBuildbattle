@@ -290,7 +290,7 @@ export function accountRoutes(app: Router) {
     const [
       sessions, matches, matchVotes, pinnedMatches, userStats, userProgress,
       userAchievements, userWeeklyChallenges, userThemes, spbPersonalBests,
-      rankSnapshots, linkCodes, dailyActivity,
+      rankSnapshots, linkCodes, dailyActivity, bugReports,
     ] = await Promise.all([
       pool.query(
         `SELECT id, kind, mod_version, mc_version, expires_at, created_at
@@ -307,6 +307,7 @@ export function accountRoutes(app: Router) {
       pool.query("SELECT * FROM rank_snapshots WHERE user_id = $1 ORDER BY taken_on, mode", [userId]),
       pool.query("SELECT * FROM link_codes WHERE user_id = $1 ORDER BY expires_at", [userId]),
       pool.query("SELECT day::date::text AS day, games, wins FROM daily_activity WHERE user_id = $1 ORDER BY day", [userId]),
+      pool.query("SELECT id, mod_version, mc_version, note, log, created_at FROM bug_reports WHERE user_id = $1 ORDER BY created_at", [userId]),
     ]);
     req.reply.headers["content-disposition"] = 'attachment; filename="better-battle-data.json"';
     return {
@@ -328,6 +329,7 @@ export function accountRoutes(app: Router) {
         spbPersonalBests: spbPersonalBests.rows,
         rankSnapshots: rankSnapshots.rows,
         linkCodes: linkCodes.rows,
+        bugReports: bugReports.rows,
         dailyActivity: dailyActivity.rows,
       },
     };

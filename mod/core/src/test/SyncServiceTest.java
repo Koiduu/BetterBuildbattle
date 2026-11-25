@@ -33,6 +33,7 @@ public class SyncServiceTest {
         public void setToken(String token) {}
         public void link(String code) {}
         public Latest latest() { return null; }
+        public String report(String note, String log) { return "1"; }
         public Bootstrap bootstrap() { return null; }
 
         public SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception {

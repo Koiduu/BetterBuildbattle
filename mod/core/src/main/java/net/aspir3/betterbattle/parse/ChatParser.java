@@ -16,7 +16,10 @@ import java.util.regex.Pattern;
  */
 public final class ChatParser {
     public enum Type {
-        THEME, VOTING_START, BUILDER, VOTE, SCORE, PLACEMENT, GAME_END, GTB_CORRECT_GUESS,
+        THEME, VOTING_START, BUILDER,
+        /** Teams: "Builders: A, B", the two builders of the plot being voted on. */
+        BUILDERS,
+        VOTE, SCORE, PLACEMENT, GAME_END, GTB_CORRECT_GUESS,
         /** "Cool_Ghost correctly guessed the theme!": anyone's guess, yours included (maybe under a nick). */
         GTB_GUESSED,
         // Speed Builders (from a real game, Nov 2026)

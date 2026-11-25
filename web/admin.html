@@ -15,6 +15,9 @@
   .login input { flex: 1 1 260px; height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.1); background: var(--card); color: var(--text); font: inherit; }
   tbody tr { cursor: pointer; }
   tbody tr:hover td { background: rgba(255,255,255,.02); }
+  .report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .report-log { max-height: 70vh; overflow: auto; padding: 12px; background: #000; border: 2px solid var(--edge); color: var(--soft); font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+  tr[data-report] { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -51,6 +54,62 @@ async function get(path) {
   if (res.status === 404) throw new Error("locked");
   if (!res.ok) throw new Error("HTTP " + res.status);
   return res.json();
+}
+
+async function post(path, body) {
+  const res = await fetch("/bb/v1" + path, {
+    method: "POST", headers: { "x-admin-token": token, "content-type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+const when = (iso) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const STATUS = { new: "New", looked: "Looked at", fixed: "Fixed" };
+
+/** Bug reports from /bb report. Loaded after the votes so a slow list doesn't hold them up. */
+async function reportsSection(el) {
+  let reports;
+  try { reports = await get("/admin/reports"); } catch { el.innerHTML = `<p class="empty">Couldn't load bug reports.</p>`; return; }
+  const open = reports.filter((r) => r.status === "new").length;
+  el.innerHTML = `
+    <div class="card-head"><div><h2>Bug reports</h2>
+      <p class="sub">${num(reports.length)} from <code>/bb report</code>, ${num(open)} new. Game messages and scoreboard only; the mod leaves out all chat. Deleted after 90 days.</p></div></div>
+    ${reports.length ? `
+    <div class="table-scroll"><table>
+      <thead><tr><th>#</th><th>When</th><th>Player</th><th>Version</th><th>What went wrong</th><th>Status</th></tr></thead>
+      <tbody>${reports.map((r) => `
+        <tr data-report="${r.id}">
+          <td class="num">${r.id}</td><td>${esc(when(r.created_at))}</td><td><b>${esc(r.mc_name ?? "–")}</b></td>
+          <td>${esc(r.mod_version)} · ${esc(r.mc_version)}</td>
+          <td>${r.note ? esc(r.note.length > 80 ? r.note.slice(0, 79) + "…" : r.note) : `<span class="muted">no note</span>`}</td>
+          <td>${esc(STATUS[r.status] ?? r.status)}</td>
+        </tr>`).join("")}</tbody>
+    </table></div>` : `<p class="empty">No reports yet. Players send them with /bb report.</p>`}`;
+  for (const row of el.querySelectorAll("tr[data-report]")) row.addEventListener("click", () => report(row.dataset.report));
+}
+
+async function report(id) {
+  let r;
+  try { r = await get("/admin/reports/" + encodeURIComponent(id)); } catch { return overview(); }
+  const file = URL.createObjectURL(new Blob([r.log], { type: "text/plain" }));
+  app.innerHTML = `
+    <section class="card">
+      <div class="card-head">
+        <div><h2>Report #${r.id}</h2><p class="sub">${esc(r.mc_name ?? "Unknown player")} · ${esc(when(r.created_at))} · mod ${esc(r.mod_version)} on ${esc(r.mc_version)}</p></div>
+        <button class="btn" id="back">Back</button>
+      </div>
+      <p><b>What went wrong:</b> ${r.note ? esc(r.note) : `<span class="muted">no note</span>`}</p>
+      <div class="report-actions">
+        ${Object.entries(STATUS).map(([k, v]) => `<button class="btn small${r.status === k ? " primary" : ""}" data-status="${k}">${v}</button>`).join("")}
+        <a class="btn small" href="${file}" download="report-${r.id}.txt">Download log</a>
+      </div>
+      <pre class="report-log">${esc(r.log)}</pre>
+    </section>`;
+  document.getElementById("back").addEventListener("click", overview);
+  for (const b of app.querySelectorAll("[data-status]")) {
+    b.addEventListener("click", async () => { await post(`/admin/reports/${r.id}/status`, { status: b.dataset.status }).catch(() => {}); report(r.id); });
+  }
 }
 
 function keys() {
@@ -114,7 +173,9 @@ async function overview() {
             <td class="right">${(100 * p.counts.super_poop / p.total).toFixed(0)}%</td>
           </tr>`).join("")}</tbody>
       </table></div>` : `<p class="empty">No votes yet. They show up after mod users play and sync.</p>`}
-    </section>`;
+    </section>
+    <section class="card" id="reports"><div class="loading" style="height:120px"></div></section>`;
+  reportsSection(document.getElementById("reports"));
   document.getElementById("lock").addEventListener("click", () => {
     token = "";
     try { localStorage.removeItem("bb_admin"); } catch {}

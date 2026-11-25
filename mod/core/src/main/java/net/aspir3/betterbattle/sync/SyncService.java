@@ -97,6 +97,24 @@ public final class SyncService {
         });
     }
 
+    /** /bb report: one upload, whenever the player asks. */
+    public void report(final String note, final String log) {
+        exec.execute(new Runnable() {
+            public void run() {
+                try {
+                    ensureToken();
+                    String id = api.report(note, log);
+                    listener.manualResult(true, "Report sent" + (id == null ? "" : " (#" + id + ")") + ". Thanks, we'll take a look.");
+                } catch (ApiClient.Unauthorized e) {
+                    try { db.setMeta("token", null); } catch (Exception ignored) { }
+                    listener.manualResult(false, "Couldn't send the report: login expired. Run /bb report again.");
+                } catch (Exception e) {
+                    listener.manualResult(false, "Couldn't send the report: " + explain(e));
+                }
+            }
+        });
+    }
+
     public void link(final String code) {
         exec.execute(new Runnable() {
             public void run() {

@@ -30,6 +30,29 @@ export function adminRoutes(app: Router) {
     return r.rows[0];
   });
 
+  // Bug reports from /bb report, newest first.
+  app.get("/admin/reports", [requireAdmin], async () => {
+    const r = await pool.query(
+      `SELECT b.id, b.created_at, b.mod_version, b.mc_version, b.note, b.status, length(b.log) AS size, u.mc_name
+       FROM bug_reports b LEFT JOIN users u ON u.id = b.user_id ORDER BY b.created_at DESC LIMIT 200`);
+    return r.rows.map((row) => ({ ...row, id: Number(row.id) }));
+  });
+
+  app.get("/admin/reports/:id", [requireAdmin], async (req) => {
+    const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
+    const r = await pool.query(
+      `SELECT b.*, u.mc_name FROM bug_reports b LEFT JOIN users u ON u.id = b.user_id WHERE b.id = $1`, [id]);
+    if (!r.rowCount) fail(404, "not_found");
+    return { ...r.rows[0], id: Number(r.rows[0].id), user_id: undefined };
+  });
+
+  app.post("/admin/reports/:id/status", [requireAdmin], async (req) => {
+    const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
+    const { status } = z.object({ status: z.enum(["new", "looked", "fixed"]) }).parse(req.body);
+    await pool.query("UPDATE bug_reports SET status = $2 WHERE id = $1", [id, status]);
+    return { ok: true };
+  });
+
   // Every mod user with how they vote: counts per vote and an average on the 1-7 scale.
   app.get("/admin/votes", [requireAdmin], async (req) => {
     const { days } = z.object({ days: z.coerce.number().int().min(1).max(3650).default(3650) }).parse(req.query);

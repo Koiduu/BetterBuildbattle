@@ -19,6 +19,9 @@ public interface ApiClient {
 
     SyncResult sync(List<MatchRecord> matches, List<String> localAchievementIds, List<String> seenPlayers) throws Exception;
 
+    /** /bb report: the player's note and the filtered log of their last games. Returns the report's id. */
+    String report(String note, String log) throws Exception;
+
     /** The newest released mod for this Minecraft version, or null if the server has none. No login needed. */
     Latest latest() throws Exception;
 

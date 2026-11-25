@@ -31,7 +31,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [achievements|recap|weekly|news|settings|sync|link|palette|debug]";
+        return "/bb [achievements|recap|weekly|news|settings|sync|link|report|palette|debug]";
     }
 
     @Override
@@ -46,7 +46,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "recap", "weekly", "news", "settings", "sync", "link", "palette", "debug");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "achievements", "recap", "weekly", "news", "settings", "sync", "link", "report", "palette", "debug");
         return null;
     }
 
@@ -81,6 +81,10 @@ final class BbCommand extends CommandBase {
             } else {
                 core.link(args[1]);
             }
+        } else if (sub.equals("report")) {
+            StringBuilder note = new StringBuilder();
+            for (int i = 1; i < args.length; i++) note.append(i > 1 ? " " : "").append(args[i]);
+            core.sendReport(note.toString());
         } else if (sub.equals("palette")) {
             int size = 6;
             if (args.length > 1) {

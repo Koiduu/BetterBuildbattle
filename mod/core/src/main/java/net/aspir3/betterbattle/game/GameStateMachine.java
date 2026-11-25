@@ -238,7 +238,16 @@ public final class GameStateMachine {
                 if (state == State.VOTING) {
                     startGtbRound(e.text);
                     voteRound++;
-                    roundBuilder = e.text;
+                    // Your own plot can't be voted on; don't let a vote land on it
+                    roundBuilder = namesInclude(e.text) ? null : e.text;
+                }
+                break;
+            case BUILDERS:
+                // Teams: "Builders: A, B" starts each voting round. The vote is filed under the first name.
+                if (state == State.BUILDING) setState(State.VOTING);
+                if (state == State.VOTING) {
+                    voteRound++;
+                    roundBuilder = namesInclude(e.text + ", " + e.text2) ? null : e.text;
                 }
                 break;
             case VOTE:
@@ -409,7 +418,8 @@ public final class GameStateMachine {
         boolean teamsMode = "teams".equals(done.mode);
         // Solo and Pro show "Players: N" in game; Teams shows only "Teams: N". Two builders a team; a lone
         // player's team counts as two, so the crowd score errs low.
-        if (teamsMode && teams != null && (done.players == null || done.players < teams)) done.players = teams * 2;
+        // Players without a teammate are a team of one, so teams x 2 can pass the lobby's 32: cap it.
+        if (teamsMode && teams != null && (done.players == null || done.players < teams)) done.players = Math.min(teams * 2, 32);
         // In Teams the place is among teams ("14th" of 15 teams), so grade against the team count.
         Integer field = teamsMode && teams != null ? teams : done.players;
         done.grade = Grades.of(done.placement, field, done.crowdScore());

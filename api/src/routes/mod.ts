@@ -55,14 +55,43 @@ const MatchIn = z.object({
     .optional(),
 });
 
+// Games are checked one by one in the handler, not here: one game that fails its checks must not throw
+// away the whole upload. Older mods resend a turned-down upload forever, so a single bad game would stop
+// every later game from ever arriving; a game turned down on its own is marked rejected on the PC instead.
 const SyncBody = z.object({
   modVersion: z.string(),
   mcVersion: z.enum(["26.3", "26.2", "1.8.9"]),
-  matches: z.array(MatchIn).max(50),
+  matches: z.array(z.unknown()).max(50),
   localAchievements: z.array(z.string()).max(500).default([]),
   // UUIDs of other players seen in this player's lobbies since last sync (tab list). Feeds the global ranking.
-  seenPlayers: z.array(z.string().uuid()).max(2000).default([]),
+  seenPlayers: z.array(z.string()).max(2000).default([]),
 });
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Splits an upload into games that pass their checks and the nonces of those that don't, with why. */
+export function checkMatches(raw: unknown[]) {
+  const valid: z.infer<typeof MatchIn>[] = [];
+  const invalid: { nonce: string; reason: string }[] = [];
+  for (const item of raw) {
+    let game = item;
+    if (game && typeof game === "object") {
+      const g = { ...(game as Record<string, unknown>) };
+      // 0.2.2 counted a Teams lobby as teams x 2, which passes 32 when people play without a teammate.
+      // Keep the game with the count capped rather than lose it.
+      if (typeof g.players === "number" && g.players > 32) g.players = 32;
+      game = g;
+    }
+    const parsed = MatchIn.safeParse(game);
+    if (parsed.success) { valid.push(parsed.data); continue; }
+    const nonce = (item as { nonce?: unknown } | null)?.nonce;
+    const issue = parsed.error.issues[0];
+    if (typeof nonce === "string" && UUID.test(nonce)) {
+      invalid.push({ nonce, reason: `invalid: ${issue?.path.join(".") ?? "?"} ${issue?.message ?? ""}`.slice(0, 200) });
+    }
+  }
+  return { valid, invalid };
+}
 
 export function modRoutes(app: Router) {
   // ---- 1. Handshake: issue a random serverId ----
@@ -126,6 +155,24 @@ export function modRoutes(app: Router) {
   });
 
   // ---- 3. Sync: idempotent batch insert ----
+  // /bb report: sent only when the player runs the command. The mod has already left out all chat.
+  app.post("/mod/report", [requireModToken, rateLimit(3, 10 * 60_000, "/mod/report")], async (req) => {
+    const body = z.object({
+      modVersion: z.string().max(40),
+      mcVersion: z.string().max(20),
+      note: z.string().max(500).default(""),
+      log: z.string().min(1).max(300_000),
+    }).parse(req.body);
+    const today = await pool.query(
+      "SELECT count(*)::int AS n FROM bug_reports WHERE user_id = $1 AND created_at > now() - interval '1 day'", [req.user.id]);
+    if (today.rows[0].n >= 10) fail(429, "rate_limited");
+    await pool.query("DELETE FROM bug_reports WHERE created_at < now() - interval '90 days'");
+    const r = await pool.query(
+      `INSERT INTO bug_reports (user_id, mod_version, mc_version, note, log) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [req.user.id, body.modVersion, body.mcVersion, body.note.trim(), body.log]);
+    return { id: Number(r.rows[0].id) };
+  });
+
   app.post("/mod/sync", [requireModToken, rateLimit(30, 60_000)],
     async (req) => {
       const userId: number = req.user.id;
@@ -133,10 +180,13 @@ export function modRoutes(app: Router) {
       const client = await pool.connect();
       const accepted: string[] = [];
       let xpGained = 0;
-      const rejected: { nonce: string; reason: string }[] = [];
+      const { valid, invalid } = checkMatches(body.matches);
+      const rejected: { nonce: string; reason: string }[] = [...invalid];
+      if (invalid.length) console.warn(`sync: turned down ${invalid.length} game(s) from user ${userId}: ${invalid.map((r) => r.reason).join("; ")}`);
+      const seenPlayers = body.seenPlayers.filter((u) => UUID.test(u));
       const broken: RecordBroken[] = [];
       // Oldest first, so streaks and first-win-of-day are counted in play order.
-      const ordered = [...body.matches].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
+      const ordered = [...valid].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
       try {
         await client.query("BEGIN");
         const st = await client.query(
@@ -208,7 +258,7 @@ export function modRoutes(app: Router) {
         for (const b of broken) recordBroken(b);
 
         // Lobby rosters → discovery queue for the global ranking.
-        await queuePlayers(body.seenPlayers, "lobby");
+        await queuePlayers(seenPlayers, "lobby");
 
         // Global rank = Hypixel Build Battle score among ALL tracked players (crawler keeps it fresh).
         const uuid = (await pool.query("SELECT mc_uuid FROM users WHERE id = $1", [userId])).rows[0].mc_uuid;
