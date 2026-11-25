@@ -53,6 +53,25 @@ export function adminRoutes(app: Router) {
     return { ok: true };
   });
 
+  // Everyone who has logged in with the mod (has a mod session), newest activity first.
+  // Versions come from their latest synced game. No emails or password data.
+  app.get("/admin/mod-users", [requireAdmin], async () => {
+    const r = await pool.query(
+      `SELECT u.mc_name, u.mc_uuid, u.claimed, u.last_seen_at,
+              s.first_login, s.last_login, s.logins,
+              g.games, lm.mod_version, lm.mc_version
+       FROM users u
+       JOIN (SELECT user_id, min(created_at) AS first_login, max(created_at) AS last_login, count(*)::int AS logins
+             FROM sessions WHERE kind = 'mod' GROUP BY user_id) s ON s.user_id = u.id
+       LEFT JOIN LATERAL (SELECT count(*)::int AS games FROM matches WHERE user_id = u.id) g ON true
+       LEFT JOIN LATERAL (SELECT mod_version, mc_version FROM matches
+                          WHERE user_id = u.id AND mod_version IS NOT NULL
+                          ORDER BY played_at DESC LIMIT 1) lm ON true
+       ORDER BY GREATEST(u.last_seen_at, s.last_login) DESC NULLS LAST
+       LIMIT 5000`);
+    return r.rows;
+  });
+
   // Every mod user with how they vote: counts per vote and an average on the 1-7 scale.
   app.get("/admin/votes", [requireAdmin], async (req) => {
     const { days } = z.object({ days: z.coerce.number().int().min(1).max(3650).default(3650) }).parse(req.query);

@@ -14,6 +14,7 @@
   .login { display: flex; gap: 8px; flex-wrap: wrap; max-width: 520px; }
   .login input { flex: 1 1 260px; height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.1); background: var(--card); color: var(--text); font: inherit; }
   tbody tr { cursor: pointer; }
+  tbody tr.static { cursor: default; }
   tbody tr:hover td { background: rgba(255,255,255,.02); }
   .report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
   .report-log { max-height: 70vh; overflow: auto; padding: 12px; background: #000; border: 2px solid var(--edge); color: var(--soft); font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
@@ -66,6 +67,29 @@ async function post(path, body) {
 
 const when = (iso) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const STATUS = { new: "New", looked: "Looked at", fixed: "Fixed" };
+
+/** Everyone who has the mod installed (has logged in with it at least once). */
+async function modUsersSection(el) {
+  let users;
+  try { users = await get("/admin/mod-users"); } catch { el.innerHTML = `<p class="empty">Couldn't load mod users.</p>`; return; }
+  const day = 24 * 60 * 60 * 1000;
+  const recent = users.filter((u) => Date.now() - new Date(u.last_seen_at ?? u.last_login) < 7 * day).length;
+  el.innerHTML = `
+    <div class="card-head"><div><h2>Mod users</h2>
+      <p class="sub">${num(users.length)} player${users.length === 1 ? "" : "s"} have logged in with the mod, ${num(recent)} in the last 7 days. Versions come from their latest synced game.</p></div></div>
+    ${users.length ? `
+    <div class="table-scroll"><table>
+      <thead><tr><th>Player</th><th>Version</th><th class="right">Games</th><th>First seen</th><th>Last seen</th></tr></thead>
+      <tbody>${users.map((u) => `
+        <tr class="static">
+          <td><b>${esc(u.mc_name ?? u.mc_uuid)}</b></td>
+          <td>${u.mod_version ? `${esc(u.mod_version)} · ${esc(u.mc_version)}` : `<span class="muted">no games yet</span>`}</td>
+          <td class="right">${num(u.games)}</td>
+          <td>${esc(when(u.first_login))}</td>
+          <td>${esc(when(u.last_seen_at ?? u.last_login))}</td>
+        </tr>`).join("")}</tbody>
+    </table></div>` : `<p class="empty">No mod users yet. They appear after someone logs in with the mod.</p>`}`;
+}
 
 /** Bug reports from /bb report. Loaded after the votes so a slow list doesn't hold them up. */
 async function reportsSection(el) {
@@ -174,7 +198,9 @@ async function overview() {
           </tr>`).join("")}</tbody>
       </table></div>` : `<p class="empty">No votes yet. They show up after mod users play and sync.</p>`}
     </section>
+    <section class="card" id="modusers"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="reports"><div class="loading" style="height:120px"></div></section>`;
+  modUsersSection(document.getElementById("modusers"));
   reportsSection(document.getElementById("reports"));
   document.getElementById("lock").addEventListener("click", () => {
     token = "";
