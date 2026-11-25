@@ -168,6 +168,7 @@ public final class SyncService {
     }
 
     private synchronized void tick(boolean force) {
+        if (stopped) return;   // left the server: an upload queued as the game ended mustn't run on a closed database
         checkVersion();
         if (!force && System.currentTimeMillis() < nextAttemptAt) return;
         try {
@@ -210,6 +211,7 @@ public final class SyncService {
         } catch (Exception e) {
             backoffMs = backoffMs == 0 ? MIN_BACKOFF_MS : Math.min(backoffMs * 2, MAX_BACKOFF_MS);
             nextAttemptAt = System.currentTimeMillis() + backoffMs;
+            if (stopped) return;   // the server switch itself caused this; the next session uploads the games
             if (force) {
                 listener.manualResult(false, "Couldn't sync: " + explain(e));
             } else if (!offline) {
@@ -268,7 +270,27 @@ public final class SyncService {
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
+    private volatile boolean stopped;
+
     public void shutdown() {
+        shutdown(null);
+    }
+
+    /**
+     * Stops syncing. Uploads already queued are skipped, one already running finishes, and then
+     * {@code afterwards} runs on the sync thread: the place to close the database, so it is never closed
+     * under an upload. (Closing it straight away made every game end with "database connection closed",
+     * because Hypixel moves you to the lobby seconds after the upload the game queued.)
+     */
+    public void shutdown(Runnable afterwards) {
+        stopped = true;
+        if (afterwards != null) {
+            try {
+                exec.execute(afterwards);
+            } catch (java.util.concurrent.RejectedExecutionException alreadyStopped) {
+                afterwards.run();
+            }
+        }
         exec.shutdown();
     }
 }

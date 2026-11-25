@@ -24,7 +24,7 @@ public class SyncServiceTest {
     }
 
     /** Turns down any upload containing a game themed "BAD", or every upload when refuseAll is set. */
-    static final class FakeServer implements ApiClient {
+    static class FakeServer implements ApiClient {
         boolean refuseAll, down;
         final List<String> uploaded = new ArrayList<String>();
 
@@ -130,6 +130,43 @@ public class SyncServiceTest {
             check(heard.offlineReason != null && heard.offlineReason.contains("isn't answering"),
                 "reason says the server isn't answering, got " + heard.offlineReason);
             sync.shutdown();
+        }
+
+        // Hypixel moves you to the lobby seconds after a game: the upload the game queued is still running when
+        // the mod leaves the server. The database must close only after it, with no "offline" message.
+        try (LocalDatabase db = new LocalDatabase(dir, "server-switch")) {
+            db.insertMatch(game("Castle", 1000));
+            final java.util.concurrent.CountDownLatch inUpload = new java.util.concurrent.CountDownLatch(1);
+            final java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+            final java.util.concurrent.CountDownLatch closed = new java.util.concurrent.CountDownLatch(1);
+            final int[] uploads = {0};
+            FakeServer slow = new FakeServer() {
+                @Override
+                public SyncResult sync(List<MatchRecord> matches, List<String> ids, List<String> seen) throws Exception {
+                    uploads[0]++;
+                    inUpload.countDown();
+                    release.await();
+                    return super.sync(matches, ids, seen);
+                }
+            };
+            Recorder heard = new Recorder();
+            SyncService sync = new SyncService(db, slow, "Koidu", heard);
+            sync.nudge();                                   // the upload a finished game queues
+            check(inUpload.await(5, java.util.concurrent.TimeUnit.SECONDS), "upload started");
+            sync.nudge();                                   // another one queued behind it
+            final boolean[] dbOpenWhenClosing = {false};
+            sync.shutdown(new Runnable() {                  // joining the lobby
+                public void run() {
+                    try { db.countPending(); dbOpenWhenClosing[0] = true; } catch (Exception e) { dbOpenWhenClosing[0] = false; }
+                    closed.countDown();
+                }
+            });
+            release.countDown();
+            check(closed.await(5, java.util.concurrent.TimeUnit.SECONDS), "the close step ran");
+            check(dbOpenWhenClosing[0], "the database was still usable until the close step");
+            check(uploads[0] == 1, "the queued upload was skipped once stopped, got " + uploads[0] + " uploads");
+            check(heard.offlineReason == null, "no offline message from the switch, got " + heard.offlineReason);
+            check(db.countPending() == 0, "the running upload still finished and marked the game synced");
         }
 
         System.out.println("SyncServiceTest: " + checks + " assertions passed");
