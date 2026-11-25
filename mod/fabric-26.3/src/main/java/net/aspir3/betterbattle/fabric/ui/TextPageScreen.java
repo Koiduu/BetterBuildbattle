@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.pages.Pages;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -84,6 +85,6 @@ public final class TextPageScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.gui.setScreen(parent);
+        Compat.setScreen(minecraft, parent);
     }
 }

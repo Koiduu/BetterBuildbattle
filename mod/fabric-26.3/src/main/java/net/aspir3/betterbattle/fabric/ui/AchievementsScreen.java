@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.Config;
@@ -176,7 +177,7 @@ public final class AchievementsScreen extends Screen {
         if (visibleCount == 0 && list.visible) graphics.centeredText(font, Component.literal("No achievements match."), 8 + listWidth / 2, height / 2, 0xFFAAAAAA);
     }
 
-    @Override public void onClose() { minecraft.gui.setScreen(parent); }
+    @Override public void onClose() { Compat.setScreen(minecraft, parent); }
 
     final class EntryList extends ObjectSelectionList<Row> {
         EntryList(Minecraft client, int width, int height, int top) { super(client, width, height, top, 38); }

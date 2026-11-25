@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mc: ["26.3", "26.2"]
+        mc: ["26.3", "26.2", "26.1"]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -108,4 +108,4 @@ jobs:
           gh release delete dev --repo "$REPO" --yes --cleanup-tag || true
           gh release create dev jars/*.jar jars/SHA256SUMS --repo "$REPO" --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
-            --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jars: Minecraft 26.3 and 26.2, with Fabric API. Forge jar: Minecraft 1.8.9."
+            --notes "Built automatically from the latest commit ($GITHUB_SHA). Fabric jars: Minecraft 26.3, 26.2 and 26.1, with Fabric API. Forge jar: Minecraft 1.8.9."

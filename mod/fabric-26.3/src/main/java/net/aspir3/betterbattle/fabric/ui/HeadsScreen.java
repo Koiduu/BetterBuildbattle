@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.fabric.BetterBattleFabric;
 import net.aspir3.betterbattle.heads.HeadLibrary;
@@ -215,6 +216,6 @@ public final class HeadsScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.gui.setScreen(parent);
+        Compat.setScreen(minecraft, parent);
     }
 }

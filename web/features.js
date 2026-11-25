@@ -60,7 +60,7 @@ export async function updatesPage() {
   const choices = downloads.map(({ loader, version, size }) => `
     <div class="download-choice">
       <a class="btn${loader === "fabric" ? " primary" : ""}" href="${downloadUrl(loader)}" download>
-        Download for ${{ fabric: "26.3 (Fabric)", fabric262: "26.2 (Fabric)", forge: "1.8.9 (Forge)" }[loader]}
+        Download for ${{ fabric: "26.3 (Fabric)", fabric262: "26.2 (Fabric)", fabric261: "26.1 (Fabric)", forge: "1.8.9 (Forge)" }[loader]}
       </a>
       <p class="sub">Latest build v${esc(version)}${size ? ` · ${esc(size)}` : ""}</p>
     </div>`).join("");
@@ -88,6 +88,7 @@ export async function installPage() {
     <div class="toggle install-pick" role="tablist" aria-label="Minecraft version">
       <button role="tab" data-pick="fabric" aria-pressed="true">Minecraft 26.3 (Fabric)</button>
       <button role="tab" data-pick="fabric262" aria-pressed="false">Minecraft 26.2 (Fabric)</button>
+      <button role="tab" data-pick="fabric261" aria-pressed="false">Minecraft 26.1 (Fabric)</button>
       <button role="tab" data-pick="forge" aria-pressed="false">Minecraft 1.8.9 (Forge)</button>
     </div>
 
@@ -111,6 +112,17 @@ export async function installPage() {
         ${step(4, `Put both jars in your <code>mods</code> folder, start Minecraft with the Fabric profile and join Hypixel.`)}
       </ol>
       <div class="release-info" data-release-info="fabric262"></div>
+    </section>
+
+    <section class="card" data-panel="fabric261" hidden>
+      <h2>Minecraft 26.1 with Fabric</h2>
+      <ol class="steps">
+        ${step(1, `Install ${ext("https://fabricmc.net/use/installer/", "Fabric Loader")} 0.20.1 or newer for Minecraft 26.1.`)}
+        ${step(2, `Download ${ext("https://modrinth.com/mod/fabric-api", "Fabric API")} for 26.1. Better Battle needs it.`)}
+        ${step(3, `<a class="btn primary" href="${downloadUrl("fabric261")}" download>Download Better Battle for Fabric 26.1</a>`)}
+        ${step(4, `Put both jars in your <code>mods</code> folder, start Minecraft with the Fabric profile and join Hypixel.`)}
+      </ol>
+      <div class="release-info" data-release-info="fabric261"></div>
     </section>
 
     <section class="card" data-panel="forge" hidden>
@@ -164,7 +176,7 @@ export async function installPage() {
     if (!response.ok) throw new Error("Release details unavailable");
     const release = await response.json();
     let missing = false;
-    for (const loader of ["fabric", "fabric262", "forge"]) {
+    for (const loader of ["fabric", "fabric262", "fabric261", "forge"]) {
       const info = app.querySelector(`[data-release-info="${loader}"]`);
       const asset = release[loader];
       if (!asset) {

@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric.ui;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.achieve.AchievementBrowser;
 import net.aspir3.betterbattle.achieve.Catalog;
@@ -21,7 +22,7 @@ public final class PinnedAchievementsHud {
     public static void extract(GuiGraphicsExtractor graphics) {
         Minecraft client = Minecraft.getInstance();
         BetterBattle core = BetterBattle.get();
-        if (client.player == null || client.gui.screen() != null || client.gui.hud.isHidden()
+        if (client.player == null || Compat.screen(client) != null || Compat.hudHidden(client)
                 || client.getDebugOverlay().showDebugScreen() || !core.config().pinnedAchievementsHud) return;
         List<String> pins = core.config().pinnedAchievements();
         if (pins.isEmpty()) return;

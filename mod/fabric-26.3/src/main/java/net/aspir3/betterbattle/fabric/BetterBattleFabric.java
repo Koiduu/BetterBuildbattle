@@ -1,5 +1,6 @@
 package net.aspir3.betterbattle.fabric;
 
+import net.aspir3.betterbattle.fabric.compat.Compat;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -255,7 +256,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         NoTextures.tick(client);
         while (menuKey.consumeClick()) pendingScreen = this::menu;
         if (pendingScreen != null) {
-            client.gui.setScreen(pendingScreen.get());
+            Compat.setScreen(client, pendingScreen.get());
             pendingScreen = null;
         }
         if (!core.active() || client.player == null || client.level == null) {
@@ -270,7 +271,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         while ((change = blockChanges.poll()) != null) game.onBlockUpdate(change.x(), change.y(), change.z(), change.block());
 
         if (ticks % 10 == 0) readSidebar(client);
-        if (!SpbTimerToast.showing() && !core.hudLines().isEmpty()) client.gui.toastManager().addToast(new SpbTimerToast());
+        if (!SpbTimerToast.showing() && !core.hudLines().isEmpty()) Compat.toasts(client).addToast(new SpbTimerToast());
         if (ticks % 100 == 0) readTabList(client);
 
         boolean jumped = jumpTracker.update(client.player.onGround(), client.player.getDeltaMovement().y,
@@ -342,7 +343,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     }
 
     private static boolean isFloor(Minecraft client, int x, int y, int z) {
-        return client.level.getBlockState(new BlockPos(x, y, z)).is(Blocks.DYED_TERRACOTTA.pick(DyeColor.WHITE));
+        return client.level.getBlockState(new BlockPos(x, y, z)).is(Compat.terracotta(DyeColor.WHITE));
     }
 
     private void onUseBlock(ItemStack stack, Level level, BlockHitResult hit) {
@@ -497,7 +498,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
     @Override
     public void showAchievement(Catalog.Entry achievement) {
-        Minecraft.getInstance().gui.toastManager().addToast(new AchievementToast(achievement));
+        Compat.toasts(Minecraft.getInstance()).addToast(new AchievementToast(achievement));
     }
 
     @Override
@@ -507,6 +508,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
     @Override
     public void chat(String message) {
-        Minecraft.getInstance().gui.chatListener().handleSystemMessage(Component.literal(message), false);
+        Compat.chatListener(Minecraft.getInstance()).handleSystemMessage(Component.literal(message), false);
     }
 }

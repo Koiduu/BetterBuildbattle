@@ -4,9 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { GITHUB_API } from "../lib/upstream";
 
-export type Loader = "fabric" | "fabric262" | "forge";
+export type Loader = "fabric" | "fabric262" | "fabric261" | "forge";
 export type Asset = { file: string; version: string; sha256: string | null; size: number; url: string };
-export type LatestRelease = { version: string; builtAt: string; fabric: Asset | null; fabric262: Asset | null; forge: Asset | null };
+export type LatestRelease = { version: string; builtAt: string; fabric: Asset | null; fabric262: Asset | null; fabric261: Asset | null; forge: Asset | null };
 export type Jar = { file: string; sha256: string; body: Buffer };
 
 type GitHubAsset = { name?: string; size?: number; browser_download_url?: string };
@@ -18,6 +18,7 @@ const MAX_SUMS_BYTES = 1024 * 1024;
 const jarPatterns: Record<Loader, RegExp> = {
   fabric: /^betterbattle-fabric-26\.3-(.+)\.jar$/i,
   fabric262: /^betterbattle-fabric-26\.2-(.+)\.jar$/i,
+  fabric261: /^betterbattle-fabric-26\.1-(.+)\.jar$/i,
   forge: /^betterbattle-forge-1\.8\.9-(.+)\.jar$/i,
 };
 const downloadsInFlight = new Map<string, Promise<Jar | null>>();
@@ -104,13 +105,15 @@ async function fetchLatestRelease(): Promise<LatestRelease | null> {
 
   const fabric = assetFor("fabric", release.assets, checksums);
   const fabric262 = assetFor("fabric262", release.assets, checksums);
+  const fabric261 = assetFor("fabric261", release.assets, checksums);
   const forge = assetFor("forge", release.assets, checksums);
   const publishedAt = typeof release.published_at === "string" ? release.published_at : "";
   const value = {
-    version: fabric?.version ?? fabric262?.version ?? forge?.version ?? "",
+    version: fabric?.version ?? fabric262?.version ?? fabric261?.version ?? forge?.version ?? "",
     builtAt: publishedAt,
     fabric,
     fabric262,
+    fabric261,
     forge,
   };
   lastGoodRelease = value;
