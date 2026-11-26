@@ -115,6 +115,15 @@ public final class SpbTracker {
         current.startedAt = now - 250;
     }
 
+    /**
+     * True while you are building a round: its clock has been running for a couple of seconds, and you
+     * haven't finished it or been eliminated. Speed Builders drops you in from the air, so this leaves time to land.
+     */
+    public boolean buildingRound() {
+        return current != null && current.startedAt != 0 && !current.perfect && !eliminated
+            && System.currentTimeMillis() - current.startedAt > 2000;
+    }
+
     /** "You were eliminated": no more rounds are yours. Returns the place that gives you. */
     public Integer onEliminated() {
         eliminated = true;
