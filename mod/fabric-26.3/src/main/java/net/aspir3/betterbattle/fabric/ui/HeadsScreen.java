@@ -4,7 +4,6 @@ import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.fabric.BetterBattleFabric;
 import net.aspir3.betterbattle.heads.HeadLibrary;
-import net.aspir3.betterbattle.heads.SkinSwap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -50,12 +49,10 @@ public final class HeadsScreen extends Screen {
     }
 
     private static HeadLibrary library() { return BetterBattleFabric.heads(); }
-    private static SkinSwap swap() { return BetterBattleFabric.swap(); }
 
     @Override
     protected void init() {
         library().loadAll();
-        swap().restoreIfLeftOver();
         search = new EditBox(font, SIDE + 10, 30, Math.max(120, width - SIDE - 150), 20, Component.literal("Search"));
         search.setHint(Component.literal("Search heads, or type a player name").withStyle(ChatFormatting.DARK_GRAY));
         search.setMaxLength(48);
@@ -66,7 +63,10 @@ public final class HeadsScreen extends Screen {
         setInitialFocus(search);
 
         playerHead = addRenderableWidget(Button.builder(Component.literal("Player head"), b -> {
-            swap().playerHead(search.getValue().trim());
+            // A real player's head: Hypixel's /skull works with any username
+            String name = search.getValue().trim();
+            if (minecraft.getConnection() != null) minecraft.getConnection().sendCommand("skull " + name);
+            given = "Asked for " + name + "'s head";
         }).bounds(width - 132, 30, 122, 20).tooltip(Tooltip.create(Component.literal("Runs /skull with the name you typed"))).build());
 
         categoryButtons.clear();
@@ -119,7 +119,7 @@ public final class HeadsScreen extends Screen {
             int maxRow = Math.max(0, (shown.size() + columns() - 1) / columns() - visibleRows());
             scrollRow = Math.min(scrollRow, maxRow);
         }
-        playerHead.active = !swap().busy() && USERNAME.matcher(q.trim()).matches();
+        playerHead.active = USERNAME.matcher(q.trim()).matches();
     }
 
     @Override
@@ -208,8 +208,8 @@ public final class HeadsScreen extends Screen {
             graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY);
         }
 
-        String status = given != null && !swap().busy() ? given : swap().status();
-        ChatFormatting statusColour = swap().busy() ? ChatFormatting.YELLOW : BUILD_PHASE_ONLY.equals(given) ? ChatFormatting.RED : ChatFormatting.GRAY;
+        String status = given == null ? "" : given;
+        ChatFormatting statusColour = BUILD_PHASE_ONLY.equals(given) ? ChatFormatting.RED : ChatFormatting.GRAY;
         graphics.text(font, Component.literal(status).withStyle(statusColour), 8, height - 20, 0xFFFFFFFF, false);
         graphics.text(font, Component.literal(HeadLibrary.CREDIT).withStyle(ChatFormatting.DARK_GRAY), 8, height - 36, 0xFFFFFFFF, false);
     }
