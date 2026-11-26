@@ -221,7 +221,7 @@ public final class SpbTracker {
             // The build is on show; the clock hasn't started
             out.add("§7Memorise it");
             if (r.pbBeforeMs != null) out.add("§7Best §f" + seconds(r.pbBeforeMs));
-            if (showWorldRecord && r.wrMs != null) out.add("§7Record §f" + seconds(r.wrMs) + (r.wrHolder == null ? "" : " §8" + r.wrHolder));
+            if (showWorldRecord && r.wrMs != null) out.add("§7Record §f" + seconds(r.wrMs) + holder(r.wrHolder));
             return out;
         }
         long ms = r.perfect ? r.timeMs : now - r.startedAt;
@@ -229,9 +229,16 @@ public final class SpbTracker {
         out.add((r.perfect ? "§a" : "§f") + seconds(ms) + (r.perfect && r.newPb ? " §d§lNEW BEST" : ""));
         if (r.pbBeforeMs != null) out.add("§7Best §f" + seconds(r.pbBeforeMs) + "  " + delta(ms - r.pbBeforeMs, r.perfect));
         if (showWorldRecord && r.wrMs != null) {
-            out.add("§7Record §f" + seconds(r.wrMs) + (r.wrHolder == null ? "" : " §8" + r.wrHolder) + "  " + delta(ms - r.wrMs, r.perfect));
+            // The gap comes first and the holder's name last, so a long name can't push the gap off the screen
+            out.add("§7Record §f" + seconds(r.wrMs) + "  " + delta(ms - r.wrMs, r.perfect) + holder(r.wrHolder));
         }
         return out;
+    }
+
+    /** The record holder's name, cut short so the timer stays small on screen. */
+    private static String holder(String name) {
+        if (name == null || name.isEmpty()) return "";
+        return " §8" + (name.length() > 10 ? name.substring(0, 9) + "\u2026" : name);
     }
 
     /** While still building, only show how far behind you are once you are behind. */
