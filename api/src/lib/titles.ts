@@ -16,7 +16,7 @@ export const TITLES: Title[] = [
   { name: "Professional",      min: 15_000,  mc: "d", hex: "#FF55FF", bold: false },
   { name: "Artisan",           min: 20_000,  mc: "c", hex: "#FF5555", bold: false },
   { name: "Expert",            min: 40_000,  mc: "4", hex: "#AA0000", bold: false },
-  { name: "Master",            min: 75_000,  mc: "6", hex: "#FFAA00", bold: false },
+  { name: "Master",            min: 50_000,  mc: "6", hex: "#FFAA00", bold: false },
   { name: "Legend",            min: 100_000, mc: "a", hex: "#55FF55", bold: true },
   { name: "Grandmaster",       min: 200_000, mc: "b", hex: "#55FFFF", bold: true },
   { name: "Celestial",         min: 300_000, mc: "d", hex: "#FF55FF", bold: true },

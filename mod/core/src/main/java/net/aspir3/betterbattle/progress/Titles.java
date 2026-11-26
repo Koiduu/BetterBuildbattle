@@ -33,7 +33,7 @@ public final class Titles {
         new Title("Professional", 15_000, 'd', false), // magenta
         new Title("Artisan",      20_000, 'c', false), // salmon (light red)
         new Title("Expert",       40_000, '4', false), // red (dark red)
-        new Title("Master",       75_000, '6', false), // gold
+        new Title("Master",       50_000, '6', false), // gold
         new Title("Legend",      100_000, 'a', true),  // lime, bold
         new Title("Grandmaster", 200_000, 'b', true),  // aqua, bold
         new Title("Celestial",   300_000, 'd', true),  // magenta, bold
