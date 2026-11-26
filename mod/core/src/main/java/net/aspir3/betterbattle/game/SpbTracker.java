@@ -90,7 +90,9 @@ public final class SpbTracker {
         Round r = new Round();
         r.number = number;
         r.name = name;
-        r.build = buildId(name);
+        // The same build name comes up at more than one difficulty (Turret on Simple and on Easy are different
+        // builds), so the difficulty is part of the id
+        r.build = buildId(difficulty == null ? name : name + " " + difficulty);
         r.difficulty = difficulty;
         r.playersAtStart = playersLeft;
         if (records != null) {
