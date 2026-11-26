@@ -394,7 +394,11 @@ public final class GameStateMachine {
 
     /** Called every tick the player is flying. */
     public void onFlying() {
-        if (building()) current.flew = true;
+        if (!building()) return;
+        // Speed Builders starts you in the air, and the build is on show before the clock starts: only flying
+        // while you build a round counts against Feet on the Ground
+        if (spb != null && !spb.buildingRound()) return;
+        current.flew = true;
     }
 
     public void onJumping() {
