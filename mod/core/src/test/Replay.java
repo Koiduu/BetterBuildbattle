@@ -18,9 +18,9 @@ public class Replay {
     for (String raw : Files.readAllLines(Paths.get(a[0]))) {
       String line = raw.length() > 14 && raw.charAt(2) == ':' ? raw.substring(14) : raw;
       if (line.startsWith("---- ")) { g.leave(); title = startTitle; }
-      else if (line.startsWith("sidebar title: ")) { title = line.substring(15); g.onSidebar(ChatParser.clean(title), new ArrayList<String>()); }
+      else if (line.startsWith("sidebar title: ")) { title = line.substring(15); g.onSidebar(ChatParser.cleanSidebar(title), new ArrayList<String>()); }
       else if (line.startsWith("sidebar title:")) { title = ""; g.onSidebar("", new ArrayList<String>()); }
-      else if (line.startsWith("sidebar: ")) { List<String> ls = new ArrayList<>(); for (String x : line.substring(9).split(" \\| ")) ls.add(ChatParser.clean(x)); g.onSidebar(ChatParser.clean(title), ls); }
+      else if (line.startsWith("sidebar: ")) { List<String> ls = new ArrayList<>(); for (String x : line.substring(9).split(" \\| ")) ls.add(ChatParser.cleanSidebar(x)); g.onSidebar(ChatParser.cleanSidebar(title), ls); }
       else { String c = ChatParser.clean(line.startsWith("chat: ") ? line.substring(6) : line); if (!c.isEmpty()) g.onChat(c); }
     }
     for (MatchRecord m : done) {
