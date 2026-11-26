@@ -1,6 +1,32 @@
 {
   "updates": [
     {
+      "version": "0.2.6",
+      "date": "2026-11-26",
+      "title": "Fixes and Fairer Records",
+      "summary": "Games are tracked again on Minecraft 1.8.9, Speed Builders records now tell builds apart by difficulty, and a handful of fixes.",
+      "sections": [
+        {
+          "heading": "Fixes",
+          "items": [
+            "Minecraft 1.8.9: games are tracked again. Hypixel's scoreboard there has hidden symbols in it that stopped the mod from noticing your games",
+            "Speed Builders: builds with the same name at different difficulties (like Turret on Simple and on Easy) now each have their own personal best and record",
+            "Building challenges such as Stone Age and Old School now only unlock in Solo, Teams and Pro, not in Speed Builders",
+            "Crowd score no longer counts a skipped game as 100%",
+            "The B menu fits on the screen again at larger GUI scales",
+            "Speed Builders timer: a long record holder's name no longer pushes your time gap off the screen",
+            "From the Bottom now explains what it needs: the slowest of 3 or more Perfect Builds in round 1, and someone else has to miss theirs"
+          ]
+        },
+        {
+          "heading": "Speed Builders records were reset",
+          "items": [
+            "Old personal bests and world records couldn't be told apart by difficulty, so they were cleared. Your games are all still saved, and new records fill in as you play"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.2.5",
       "date": "2026-11-25",
       "title": "Stats, Ranks and Minecraft 26.1",

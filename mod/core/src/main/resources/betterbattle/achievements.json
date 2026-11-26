@@ -1,5 +1,5 @@
 {
- "version": 5,
+ "version": 6,
  "achievements": [
   {
    "id": "bb_wins_t1",
@@ -1855,7 +1855,7 @@
   {
    "id": "spb_from_the_bottom",
    "name": "From the Bottom",
-   "description": "Win a Speed Builders game after having the slowest Perfect Build in round 1",
+   "description": "Win a Speed Builders game after having the slowest of 3+ Perfect Builds in round 1 (someone else has to miss theirs, or you are out)",
    "category": "speed_builders",
    "points": 30,
    "secret": false,
