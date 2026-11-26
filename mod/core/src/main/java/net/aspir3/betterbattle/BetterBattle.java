@@ -530,6 +530,10 @@ public final class BetterBattle {
                 List<String> unlocked = new ArrayList<String>();
                 if (unlock("welcome", m)) unlocked.add(Catalog.get("welcome").name);
                 for (AchievementRules.Rule rule : AchievementRules.all()) {
+                    // A challenge only counts in the modes the catalog lists for it: a "stone blocks only" build
+                    // is for the building modes, not a Speed Builders game
+                    Catalog.Entry forMode = Catalog.get(rule.id());
+                    if (forMode != null && forMode.modes != null && !forMode.modes.isEmpty() && !forMode.modes.contains(m.mode)) continue;
                     try {
                         if (!rule.onMatch(m, db)) continue;
                     } catch (Exception e) {
