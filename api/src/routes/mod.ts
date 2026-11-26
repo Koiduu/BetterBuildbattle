@@ -310,6 +310,9 @@ async function saveSpeedBuildersBests(client: any, userId: number, m: z.infer<ty
   if (m.mode !== "speed_builders") return broken;
   for (const r of m.spbRounds ?? []) {
     if (!r.perfect || r.timeMs === null) continue;
+    // Build ids end in the difficulty ("turret_easy"). Older mods sent the name alone, which mixed up builds
+    // that share a name at different difficulties, so their times aren't kept as records.
+    if (!/_(simple|easy|medium|hard|insane)$/.test(r.build)) continue;
     // The record this time has to beat, to announce it if it does. Flagged accounts never count.
     const wr = await client.query(
       `SELECT p.time_ms, u.mc_name, u.id FROM spb_personal_bests p JOIN users u ON u.id = p.user_id

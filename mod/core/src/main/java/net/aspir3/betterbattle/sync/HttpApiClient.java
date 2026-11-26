@@ -145,7 +145,7 @@ public final class HttpApiClient implements ApiClient {
             for (net.aspir3.betterbattle.game.SpbTracker.Round r : m.spbRounds) {
                 Map<String, Object> ro = new LinkedHashMap<String, Object>();
                 ro.put("build", r.build);
-                ro.put("name", r.name);
+                ro.put("name", r.difficulty == null ? r.name : r.name + " (" + r.difficulty + ")");
                 ro.put("timeMs", r.timeMs);
                 ro.put("accuracy", r.accuracy);
                 ro.put("precision", r.precision);
