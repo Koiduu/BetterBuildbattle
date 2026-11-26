@@ -236,8 +236,8 @@ public final class BetterBattle {
         if (game == null) return;
         announceUpdate();
         List<String> cleaned = new ArrayList<String>();
-        for (String line : lines) cleaned.add(ChatParser.clean(line));
-        String cleanTitle = ChatParser.clean(title);
+        for (String line : lines) cleaned.add(ChatParser.cleanSidebar(line));
+        String cleanTitle = ChatParser.cleanSidebar(title);
         if (cleanTitle.equals(lastSidebarTitle) && cleaned.equals(lastSidebar)) return;
         if (!cleanTitle.equals(lastSidebarTitle)) debug("sidebar title: " + cleanTitle);
         // The clock line changes every second; leave it out of the log.

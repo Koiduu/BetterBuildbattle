@@ -103,6 +103,24 @@ public final class ChatParser {
         return s == null ? "" : s.replaceAll("§.", "").trim();
     }
 
+    /**
+     * A sidebar line without the emoji some servers put in it. On Minecraft 1.8.9 every sidebar line has a unique
+     * hidden name, and Hypixel now makes that name an emoji, which sits between the two halves of the line
+     * ("Round: 2", "Players Left: 7", even "www.hypixel.ne" + emoji + "t") and breaks every pattern. The game
+     * draws them as nothing, so dropping them gives the text the player sees.
+     */
+    public static String cleanSidebar(String s) {
+        String c = clean(s);
+        StringBuilder out = new StringBuilder(c.length());
+        for (int i = 0; i < c.length(); ) {
+            int cp = c.codePointAt(i);
+            i += Character.charCount(cp);
+            boolean emoji = cp >= 0x10000 || (cp >= 0x2600 && cp <= 0x27BF) || (cp >= 0x2B00 && cp <= 0x2BFF);
+            if (!emoji) out.appendCodePoint(cp);
+        }
+        return out.toString().trim();
+    }
+
     public boolean isBuildBattle(String sidebarTitle) {
         String t = clean(sidebarTitle).toUpperCase(Locale.ROOT);
         for (String title : titles) if (t.contains(title)) return true;
