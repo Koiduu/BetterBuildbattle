@@ -8,7 +8,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.Platform;
 import net.aspir3.betterbattle.heads.HeadLibrary;
-import net.aspir3.betterbattle.heads.SkinSwap;
 import net.aspir3.betterbattle.fabric.ui.HeadsScreen;
 import net.aspir3.betterbattle.fabric.ui.BannersScreen;
 import net.aspir3.betterbattle.heads.BannerLibrary;
@@ -124,15 +123,12 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             core.onJoin(server == null ? "singleplayer" : server.ip, profile.id(), profile.name());
             plotFound = false;
             if (core.active()) PacketWatcher.install(handler.getConnection(), blockChanges::add);
-            swap.onJoined();
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> core.onLeave());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> core.endRejoin());
 
         heads = new HeadLibrary(core.dir());
-        swap = new SkinSwap(core.dir(), new SwapGame());
         banners = new BannerLibrary(core.dir());
-        swap.restoreIfLeftOver();
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !overlay || !core.onActionBar(message.getString()));
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) core.onChat(message.getString());
@@ -254,7 +250,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     }
 
     private void tick(Minecraft client) {
-        swap.tick();
         NoTextures.tick(client);
         while (menuKey.consumeClick()) pendingScreen = this::menu;
         if (pendingScreen != null) {
@@ -384,10 +379,8 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     // ---- Head database
 
     static HeadLibrary heads;
-    static SkinSwap swap;
 
     public static HeadLibrary heads() { return heads; }
-    public static SkinSwap swap() { return swap; }
 
     static BannerLibrary banners;
     public static BannerLibrary banners() { return banners; }
@@ -433,56 +426,6 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(new GameProfile(id, "BBHead", props)));
         stack.set(DataComponents.ITEM_NAME, Component.literal(h.name));
         return stack;
-    }
-
-    private final class SwapGame implements SkinSwap.Game {
-        public String accessToken() { return Minecraft.getInstance().getUser().getAccessToken(); }
-        public String playerName() { return Minecraft.getInstance().getUser().getName(); }
-        public void chat(String message) { runOnMainThread(() -> BetterBattleFabric.this.chat(message)); }
-        public void debug(String line) { core.debug(line); }
-
-        public boolean inGame() {
-            if (!core.active()) return false;
-            GameStateMachine.State s = core.game().state();
-            return s == GameStateMachine.State.BUILDING || s == GameStateMachine.State.VOTING;
-        }
-
-        public boolean reconnect() {
-            Minecraft mc = Minecraft.getInstance();
-            ServerData server = mc.getCurrentServer();
-            if (server == null || mc.isLocalServer() || mc.getConnection() == null) return false;
-            boolean keepGame = inGame();
-            mc.execute(() -> {
-                if (keepGame) core.holdGameForRejoin();
-                mc.disconnectFromWorld(Component.literal("Rejoining so Hypixel sees your new skin"));
-                ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), mc,
-                    ServerAddress.parseString(server.ip), server, false, null);
-            });
-            return true;
-        }
-
-        public void reconnectFailed() { runOnMainThread(core::endRejoin); }
-
-        public void sendCommand(String command) {
-            ClientPacketListener connection = Minecraft.getInstance().getConnection();
-            if (connection != null) connection.sendCommand(command);
-        }
-
-        public List<String> skullHashes() {
-            List<String> out = new ArrayList<>();
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null) return out;
-            for (ItemStack stack : mc.player.getInventory().getNonEquipmentItems()) {
-                if (!stack.is(Items.PLAYER_HEAD)) continue;
-                ResolvableProfile profile = stack.get(DataComponents.PROFILE);
-                String hash = null;
-                if (profile != null) {
-                    for (Property p : profile.partialProfile().properties().get("textures")) hash = HeadLibrary.hashOf(p.value());
-                }
-                out.add(hash);
-            }
-            return out;
-        }
     }
 
     // ---- Platform
