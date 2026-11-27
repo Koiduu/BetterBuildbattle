@@ -124,6 +124,11 @@ public final class BetterBattle {
         if (text == null) return false;
         String line = ChatParser.clean(text);
         if (line.startsWith("You are currently NICKED") || line.startsWith("You are currently nicked")) setNick(true, null);
+        if (game != null && "gtb".equals(game.mode())) {
+            if (!line.equals(lastActionBar)) debug("actionbar: " + line);   // so /bb debug logs show the real hint
+            lastActionBar = line;
+            game.onActionBar(line);
+        }
         return config.challengeNoHints && game != null && "gtb".equals(game.mode()) && isWordHint(line);
     }
 
@@ -135,6 +140,46 @@ public final class BetterBattle {
     }
 
     private boolean rejoining;
+    private String lastActionBar;
+
+    /** Guess the Build: private hints from the server, by lower-case name, for this session only. */
+    private final java.util.Map<String, ApiClient.GtbFlag> unusualGuessers = new java.util.concurrent.ConcurrentHashMap<String, ApiClient.GtbFlag>();
+    private final Set<String> unusualAnnounced = java.util.Collections.synchronizedSet(new HashSet<String>());
+
+    /**
+     * Guess the Build: the evidence (one line each) if this player's guessing looks unusual and the hints are on,
+     * otherwise null. For the tab list marker. Only this player ever sees it.
+     */
+    public List<String> unusualGuessing(String name) {
+        if (name == null || !config.gtbMarkers || game == null || !"gtb".equals(game.mode())) return null;
+        ApiClient.GtbFlag f = unusualGuessers.get(name.toLowerCase(java.util.Locale.ROOT));
+        return f == null ? null : f.evidence;
+    }
+
+    /** The hover text for a marked player: the numbers, and a reminder that they aren't proof. */
+    public static String unusualHover(String name, List<String> evidence) {
+        StringBuilder b = new StringBuilder("§eUnusual guessing: §f" + name + "\n§8Only you can see this.");
+        if (evidence != null) for (String line : evidence) b.append("\n§7").append(line.replace('§', ' '));
+        b.append("\n\n§7Not proof: fast typists and familiar themes look like this too.")
+         .append("\n§7Report only if what you saw agrees. The Report button fills in")
+         .append("\n§7Hypixel's report command; you decide whether to send it.");
+        return b.toString();
+    }
+
+    private void onGtbFlags(List<ApiClient.GtbFlag> flags) {
+        for (final ApiClient.GtbFlag f : flags) {
+            if (f == null || f.name == null || !f.name.matches("[A-Za-z0-9_]{1,16}")) continue;
+            unusualGuessers.put(f.name.toLowerCase(java.util.Locale.ROOT), f);
+            debug("unusual guessing hint: " + f.name + " (" + f.rounds + " rounds)");
+            if (!config.gtbMarkers || !unusualAnnounced.add(f.name.toLowerCase(java.util.Locale.ROOT))) continue;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    platform.chatEvidence("§d§lBetter Battle §8» §7Unusual guessing: §f" + f.name
+                        + " §8(hover for the numbers) ", unusualHover(f.name, f.evidence), "§c[Report]", "/report " + f.name);
+                }
+            });
+        }
+    }
 
     /**
      * The next disconnect is the head database's quick rejoin: keep the game, database and sync open
@@ -208,6 +253,9 @@ public final class BetterBattle {
         game = null;
         debugLog = null;
         seenThisSession.clear();
+        unusualGuessers.clear();
+        unusualAnnounced.clear();
+        lastActionBar = null;
         newerAnnounced = false;
         lastSidebarTitle = "";
         lastSidebar = new ArrayList<String>();
@@ -228,6 +276,11 @@ public final class BetterBattle {
             else if (e != null && e.type == ChatParser.Type.NICK_SET) setNick(true, e.text);
             else if (e != null && e.type == ChatParser.Type.NICK_RESET) setNick(false, null);
             game.onChat(line);
+            List<net.aspir3.betterbattle.game.GtbGuessTracker.Guess> guesses = game.takeGtbGuesses();
+            if (!guesses.isEmpty() && sync != null) {
+                debug("gtb guesses: " + guesses.size() + " to upload");
+                sync.addGtbGuesses(guesses);
+            }
         }
     }
 
@@ -721,6 +774,10 @@ public final class BetterBattle {
         }
 
         public void achievementRevoked(String id) {
+        }
+
+        public void gtbFlags(List<ApiClient.GtbFlag> flags) {
+            onGtbFlags(flags);
         }
     }
 }

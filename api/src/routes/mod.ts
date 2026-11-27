@@ -13,6 +13,7 @@ import { worldRecords } from "../services/speedBuilders";
 import { updateProgressBoards, updateModeWinRates } from "../services/boards";
 import { recordBroken, type RecordBroken } from "../lib/events";
 import { rankSummary, playerSummary } from "../services/modInfo";
+import { gtbModRoutes } from "./gtbWatch";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -95,6 +96,8 @@ export function checkMatches(raw: unknown[]) {
 }
 
 export function modRoutes(app: Router) {
+  gtbModRoutes(app);   // Guess the Build guess events, uploaded alongside the sync
+
   // ---- 1. Handshake: issue a random serverId ----
   app.post("/auth/mod/challenge", [rateLimit(10, 60_000)], async () => {
     const serverId = crypto.randomBytes(16).toString("hex");

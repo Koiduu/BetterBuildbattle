@@ -72,6 +72,21 @@ public interface ApiClient {
         throw new UnsupportedOperationException("compare");
     }
 
+    /** Guess the Build: a private hint that someone's guessing looks unusual, with the numbers behind it. */
+    final class GtbFlag {
+        public String name;
+        public int score, rounds;
+        public List<String> evidence = new ArrayList<String>();
+    }
+
+    /**
+     * Guess the Build: other players' correct guesses from finished rounds. Answers with hints for those same
+     * players only. Needs a newer server; older ones answer 404.
+     */
+    default List<GtbFlag> gtbGuesses(List<net.aspir3.betterbattle.game.GtbGuessTracker.Guess> guesses) throws Exception {
+        throw new UnsupportedOperationException("gtbGuesses");
+    }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 

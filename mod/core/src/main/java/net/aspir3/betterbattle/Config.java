@@ -50,6 +50,8 @@ public final class Config {
     public boolean roundScreenshots = true;
     /** For slower PCs: far fewer heads drawn at once in the Head Database, which is the heaviest screen. */
     public boolean lowEndMode = false;
+    /** Guess the Build: a private marker on players whose guessing looks unusual, with the evidence. */
+    public boolean gtbMarkers = true;
     /** The version whose What's New page was last shown. */
     public String lastSeenVersion = "";
 
@@ -97,6 +99,7 @@ public final class Config {
         new Toggle("chatMessages", "Chat messages", "Achievement and sync messages in chat"),
         new Toggle("weeklyAlerts", "Weekly challenge alerts", "Tell me when I finish a weekly challenge"),
         new Toggle("whatsNew", "What's New after updates", "Show the patch notes once after the mod updates"),
+        new Toggle("gtbMarkers", "Unusual guessing hints", "Guess the Build: mark players whose guessing looks unusual (only you see it)"),
         new Toggle("challengeNoHints", "Challenge: no word hint", "Hide Guess the Build's word hint above the hotbar"),
         new Toggle("challengeNoTextures", "Challenge: no textures", "Every block is plain white (Fabric only, reloads textures)"),
         new Toggle("updateNotices", "Update notices", "Tell me in chat when a newer version is out"),

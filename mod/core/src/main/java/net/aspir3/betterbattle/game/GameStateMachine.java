@@ -99,6 +99,17 @@ public final class GameStateMachine {
     }
 
     private String gtbLastBuilder;
+    /** Guess the Build: when everyone else guessed right, for the server's unusual-guessing check. */
+    private final GtbGuessTracker gtbGuesses = new GtbGuessTracker();
+    private String gtbServer, gtbDate;
+
+    /** Correct guesses by other players from finished Guess the Build rounds, once each. */
+    public List<GtbGuessTracker.Guess> takeGtbGuesses() { return gtbGuesses.take(); }
+
+    /** Text above the hotbar: in Guess the Build, the word hint. */
+    public void onActionBar(String line) {
+        if (current != null && "gtb".equals(current.mode)) gtbGuesses.onHint(line, System.currentTimeMillis());
+    }
     private long gtbRoundStartedAt;
     private boolean gtbCorrectInRound;
 
@@ -147,6 +158,12 @@ public final class GameStateMachine {
             Integer alive = parser.sidebarInt("SPB_PLAYERS_LEFT", line);
             if (alive != null) spbPlayersLeft = alive;
             if (parser.sidebar("SPB_GAME_OVER", line) != null) spbGameOver = true;
+            String[] server = parser.sidebarGroups("GAME_SERVER", line);   // "11/20/26  m85AE"
+            if (server != null && server.length == 2) {
+                gtbDate = server[0];
+                gtbServer = server[1];
+                gtbGuesses.onServer(gtbDate, gtbServer);
+            }
             String[] standing = parser.sidebarGroups("GTB_STANDING", line);   // "2. Cool_Ghost: 18"
             if (standing != null) standings.add(standing);
             if (i + 1 < lines.size()) {
@@ -286,10 +303,22 @@ public final class GameStateMachine {
                 break;
             case GTB_GUESSED:
                 lastGuesser = e.text;
+                gtbGuesses.onGuessed(e.text, namesInclude(e.text), System.currentTimeMillis());
+                break;
+            case GTB_ROUND:
+                try { gtbGuesses.onRoundLine(Integer.parseInt(e.text)); } catch (NumberFormatException ignored) { }
+                break;
+            case GTB_THEME_LENGTH:
+                try { gtbGuesses.onWordLength(Integer.parseInt(e.text)); } catch (NumberFormatException ignored) { }
+                break;
+            case GTB_THEME_WAS:
+                gtbGuesses.onWordRevealed(e.text);
                 break;
             case GTB_CORRECT_GUESS:
                 // The reward comes straight after your own "X correctly guessed the theme!". If X isn't your
                 // name, X is the nick you're playing under.
+                // Your own guess under a nick you hadn't been told about isn't evidence about anyone else
+                if (guesser != null) gtbGuesses.forget(guesser);
                 if (guesser != null && !guesser.equalsIgnoreCase(playerName) && nick() == null) {
                     nicked = true;
                     nick = guesser;
@@ -317,6 +346,7 @@ public final class GameStateMachine {
         gtbRoundStartedAt = System.currentTimeMillis();
         gtbCorrectInRound = false;
         current.gtbRounds++;
+        gtbGuesses.onRoundStart(builder, gtbRoundStartedAt);
     }
 
     private void startBuilding(String theme) {
@@ -325,6 +355,7 @@ public final class GameStateMachine {
         current.mcVersion = mcVersion;
         current.theme = theme;
         spb = "speed_builders".equals(current.mode) ? new SpbTracker(playerName, spbRecords) : null;
+        if ("gtb".equals(current.mode)) gtbGuesses.newGame(gtbDate, gtbServer);
         if (spb != null) spb.setNick(nicked, nick);
         startedAt = System.currentTimeMillis();
         voteRound = -1;
@@ -445,6 +476,7 @@ public final class GameStateMachine {
     }
 
     private void reset() {
+        gtbGuesses.onGameEnd();
         current = null;
         spb = null;
         podiumPlace = null;

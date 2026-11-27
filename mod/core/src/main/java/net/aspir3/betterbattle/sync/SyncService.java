@@ -37,6 +37,9 @@ public final class SyncService {
         void latestVersion(ApiClient.Latest latest);
         /** New weekly challenges or world records arrived. */
         void bootstrapped(ApiClient.Bootstrap b);
+        /** Guess the Build: private hints about players whose guesses were just uploaded. Sync thread. */
+        default void gtbFlags(List<ApiClient.GtbFlag> flags) {
+        }
     }
 
     private static final long BOOTSTRAP_EVERY_MS = 30L * 60L * 1000L;
@@ -191,6 +194,46 @@ public final class SyncService {
 
     public boolean isOffline() { return offline; }
 
+    private final List<net.aspir3.betterbattle.game.GtbGuessTracker.Guess> gtbQueue =
+        Collections.synchronizedList(new ArrayList<net.aspir3.betterbattle.game.GtbGuessTracker.Guess>());
+
+    /** Guess the Build: correct guesses from a round that just ended. Uploaded straight away, apart from games. */
+    public void addGtbGuesses(List<net.aspir3.betterbattle.game.GtbGuessTracker.Guess> guesses) {
+        if (guesses.isEmpty()) return;
+        synchronized (gtbQueue) {
+            gtbQueue.addAll(guesses);
+            // Never let it grow without end while offline: the oldest go first
+            while (gtbQueue.size() > 1000) gtbQueue.remove(0);
+        }
+        try {
+            exec.execute(new Runnable() {
+                public void run() { sendGtbGuesses(); }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException stoppedAlready) {
+        }
+    }
+
+    /** Sends what's queued. A failure keeps it for the next sync; never worth bothering the player about. */
+    private void sendGtbGuesses() {
+        if (stopped) return;
+        List<net.aspir3.betterbattle.game.GtbGuessTracker.Guess> batch;
+        synchronized (gtbQueue) {
+            if (gtbQueue.isEmpty()) return;
+            batch = new ArrayList<net.aspir3.betterbattle.game.GtbGuessTracker.Guess>(gtbQueue.subList(0, Math.min(200, gtbQueue.size())));
+        }
+        try {
+            ensureToken();
+            List<ApiClient.GtbFlag> flags = api.gtbGuesses(batch);
+            synchronized (gtbQueue) { gtbQueue.subList(0, Math.min(batch.size(), gtbQueue.size())).clear(); }
+            if (flags != null && !flags.isEmpty()) listener.gtbFlags(flags);
+        } catch (UnsupportedOperationException e) {
+            gtbQueue.clear();   // this server doesn't take them
+        } catch (ApiClient.Unauthorized e) {
+            try { db.setMeta("token", null); } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
+    }
+
     private void ensureToken() throws Exception {
         String token = db.getMeta("token", null);
         if (token == null) {
@@ -243,6 +286,7 @@ public final class SyncService {
                 } catch (Exception ignored) {
                 }
             }
+            sendGtbGuesses();   // anything a failed upload left behind
             offline = false;
             backoffMs = 0;
             nextAttemptAt = 0;

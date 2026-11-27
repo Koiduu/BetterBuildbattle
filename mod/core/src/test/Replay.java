@@ -21,7 +21,10 @@ public class Replay {
       else if (line.startsWith("sidebar title: ")) { title = line.substring(15); g.onSidebar(ChatParser.cleanSidebar(title), new ArrayList<String>()); }
       else if (line.startsWith("sidebar title:")) { title = ""; g.onSidebar("", new ArrayList<String>()); }
       else if (line.startsWith("sidebar: ")) { List<String> ls = new ArrayList<>(); for (String x : line.substring(9).split(" \\| ")) ls.add(ChatParser.cleanSidebar(x)); g.onSidebar(ChatParser.cleanSidebar(title), ls); }
+      else if (line.startsWith("actionbar: ")) g.onActionBar(line.substring(11));
       else { String c = ChatParser.clean(line.startsWith("chat: ") ? line.substring(6) : line); if (!c.isEmpty()) g.onChat(c); }
+      for (GtbGuessTracker.Guess x : g.takeGtbGuesses()) System.out.println("   guess r" + x.round + " " + x.name + " +" + x.msSinceStart
+        + "ms letters=" + x.revealed + " sinceLetter=" + x.msSinceReveal + " word=" + x.word + " (" + x.wordLength + ") game=" + x.gameKey);
     }
     for (MatchRecord m : done) {
       System.out.println("MATCH mode=" + m.mode + " theme=" + m.theme + " place=" + m.placement + "/" + m.players + " score=" + m.score
