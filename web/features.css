@@ -46,7 +46,14 @@ table.cmp td.better::after { content: " ▲"; font-size: 10px; }
 
 /* Share card */
 .share-dialog { max-width: min(680px, calc(100vw - 32px)); width: 100%; padding: 16px; color: var(--text); }
-.share-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.share-dialog:not([open]) { display: none; }
+.share-dialog::backdrop { background: rgba(0, 0, 0, .6); }
+@media (prefers-reduced-motion: no-preference) {
+  .share-dialog[open] { animation: dialog-in 180ms var(--snap) both; }
+  .share-dialog[open]::backdrop { animation: dialog-dim 180ms ease-out both; }
+  @keyframes dialog-in { from { opacity: 0; translate: 0 5px; } }
+  @keyframes dialog-dim { from { opacity: 0; } }
+}
 .share-preview { margin: 12px 0; border: 2px solid var(--edge); }
 .share-preview canvas { display: block; width: 100%; height: auto; }
 .share-dialog .row-actions { flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -55,17 +62,37 @@ table.cmp td.better::after { content: " ▲"; font-size: 10px; }
   .cmp-vs { width: 100%; text-align: center; }
 }
 
-/* Install page and home banner */
+/* Install page */
 .install-pick { margin: 0 0 10px; }
+.install-pick button[aria-selected="true"] { background: var(--gold); color: #000; }
 .steps { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .steps li { display: flex; gap: 10px; align-items: flex-start; }
 .steps li > div { min-width: 0; padding-top: 2px; color: var(--soft); }
 .steps .btn { max-width: 100%; height: auto; min-height: 36px; justify-content: center; line-height: 1.2; text-align: center; white-space: normal; }
 ul.ticks li { padding-left: 16px; position: relative; color: var(--soft); }
 ul.ticks li::before { content: "▸"; position: absolute; left: 0; color: var(--gold); }
-.banner { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 14px;
-  background: var(--pink-bg); border: 2px solid var(--edge); }
-.banner-links { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+.journey-kicker { margin-bottom: 4px; color: var(--pink-text); font: 500 13px var(--display); letter-spacing: .08em; }
+.journey-chapters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 172px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.journey-chapters li {
+  padding: 10px;
+  border: 2px solid var(--edge);
+  background: var(--card-2);
+  box-shadow: inset 2px 2px 0 var(--line);
+}
+.journey-number { color: var(--pink-text); font: 500 14px var(--display); }
+.journey-chapters h3 { margin: 3px 0 5px; color: var(--text); font: 600 17px/1.1 var(--display); }
+.journey-chapters p { color: var(--soft); font-size: 12px; }
+@media (prefers-reduced-motion: no-preference) {
+  .install-enter, .journey-chapters .chapter-in { animation: fade-in 220ms var(--snap) both; }
+}
 
 /* .card and friends set display, which would otherwise beat the hidden attribute */
 [hidden] { display: none !important; }

@@ -1,19 +1,23 @@
 import {
-  updatesPage, speedBuildersPage, speedBuildPage, comparePage, installPage, updateBanner,
+  updatesPage, speedBuildersPage, speedBuildPage, comparePage, installPage, playerJourney, watchJourney,
   loadWeekly, renderAchievements, spbBestsSection, loadSpbBests, openShareCard,
-} from "./features.js";
+} from "./features.js?v=web-polish-1";
 import {
   plansPage, insightsPage, wrappedPage, groupsPage, groupPage, resolveVanity, renderPlanCard, supporterChip,
   supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
-} from "./plans.js";
-import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
-import { updateLaunchBar } from "./launch.js";
+} from "./plans.js?v=web-polish-1";
+import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js?v=web-polish-1";
+import { updateLaunchScreen } from "./launch.js?v=web-polish-1";
+import { elasticPage, stageAtViewport } from "./motion.js?v=web-polish-1";
+import { announceFeedback, clearFeedback, confirmFeedback, feedbackLabel } from "./button-feedback.js?v=web-polish-1";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
 watchReveals(app);
+elasticPage();
 const SUPPORT = { email: null, discord: "https://discord.gg/zgQcwWpkrq" };
 let flashNotice = null;
+let accountNotice = null;
 
 const MODES = {
   solo: "Solo",
@@ -122,7 +126,8 @@ async function render() {
   });
   window.scrollTo(0, 0);
   clearInterval(linkPoll);
-  updateLaunchBar();
+  closeSuggestions();
+  updateLaunchScreen();
 
   app.onclick = null;   // pages that listen on the whole page set this; it must not outlive them
 
@@ -234,7 +239,7 @@ function cookiesPage() {
     <section><h2>Login cookies</h2>
       <p><code>bb_session</code> is an HttpOnly login cookie that lasts 30 days. It is cleared when you log out. <code>bb_oauth</code> is a short-lived state cookie used only during Discord login.</p></section>
     <section><h2>Browser storage</h2>
-      <p><code>localStorage</code> holds <code>bb_cookie_notice</code> to remember that you dismissed this notice. The admin page alone stores the admin token there.</p></section>
+      <p>A password reset link temporarily uses <code>sessionStorage</code> so the reset code can be removed from your address bar. The admin page stores its token and display name in <code>localStorage</code>.</p></section>
     <section><h2>Other requests</h2>
       <p>Better Battle does not use analytics, ads or tracking cookies. Cloudflare carries site traffic. Player heads load from mc-heads.net and Discord avatars load from cdn.discordapp.com.</p></section>`);
 }
@@ -333,16 +338,23 @@ const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
 const suggestions = document.getElementById("suggest");
 let searchTimer;
+let searchGeneration = 0;
+
+function closeSuggestions() {
+  clearTimeout(searchTimer);
+  searchGeneration++;
+  suggestions.hidden = true;
+}
 
 searchInput.addEventListener("input", () => {
-  clearTimeout(searchTimer);
+  closeSuggestions();
   const q = searchInput.value.trim();
-  if (!q) {
-    suggestions.hidden = true;
-    return;
-  }
+  if (!NAME_RE.test(q)) return;
+  const generation = searchGeneration;
   searchTimer = setTimeout(async () => {
     const rows = await get("/search?q=" + encodeURIComponent(q)).catch(() => []);
+    if (generation !== searchGeneration || !searchForm.contains(document.activeElement)) return;
+    if (rows.length) stageAtViewport();
     suggestions.innerHTML = rows
       .map((r) => `<li><a href="/p/${esc(r.name)}" data-link><b>${esc(r.name)}</b><span>${num(r.score)}</span></a></li>`)
       .join("");
@@ -350,14 +362,32 @@ searchInput.addEventListener("input", () => {
   }, 200);
 });
 
-searchInput.addEventListener("blur", () => setTimeout(() => (suggestions.hidden = true), 150));
+searchForm.addEventListener("focusout", (e) => {
+  if (!searchForm.contains(e.relatedTarget)) closeSuggestions();
+});
+suggestions.addEventListener("mousedown", (e) => {
+  if (e.button === 0) e.preventDefault();
+});
+document.addEventListener("pointerdown", (e) => {
+  if (!searchForm.contains(e.target)) closeSuggestions();
+});
+searchForm.addEventListener("keydown", (e) => {
+  if (suggestions.hidden) return;
+  if (e.key === "Escape") {
+    e.preventDefault();
+    searchInput.focus();
+    closeSuggestions();
+  } else if (e.key === "ArrowDown" && e.target === searchInput) {
+    e.preventDefault();
+    suggestions.querySelector("a")?.focus();
+  }
+});
 
 searchForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const q = searchInput.value.trim();
   if (!NAME_RE.test(q)) return;
   searchInput.value = "";
-  suggestions.hidden = true;
   go("/p/" + q);
 });
 
@@ -369,10 +399,9 @@ async function homePage() {
   flashNotice = null;
   app.innerHTML = `
     ${notice ? `<p class="status-notice" role="status">${esc(notice)}</p>` : ""}
-    <div id="home-banner"></div>
     <section class="intro">
       <h1>Every Build Battle player, ranked.</h1>
-      <p>Look up anyone who has played Build Battle on Hypixel. Install the Better Battle mod to add your games, levels and achievements to your profile.</p>
+      <p>Look up anyone who has played Build Battle on Hypixel.</p>
       <form class="big-search" id="home-search">
         <label for="home-q" class="sr-only">Minecraft username</label>
         <input id="home-q" placeholder="Minecraft username" maxlength="16" autocomplete="off" spellcheck="false">
@@ -386,9 +415,10 @@ async function homePage() {
         <a href="/leaderboard" data-link>See all</a>
       </div>
       <div id="home-top">${leaderboardSkeleton(10)}</div>
-    </section>`;
+    </section>
+    ${playerJourney()}`;
 
-  updateBanner(document.getElementById("home-banner"));
+  watchJourney(app);
 
   document.getElementById("home-search").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -610,7 +640,7 @@ async function profilePage(name) {
       ${profileAction(p)}
       <a class="btn" href="/compare/${esc(p.name)}" data-link>Compare</a>
       <button class="btn" id="share-card">Share card</button>
-      <button class="btn primary" id="share">Share profile</button>
+      <button class="btn primary" id="share" data-feedback>${feedbackLabel("Share profile", "Copied")}</button>
     </section>
 
     <div class="cols">
@@ -652,16 +682,17 @@ async function profilePage(name) {
   document.getElementById("share-card").addEventListener("click", () => openShareCard(p));
 
   document.getElementById("share").addEventListener("click", async (e) => {
+    const button = e.currentTarget;
     const url = `${location.origin}/p/${p.name}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: `${p.name} on Better Battle`, url });
       } else {
         await navigator.clipboard.writeText(url);
-        e.target.textContent = "Link copied";
+        confirmFeedback(button, "Profile link copied.");
       }
-    } catch {
-      // closed the share sheet
+    } catch (err) {
+      if (err?.name !== "AbortError") announceFeedback("Couldn't share the link. You can copy it from the address bar.");
     }
   });
 
@@ -932,7 +963,7 @@ function faceFor(user, size) {
 }
 
 function renderAccountLink() {
-  updateLaunchBar(me);
+  updateLaunchScreen(me);
   const link = document.getElementById("account-link");
   if (!me) {
     link.href = "/login";
@@ -1035,7 +1066,7 @@ async function resetPage() {
           <input type="password" name="again" autocomplete="new-password" required minlength="8" maxlength="200">
         </label>
         <p class="form-error" id="reset-error" role="alert" hidden></p>
-        <button class="btn primary wide" type="submit">Save new password</button>
+        <button class="btn primary wide" type="submit" data-feedback>Save new password</button>
       </form>
     </section>`;
   const form = document.getElementById("reset-form");
@@ -1051,6 +1082,7 @@ async function resetPage() {
     try {
       setMe(await request("POST", "/auth/reset", { token, password }));
       try { sessionStorage.removeItem("bb_reset_token"); } catch {}
+      accountNotice = "Password saved.";
       go("/account");
     } catch (err) {
       show(err.message === "reset_link_invalid"
@@ -1139,6 +1171,8 @@ async function accountPage() {
     ? "That Discord account is already linked to a different Better Battle account."
     : null;
   if (queryError()) history.replaceState(null, "", "/account");
+  const notice = accountNotice;
+  accountNotice = null;
 
   app.innerHTML = `
     <section class="account-top">
@@ -1149,6 +1183,7 @@ async function accountPage() {
       <button class="btn" id="logout">Log out</button>
     </section>
     ${error ? `<p class="form-error">${esc(error)}</p>` : ""}
+    ${notice ? `<p class="status-notice feedback-notice" role="status"><span aria-hidden="true">✓</span> ${esc(notice)}</p>` : ""}
 
     <section class="card" id="mc-card"></section>
 
@@ -1168,7 +1203,7 @@ async function accountPage() {
           <textarea id="bio" name="bio" maxlength="1000" rows="5" placeholder="What do you like to build?">${esc(me.bio ?? "")}</textarea>
           <div class="form-row">
             <span class="muted saved" id="bio-status" role="status"></span>
-            <button class="btn primary" type="submit">Save bio</button>
+            <button class="btn primary" type="submit" data-feedback>${feedbackLabel("Save bio", "Saved")}</button>
           </div>
         </form>
       </section>
@@ -1335,13 +1370,18 @@ async function getLinkCode() {
   box.innerHTML = `
     <div class="code">
       <code>${esc(command)}</code>
-      <button class="btn small" id="copy-code">Copy</button>
+      <button class="btn small" id="copy-code" data-feedback>${feedbackLabel("Copy", "Copied")}</button>
     </div>
     <p class="muted waiting"><span class="dot pulse"></span>Waiting for you in game… The code works for 10 minutes.</p>`;
 
   document.getElementById("copy-code").addEventListener("click", async (e) => {
-    await navigator.clipboard.writeText(command).catch(() => {});
-    e.target.textContent = "Copied";
+    const button = e.currentTarget;
+    try {
+      await navigator.clipboard.writeText(command);
+      confirmFeedback(button, "Link command copied.");
+    } catch {
+      announceFeedback("Couldn't copy automatically. You can select the command and copy it.");
+    }
   });
 
   const expires = new Date(link.expiresAt).getTime();
@@ -1368,21 +1408,31 @@ function setUpBio() {
   const input = document.getElementById("bio");
   const count = document.getElementById("bio-count");
   const status = document.getElementById("bio-status");
+  const button = form.querySelector("button");
   const update = () => (count.textContent = `${num(input.value.length)} / 1,000`);
   update();
   input.addEventListener("input", () => {
     update();
+    clearFeedback(button);
     status.textContent = "";
   });
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (button.disabled) return;
+    const bio = input.value;
+    button.disabled = true;
     try {
-      setMe(await request("PUT", "/me", { bio: input.value }));
-      status.textContent = "Saved";
+      setMe(await request("PUT", "/me", { bio }));
+      if (input.value === bio) {
+        confirmFeedback(button);
+        status.textContent = "Saved";
+      }
     } catch (err) {
       status.textContent = err.body?.error === "inappropriate"
         ? "Your bio has a word that isn't allowed. Change it and save again."
         : "Couldn't save. Try again.";
+    } finally {
+      button.disabled = false;
     }
   });
 }
@@ -1450,7 +1500,7 @@ async function setUpPins() {
       </div>
       <div class="form-row">
         <span class="muted saved" id="pins-status" role="status"></span>
-        <button class="btn primary" id="save-pins" disabled>Save pins</button>
+        <button class="btn primary" id="save-pins" data-feedback disabled>${feedbackLabel("Save pins", "Saved")}</button>
       </div>
     </div>
     <div class="list" id="pinned"><div class="loading" style="height:64px"></div></div>
@@ -1487,7 +1537,10 @@ async function setUpPins() {
       : `<p class="muted">No games yet. Play a round with the mod and it shows up here.</p>`;
     const changed = JSON.stringify(pins.map((m) => m.id)) !== saved;
     saveButton.disabled = !changed;
-    if (changed) status.textContent = "Unsaved changes";
+    if (changed) {
+      clearFeedback(saveButton);
+      status.textContent = "Unsaved changes";
+    }
   };
 
   card.addEventListener("click", async (e) => {
@@ -1509,6 +1562,7 @@ async function setUpPins() {
       pins = await request("PUT", "/me/pins", { matchIds: pins.map((m) => m.id) });
       saved = JSON.stringify(pins.map((m) => m.id));
       draw();
+      confirmFeedback(saveButton);
       status.textContent = "Saved";
     } catch {
       status.textContent = "Couldn't save. Try again.";
@@ -1528,37 +1582,6 @@ async function setUpPins() {
   status.textContent = "";
 }
 
-function setupCookieNotice() {
-  const notice = document.getElementById("cookie-notice");
-  const button = document.getElementById("cookie-notice-ok");
-  let dismissed = false;
-  try { dismissed = localStorage.getItem("bb_cookie_notice") === "1"; } catch {}
-  notice.hidden = dismissed;
-  let observer;
-  const updateReservedSpace = () => {
-    document.body.style.setProperty("--cookie-notice-height", `${notice.getBoundingClientRect().height}px`);
-  };
-  if (!dismissed) {
-    document.body.classList.add("cookie-notice-visible");
-    updateReservedSpace();
-    if (typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(updateReservedSpace);
-      observer.observe(notice);
-    } else {
-      window.addEventListener("resize", updateReservedSpace);
-    }
-  }
-  button.addEventListener("click", () => {
-    try { localStorage.setItem("bb_cookie_notice", "1"); } catch {}
-    notice.hidden = true;
-    document.body.classList.remove("cookie-notice-visible");
-    document.body.style.removeProperty("--cookie-notice-height");
-    observer?.disconnect();
-    window.removeEventListener("resize", updateReservedSpace);
-  });
-}
-
-setupCookieNotice();
 const meReady = loadMe();
 render();
 
