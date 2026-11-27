@@ -122,6 +122,15 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
     }
 
+    private static final class HeadsReply {
+        List<net.aspir3.betterbattle.heads.MyHeads.Entry> heads;
+    }
+
+    public List<net.aspir3.betterbattle.heads.MyHeads.Entry> myHeads() throws Exception {
+        HeadsReply r = gson.fromJson(request("GET", "/mod/heads", null), HeadsReply.class);
+        return r == null || r.heads == null ? new java.util.ArrayList<net.aspir3.betterbattle.heads.MyHeads.Entry>() : r.heads;
+    }
+
     private Map<String, Object> toJson(MatchRecord m) {
         Map<String, Object> o = new LinkedHashMap<String, Object>();
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");

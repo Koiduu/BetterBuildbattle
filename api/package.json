@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "seed-guild": "tsx scripts/seed-guild.ts",
     "typecheck": "tsc --noEmit",
-    "snapshot": "tsx scripts/snapshot.ts"
+    "snapshot": "tsx scripts/snapshot.ts",
+    "skin-login": "tsx scripts/skin-login.ts",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@node-rs/argon2": "~2.0.2",

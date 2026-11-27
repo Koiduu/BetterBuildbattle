@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Better Battle launcher for macOS / Linux. Same commands as bb.cmd:
-#   ./bb.sh [start|stop|restart|logs|status|seed [guild]|snapshot|update|backup|restore <file>|backup-daily [off]|reset]
+#   ./bb.sh [start|stop|restart|logs|status|seed [guild]|snapshot|skin-login|update|backup|restore <file>|backup-daily [off]|reset]
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "$0")"
@@ -224,6 +224,7 @@ case "$CMD" in
   status)   docker compose ps ;;
   seed)     docker compose exec app npm run seed-guild -- "${2:-Aspiring}" ;;
   snapshot) docker compose exec app npm run snapshot ;;
+  skin-login) docker compose exec app npm run skin-login ;;
   update)   docker compose up -d --build ;;
   backup)   backup_database ;;
   restore)  restore_database "${2:-}" ;;

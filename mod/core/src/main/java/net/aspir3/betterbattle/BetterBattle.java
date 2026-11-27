@@ -358,6 +358,11 @@ public final class BetterBattle {
         sync.rank();
     }
 
+    /** The Head Database's "My heads" section opened: ask the server for new ones. Quiet if not on Hypixel. */
+    public void refreshMyHeads() {
+        if (sync != null) sync.refreshMyHeads();
+    }
+
     /** /bb compare name */
     public void compare(String name) {
         if (sync == null) {
@@ -381,8 +386,10 @@ public final class BetterBattle {
         out.add("\u00a7b/bb weekly \u00a77This week's challenges");
         out.add("\u00a7b/bb news \u00a77What's new in this version");
         if (headsAndBanners) {
-            out.add("\u00a7b/bb heads [search] \u00a77The Head Database");
+            out.add("\u00a7b/bb heads [search] \u00a77The Head Database, with your own heads under My heads");
             out.add("\u00a7b/bb banners \u00a77Banner designs");
+        } else {
+            out.add("\u00a7b/bb heads \u00a77Your custom heads, painted at " + net.aspir3.betterbattle.heads.MyHeads.PAINT_URL);
         }
         out.add("\u00a7b/bb palette [size] \u00a77A random block palette to build with");
         out.add("\u00a7b/bb settings \u00a77Switch features on and off, including Low-end mode");

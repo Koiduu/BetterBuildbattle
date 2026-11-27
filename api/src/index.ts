@@ -12,6 +12,8 @@ import { downloadRoutes } from "./routes/download";
 import { perkRoutes } from "./routes/perks";
 import { sightingRoutes } from "./routes/sightings";
 import { challengeRoutes } from "./routes/challenges";
+import { headRoutes } from "./routes/heads";
+import { startSkinUploader } from "./jobs/skinUploader";
 import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
@@ -32,6 +34,7 @@ billingRoutes(api);
 perkRoutes(api);
 sightingRoutes(api);
 challengeRoutes(api);
+headRoutes(api);
 downloadRoutes(api, downloads);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
@@ -115,6 +118,7 @@ if (process.env.NO_JOBS !== "1") {
   } else {
     console.warn("HYPIXEL_API_KEY not set: crawler disabled, rankings will not update");
   }
+  startSkinUploader(ac.signal);
   daily(0, 5, snapshotRanks);
   daily(3, 0, rebuildLeaderboard);
   daily(0, 1, pickWeekly);

@@ -68,7 +68,8 @@ async function getMe(userId: number) {
       cancels: row.plan_cancels,
       comped: row.plan_comped,
       hasBilling: !!row.stripe_customer_id,
-      limits: { pins: limit(planOf(row), "pins"), comparePlayers: limit(planOf(row), "comparePlayers") },
+      limits: { pins: limit(planOf(row), "pins"), comparePlayers: limit(planOf(row), "comparePlayers"),
+                customHeads: limit(planOf(row), "customHeads") },
     },
     style: { accent: row.accent, banner: row.banner, cardTheme: row.card_theme,
              featuredAchievement: row.featured_achievement, vanity: row.vanity },
@@ -290,7 +291,7 @@ export function accountRoutes(app: Router) {
     const [
       sessions, matches, matchVotes, pinnedMatches, userStats, userProgress,
       userAchievements, userWeeklyChallenges, userThemes, spbPersonalBests,
-      rankSnapshots, linkCodes, dailyActivity, bugReports,
+      rankSnapshots, linkCodes, dailyActivity, bugReports, customHeads,
     ] = await Promise.all([
       pool.query(
         `SELECT id, kind, mod_version, mc_version, expires_at, created_at
@@ -308,6 +309,9 @@ export function accountRoutes(app: Router) {
       pool.query("SELECT * FROM link_codes WHERE user_id = $1 ORDER BY expires_at", [userId]),
       pool.query("SELECT day::date::text AS day, games, wins FROM daily_activity WHERE user_id = $1 ORDER BY day", [userId]),
       pool.query("SELECT id, mod_version, mc_version, note, log, created_at FROM bug_reports WHERE user_id = $1 ORDER BY created_at", [userId]),
+      pool.query(
+        `SELECT id, name, status, reject_reason, texture_hash, encode(png, 'base64') AS png_base64, created_at, reviewed_at, ready_at
+         FROM custom_heads WHERE user_id = $1 ORDER BY created_at`, [userId]),
     ]);
     req.reply.headers["content-disposition"] = 'attachment; filename="better-battle-data.json"';
     return {
@@ -331,6 +335,7 @@ export function accountRoutes(app: Router) {
         linkCodes: linkCodes.rows,
         bugReports: bugReports.rows,
         dailyActivity: dailyActivity.rows,
+        customHeads: customHeads.rows,
       },
     };
   });
@@ -530,6 +535,8 @@ export async function claimMinecraft(webUserId: number, uuid: string, name: stri
       if (stub.rows[0].claimed) fail(409, "already_claimed");
       finalUserId = stub.rows[0].id;
       await client.query("UPDATE sessions SET user_id = $1 WHERE user_id = $2", [finalUserId, webUserId]);
+      // Heads painted on the website before linking belong to the merged account too.
+      await client.query("UPDATE custom_heads SET user_id = $1 WHERE user_id = $2", [finalUserId, webUserId]);
       const source = await client.query(
         `DELETE FROM users WHERE id = $1
          RETURNING email, password_hash, discord_id, discord_name, avatar_url, bio`,

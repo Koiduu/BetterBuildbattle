@@ -92,6 +92,13 @@ public interface ApiClient {
         public List<Weekly> weeklyChallenges = new ArrayList<Weekly>();
         public String weekEndsAt;
         public List<WorldRecord> worldRecords = new ArrayList<WorldRecord>();
+        /** The player's ready custom heads. Null from servers that don't have them yet. */
+        public List<net.aspir3.betterbattle.heads.MyHeads.Entry> customHeads;
+    }
+
+    /** The player's ready custom heads ("My heads"). */
+    default List<net.aspir3.betterbattle.heads.MyHeads.Entry> myHeads() throws Exception {
+        throw new UnsupportedOperationException("myHeads");
     }
 
     final class Rejection {

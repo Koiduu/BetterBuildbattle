@@ -100,6 +100,7 @@ public final class HeadLibrary {
         }
         if (saved.favourites == null) saved.favourites = new ArrayList<Head>();
         if (saved.recent == null) saved.recent = new ArrayList<Head>();
+        MyHeads.init(modDir);
     }
 
     /** Pulls the texture hash out of a base64 "textures" property or a texture URL. Null if there isn't one. */
@@ -223,7 +224,11 @@ public final class HeadLibrary {
         List<Head> source = new ArrayList<Head>();
         if ("favourites".equals(category)) source.addAll(saved.favourites);
         else if ("recent".equals(category)) source.addAll(saved.recent);
-        else if ("all".equals(category)) for (List<Head> l : loaded.values()) source.addAll(l);
+        else if (MyHeads.CATEGORY.equals(category)) source.addAll(MyHeads.list());
+        else if ("all".equals(category)) {
+            source.addAll(MyHeads.list());
+            for (List<Head> l : loaded.values()) source.addAll(l);
+        }
         else if (loaded.containsKey(category)) source.addAll(loaded.get(category));
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         if (q.isEmpty()) return source;
