@@ -6,6 +6,8 @@ import { drawCard, CARD_W, CARD_H } from "./card.js";
 import { CARD_THEMES } from "./style-options.js";
 import { has } from "./plans.js";
 import { latestDownloads } from "./mod-downloads.js";
+import { stageAtViewport } from "./motion.js";
+import { confirmFeedback, feedbackLabel } from "./button-feedback.js";
 
 export const downloadUrl = (loader) => `/download/${loader}`;
 
@@ -74,10 +76,48 @@ export async function updatesPage() {
 
 // ---------------------------------------------------------------- Install
 
+export function playerJourney(onInstall = false) {
+  const chapters = [
+    ["Install the mod", "Pick the build for your Minecraft version, then join Hypixel and queue for Build Battle."],
+    ["Finish your first game", "The mod saves the match on your computer before syncing. You can look back at the result even if you didn't win."],
+    ["Earn your next level", "Games and weekly challenges earn XP toward your Aspiring Level. Press B in-game to see how close you are."],
+    ["Unlock achievements", "Your first game earns Aspiring. Later achievements give you a reason to try a new mode or beat a personal best."],
+    ["See how far you've climbed", "Link Minecraft to put your Better Battle stats on your profile. The global leaderboard still ranks by Hypixel Build Battle score."],
+  ];
+  return `
+    <section class="card journey" aria-labelledby="journey-title">
+      <div class="card-head">
+        <div><p class="journey-kicker">THE BETTER BATTLE MOD</p><h2 id="journey-title">From your first plot to the rankings</h2></div>
+        ${onInstall ? '<a href="/leaderboard" data-link>View the rankings</a>' : '<a class="btn small primary" href="/install" data-link>Install the mod</a>'}
+      </div>
+      <ol class="journey-chapters" role="list">
+        ${chapters.map(([heading, text], i) => `<li>
+          <span class="journey-number" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
+          <h3>${heading}</h3><p>${text}</p></li>`).join("")}
+      </ol>
+    </section>`;
+}
+
+let journeyObserver;
+export function watchJourney(root) {
+  journeyObserver?.disconnect();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+  journeyObserver ??= new IntersectionObserver((entries, observer) => {
+    for (const { isIntersecting, target } of entries) {
+      if (!isIntersecting) continue;
+      target.classList.add("chapter-in");
+      observer.unobserve(target);
+    }
+  }, { threshold: .25 });
+  root.querySelectorAll(".journey-chapters li").forEach((chapter) => journeyObserver.observe(chapter));
+}
+
 export async function installPage() {
   document.title = "Install · Better Battle";
   const step = (n, html) => `<li><span class="step">${n}</span><div>${html}</div></li>`;
   const ext = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+  const tab = (id, label, selected = false) => `<button type="button" role="tab" id="install-tab-${id}"
+    data-pick="${id}" aria-controls="install-panel-${id}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}">${label}</button>`;
   app.innerHTML = `
     <section class="intro">
       <h1>Install Better Battle</h1>
@@ -86,13 +126,13 @@ export async function installPage() {
     </section>
 
     <div class="toggle install-pick" role="tablist" aria-label="Minecraft version">
-      <button role="tab" data-pick="fabric" aria-pressed="true">Minecraft 26.3 (Fabric)</button>
-      <button role="tab" data-pick="fabric262" aria-pressed="false">Minecraft 26.2 (Fabric)</button>
-      <button role="tab" data-pick="fabric261" aria-pressed="false">Minecraft 26.1 (Fabric)</button>
-      <button role="tab" data-pick="forge" aria-pressed="false">Minecraft 1.8.9 (Forge)</button>
+      ${tab("fabric", "Minecraft 26.3 (Fabric)", true)}
+      ${tab("fabric262", "Minecraft 26.2 (Fabric)")}
+      ${tab("fabric261", "Minecraft 26.1 (Fabric)")}
+      ${tab("forge", "Minecraft 1.8.9 (Forge)")}
     </div>
 
-    <section class="card" data-panel="fabric">
+    <section class="card" role="tabpanel" id="install-panel-fabric" aria-labelledby="install-tab-fabric">
       <h2>Minecraft 26.3 with Fabric</h2>
       <ol class="steps">
         ${step(1, `Install ${ext("https://fabricmc.net/use/installer/", "Fabric Loader")} 0.20.1 or newer for Minecraft 26.3.`)}
@@ -103,7 +143,7 @@ export async function installPage() {
       <div class="release-info" data-release-info="fabric"></div>
     </section>
 
-    <section class="card" data-panel="fabric262" hidden>
+    <section class="card" role="tabpanel" id="install-panel-fabric262" aria-labelledby="install-tab-fabric262" hidden>
       <h2>Minecraft 26.2 with Fabric</h2>
       <ol class="steps">
         ${step(1, `Install ${ext("https://fabricmc.net/use/installer/", "Fabric Loader")} 0.20.1 or newer for Minecraft 26.2.`)}
@@ -114,7 +154,7 @@ export async function installPage() {
       <div class="release-info" data-release-info="fabric262"></div>
     </section>
 
-    <section class="card" data-panel="fabric261" hidden>
+    <section class="card" role="tabpanel" id="install-panel-fabric261" aria-labelledby="install-tab-fabric261" hidden>
       <h2>Minecraft 26.1 with Fabric</h2>
       <ol class="steps">
         ${step(1, `Install ${ext("https://fabricmc.net/use/installer/", "Fabric Loader")} 0.20.1 or newer for Minecraft 26.1.`)}
@@ -125,7 +165,7 @@ export async function installPage() {
       <div class="release-info" data-release-info="fabric261"></div>
     </section>
 
-    <section class="card" data-panel="forge" hidden>
+    <section class="card" role="tabpanel" id="install-panel-forge" aria-labelledby="install-tab-forge" hidden>
       <h2>Minecraft 1.8.9 with Forge</h2>
       <ol class="steps">
         ${step(1, `Install ${ext("https://files.minecraftforge.net/net/minecraftforge/forge/index_1.8.9.html", "Forge")} 11.15.1.2318 for Minecraft 1.8.9.`)}
@@ -135,18 +175,19 @@ export async function installPage() {
       <div class="release-info" data-release-info="forge"></div>
     </section>
 
-    <p id="download-status" class="sub" role="status" aria-live="polite"></p>
+    <p id="download-status" class="sub" role="status" hidden></p>
 
     <p class="sub">Works with the official launcher, Prism, MultiMC and other launchers that load Fabric or Forge mods.
       Clients with their own mod system may not load it.</p>
+
+    ${playerJourney(true)}
 
     <div class="cols even">
       <section class="card">
         <h2>Once you're in</h2>
         <ul class="plain ticks">
           <li>Press <b>B</b> (or type <code>/bb</code>) for your level, achievements, weekly challenges and last game.</li>
-          <li>Play a game. It's saved on your computer first, then synced.</li>
-          <li>To claim your profile here: sign up, open Account, get a code and run <code>/bb link &lt;code&gt;</code>.</li>
+          <li>To claim your profile here: <a href="/account" data-link>open Account</a>, get a code and run <code>/bb link &lt;code&gt;</code>.</li>
           <li>Don't want the extras? <b>Settings</b> in the B menu switches each one off.</li>
         </ul>
       </section>
@@ -160,28 +201,50 @@ export async function installPage() {
 
     <p class="muted">Stuck? See <a href="/support" data-link>Support</a>. Curious what changed? See <a href="/updates" data-link>Updates</a>.</p>`;
 
-  app.querySelector(".install-pick").addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-pick]");
-    if (!b) return;
-    for (const x of app.querySelectorAll("[data-pick]")) x.setAttribute("aria-pressed", String(x === b));
-    for (const p of app.querySelectorAll("[data-panel]")) p.hidden = p.dataset.panel !== b.dataset.pick;
+  watchJourney(app);
+  const picker = app.querySelector(".install-pick");
+  const tabs = [...picker.querySelectorAll("button")];
+  const select = (tab) => {
+    if (tab.getAttribute("aria-selected") === "true") return;
+    for (const other of tabs) {
+      const selected = other === tab;
+      other.setAttribute("aria-selected", String(selected));
+      other.tabIndex = selected ? 0 : -1;
+      const panel = document.getElementById(other.getAttribute("aria-controls"));
+      panel.hidden = !selected;
+      panel.classList.toggle("install-enter", selected);
+    }
+  };
+  picker.addEventListener("click", (e) => {
+    const tab = e.target.closest("button");
+    if (tab) select(tab);
+  });
+  picker.addEventListener("keydown", (e) => {
+    const i = tabs.indexOf(e.target);
+    if (i < 0 || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+    const j = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1
+      : (i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+    tabs[j].focus();
+    select(tabs[j]);
   });
 
   const status = app.querySelector("#download-status");
   const unavailable = () => {
+    if (!status.isConnected) return;
+    status.hidden = false;
     status.innerHTML = `Downloads are temporarily unavailable. Please try again later or visit <a href="/support" data-link>Support</a>.`;
   };
   try {
     const response = await fetch("/bb/v1/mod/latest");
     if (!response.ok) throw new Error("Release details unavailable");
     const release = await response.json();
-    let missing = false;
+    if (!status.isConnected) return;
     for (const loader of ["fabric", "fabric262", "fabric261", "forge"]) {
       const info = app.querySelector(`[data-release-info="${loader}"]`);
       const asset = release[loader];
       if (!asset) {
         info.innerHTML = `<p class="sub">This download is temporarily unavailable.</p>`;
-        missing = true;
         continue;
       }
       const version = esc(release.version || asset.version);
@@ -191,7 +254,6 @@ export async function installPage() {
       info.innerHTML = `<p class="sub">Version ${version} · built ${esc(built)}</p>`;
       if (!asset.sha256) {
         info.innerHTML += `<p class="sub">SHA-256 checksum unavailable; this download cannot be verified.</p>`;
-        missing = true;
         continue;
       }
       info.innerHTML += `
@@ -202,23 +264,9 @@ export async function installPage() {
           <p>macOS/Linux: <code>shasum -a 256 ${esc(asset.file)}</code></p>
         </details>`;
     }
-    if (missing) unavailable();
   } catch {
     unavailable();
   }
-}
-
-/** A strip on the home page announcing the latest update. */
-export async function updateBanner(el) {
-  const data = await fetch("/updates.json").then((r) => r.json()).catch(() => null);
-  const u = data?.updates?.[0];
-  if (!u || !el) return;
-  el.innerHTML = `
-    <div class="banner">
-      <span class="chip pink">New</span>
-      <span><b>${esc(u.title)}</b> <span class="muted">v${esc(u.version)}</span></span>
-      <span class="banner-links"><a href="/updates" data-link>What's new</a><a class="btn small primary" href="/install" data-link>Install</a></span>
-    </div>`;
 }
 
 // ---------------------------------------------------------------- Speed Builders
@@ -654,14 +702,16 @@ export async function openShareCard(p) {
   const ach = p.betterBattle ? await get(`/players/${n}/achievements`).catch(() => ({ unlocked: [] })) : { unlocked: [] };
   const canvas = await cardCanvas(p, ach.unlocked.length);
   const dialog = document.createElement("dialog");
+  if (document.querySelector(".share-dialog[open]")) return;
   dialog.className = "card share-dialog";
+  dialog.setAttribute("aria-labelledby", "share-title");
   dialog.innerHTML = `
-    <div class="card-head"><h2>Share card</h2><button class="icon-btn" data-close aria-label="Close">✕</button></div>
+    <div class="card-head"><h2 id="share-title">Share card</h2><button class="icon-btn" data-close aria-label="Close">✕</button></div>
     <p class="sub">Post it in Discord or anywhere else.</p>
     <div class="share-preview"></div>
     <div class="row-actions">
       <button class="btn primary" data-download>Download PNG</button>
-      <button class="btn" data-copy>Copy image</button>
+      <button class="btn" data-copy data-feedback>${feedbackLabel("Copy image", "Copied")}</button>
       <span class="muted" data-status role="status"></span>
     </div>`;
   dialog.querySelector(".share-preview").append(canvas);
@@ -681,9 +731,11 @@ export async function openShareCard(p) {
         status.textContent = "Couldn't make the image in this browser.";
       }
     }
-    if (e.target.closest("[data-copy]")) {
+    const copy = e.target.closest("[data-copy]");
+    if (copy) {
       try {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob() })]);
+        confirmFeedback(copy);
         status.textContent = "Copied. Paste it into Discord.";
       } catch {
         status.textContent = "Your browser can't copy images. Use Download instead.";
@@ -691,5 +743,6 @@ export async function openShareCard(p) {
     }
   });
   dialog.addEventListener("close", () => dialog.remove());
+  stageAtViewport();
   dialog.showModal();
 }

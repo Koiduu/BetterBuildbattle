@@ -1,21 +1,12 @@
-// Launch: until LAUNCH, everyone gets a full-screen countdown. Visitors see "Sign up early"; people who
-// have signed up see that they're in, and come back to the countdown, not the site, until it opens.
-// From LAUNCH a bar tells visitors who aren't signed in that the site is live, for a week; it can be
-// closed. The sign-up, login and password-reset pages are never covered, so those keep working.
+// The pre-launch countdown stays out of sign-up, login and password reset.
 
 const LAUNCH = Date.parse("2026-11-25T18:00:00Z");
-const LIVE_FOR_MS = 7 * 24 * 60 * 60 * 1000;
-const CLOSED_KEY = "bb_launch_closed";
 
 let timer = null;
 let signedIn = false;
 let accountKnown = false;   // until /me answers, so signed-in visitors never see it flash
 
 const pad = (n) => String(n).padStart(2, "0");
-
-function closed() {
-  try { return localStorage.getItem(CLOSED_KEY) === "1"; } catch { return false; }
-}
 
 function parts(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -117,56 +108,26 @@ function hideScreen() {
   document.querySelector(".shell")?.removeAttribute("inert");
 }
 
-// ---- the bar, the week after launch
-
-function hideBar() {
-  const bar = document.getElementById("launch-bar");
-  if (!bar) return;
-  bar.hidden = true;
-  bar.innerHTML = "";
-}
-
-function showLiveBar() {
-  const bar = document.getElementById("launch-bar");
-  if (!bar || !bar.hidden) return;
-  bar.innerHTML = `
-    <div class="launch-inner">
-      <span class="launch-text"><b>Better Battle is live.</b> Make an account to claim your profile and keep your stats.</span>
-      <a class="btn small primary" href="/signup" data-link>Sign up</a>
-      <button class="launch-close" type="button" aria-label="Close">×</button>
-    </div>`;
-  bar.querySelector(".launch-close").addEventListener("click", () => {
-    try { localStorage.setItem(CLOSED_KEY, "1"); } catch {}
-    hideBar();
-  });
-  bar.hidden = false;
-}
-
 /** Re-check who's looking and where. Called on every page change and whenever the account changes. */
-export function updateLaunchBar(user) {
+export function updateLaunchScreen(user) {
   if (user !== undefined) {
     signedIn = !!user;
     accountKnown = true;
   }
   const now = Date.now();
   const onAuthPage = /^\/(signup|login|forgot|reset)\/?$/.test(location.pathname);
-  const visitor = accountKnown && !signedIn && !onAuthPage;
-
   if (accountKnown && !onAuthPage && now < LAUNCH) {
-    hideBar();
     showScreen(now);
-    if (!timer) timer = setInterval(() => updateLaunchBar(), 1000);
+    if (!timer) timer = setInterval(() => updateLaunchScreen(), 1000);
     return;
   }
   hideScreen();
   if (now < LAUNCH && accountKnown && !timer) {
     // On the sign-up or login page: keep ticking so the screen comes back if they go elsewhere
-    timer = setInterval(() => updateLaunchBar(), 1000);
+    timer = setInterval(() => updateLaunchScreen(), 1000);
   }
   if (now >= LAUNCH) {
     clearInterval(timer);
     timer = null;
   }
-  if (visitor && now >= LAUNCH && now <= LAUNCH + LIVE_FOR_MS && !closed()) showLiveBar();
-  else hideBar();
 }

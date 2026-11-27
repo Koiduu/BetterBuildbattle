@@ -3,6 +3,7 @@
 // leaderboards). The server decides every gate (api/src/lib/plans.ts); this only shows the result.
 import { app, esc, num, percent, avatar, get, go, request, me, meReady, loadMe, API, MODES, ordinal } from "./app.js";
 import { ACCENTS, BANNERS, CARD_THEMES } from "./style-options.js";
+import { announceFeedback, clearFeedback, confirmFeedback, feedbackLabel } from "./button-feedback.js";
 
 const NAMES = { free: "Builder", architect: "Architect", master: "Master Builder" };
 const RANK = { free: 0, architect: 1, master: 2 };
@@ -183,7 +184,7 @@ async function renderStyleEditor(el) {
       <form class="field" id="vanity-form"><span>Your link</span>
         <div class="inline-form"><span class="muted">${esc(location.host)}/</span>
           <input id="vanity" maxlength="20" value="${esc(style.vanity ?? "")}" placeholder="yourname" autocomplete="off" spellcheck="false">
-          <button class="btn small" type="submit">Save</button></div></form>
+          <button class="btn small" type="submit" data-feedback>${feedbackLabel("Save", "Saved")}</button></div></form>
     </div>
     <p class="muted saved" id="style-status" role="status"></p>`;
   const status = el.querySelector("#style-status");
@@ -209,9 +210,19 @@ async function renderStyleEditor(el) {
     }
   });
   el.querySelector("#featured").addEventListener("change", (e) => save({ featuredAchievement: e.target.value || null }));
-  el.querySelector("#vanity-form").addEventListener("submit", (e) => {
+  const vanityForm = el.querySelector("#vanity-form");
+  const vanity = el.querySelector("#vanity");
+  const vanityButton = vanityForm.querySelector("button");
+  vanity.addEventListener("input", () => clearFeedback(vanityButton));
+  vanityForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    save({ vanity: el.querySelector("#vanity").value.trim().toLowerCase() || null });
+    if (vanityButton.disabled) return;
+    const value = vanity.value.trim().toLowerCase() || null;
+    vanityButton.disabled = true;
+    if (await save({ vanity: value }) && (vanity.value.trim().toLowerCase() || null) === value) {
+      confirmFeedback(vanityButton);
+    }
+    vanityButton.disabled = false;
   });
 }
 
@@ -625,7 +636,7 @@ export async function groupPage(slug) {
           <p class="sub">Anyone with this link can join for free. Making a new link turns the old one off.</p>
           <div class="inline-form">
             <input id="invite-link" readonly value="${esc(inviteLink)}" aria-label="Invite link">
-            <button class="btn primary" id="copy-invite">Copy</button>
+            <button class="btn primary" id="copy-invite" data-feedback>${feedbackLabel("Copy", "Copied")}</button>
             <button class="btn" id="new-invite">New link</button>
           </div>
           <div class="row-actions" style="margin-top:12px"><button class="btn danger" id="delete-group">Delete this leaderboard</button></div>`
@@ -642,9 +653,14 @@ export async function groupPage(slug) {
       g.members = g.members.filter((m) => String(m.id) !== kick.dataset.kick);
       return draw();
     }
-    if (e.target.id === "copy-invite") {
-      await navigator.clipboard.writeText(document.getElementById("invite-link").value).catch(() => {});
-      e.target.textContent = "Copied";
+    const copy = e.target.closest("#copy-invite");
+    if (copy) {
+      try {
+        await navigator.clipboard.writeText(document.getElementById("invite-link").value);
+        confirmFeedback(copy, "Invite link copied.");
+      } catch {
+        announceFeedback("Couldn't copy automatically. You can select the invite link and copy it.");
+      }
     }
     if (e.target.id === "new-invite") {
       const r = await request("POST", `/groups/${slug}/invite`, {}).catch(() => null);
