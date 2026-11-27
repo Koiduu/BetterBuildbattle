@@ -367,7 +367,7 @@ public final class BetterBattle {
         sync.compare(name);
     }
 
-    /** /bb help. headsAndBanners: the Fabric build has the Head Database and banners; Forge doesn't. */
+    /** /bb help. headsAndBanners: the Fabric build has the Head Database and round screenshots; Forge doesn't. */
     public List<String> helpLines(boolean headsAndBanners) {
         List<String> out = new ArrayList<String>();
         out.add("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a76Commands");
@@ -380,10 +380,8 @@ public final class BetterBattle {
         out.add("\u00a7b/bb recap \u00a77Your last game in full");
         out.add("\u00a7b/bb weekly \u00a77This week's challenges");
         out.add("\u00a7b/bb news \u00a77What's new in this version");
-        if (headsAndBanners) {
-            out.add("\u00a7b/bb heads [search] \u00a77The Head Database");
-            out.add("\u00a7b/bb banners \u00a77Banner designs");
-        }
+        if (headsAndBanners) out.add("\u00a7b/bb heads [search] \u00a77The Head Database");
+        out.add("\u00a7b/bb banners \u00a77The Banner Database: flags, letters, symbols and more");
         out.add("\u00a7b/bb palette [size] \u00a77A random block palette to build with");
         out.add("\u00a7b/bb settings \u00a77Switch features on and off, including Low-end mode");
         out.add("\u00a7b/bb sync \u00a77Upload your games now");
