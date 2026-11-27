@@ -1,9 +1,9 @@
 // Plans on the website: the pricing page, the account's plan and style editor, what supporters'
 // profiles show, leaderboard positions, and the Master Builder pages (insights, Wrapped, private
 // leaderboards). The server decides every gate (api/src/lib/plans.ts); this only shows the result.
-import { app, esc, num, percent, avatar, get, go, request, me, meReady, loadMe, API, MODES, ordinal } from "./app.js";
-import { ACCENTS, BANNERS, CARD_THEMES } from "./style-options.js";
-import { announceFeedback, clearFeedback, confirmFeedback, feedbackLabel } from "./button-feedback.js";
+import { app, esc, num, percent, avatar, get, go, request, me, meReady, loadMe, API, MODES, ordinal } from "./app.js?v=web-polish-1";
+import { ACCENTS, BANNERS, CARD_THEMES } from "./style-options.js?v=web-polish-1";
+import { announceFeedback, clearFeedback, confirmFeedback, feedbackLabel } from "./button-feedback.js?v=web-polish-1";
 
 const NAMES = { free: "Builder", architect: "Architect", master: "Master Builder" };
 const RANK = { free: 0, architect: 1, master: 2 };

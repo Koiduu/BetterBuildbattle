@@ -53,6 +53,9 @@
     <span class="mojang">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</span>
   </footer>
 </div>
-<script src="/app.js" type="module"></script>
+<!-- The previous cached app expects these nodes on startup. -->
+<div hidden><div id="cookie-notice"><button id="cookie-notice-ok" type="button"></button></div></div>
+<!-- Bump this revision and all browser imports together, including imports back to app.js. -->
+<script src="/app.js?v=web-polish-1" type="module"></script>
 </body>
 </html>

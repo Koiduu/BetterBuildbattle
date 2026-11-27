@@ -1,13 +1,13 @@
 // The Speed Builders update on the website: patch notes, Speed Builders leaderboards, comparing
 // two players, and the profile's weekly challenges, achievement rarity, best times and share card.
 // Kept apart from app.js so the two can change independently; app.js imports these.
-import { app, esc, num, percent, title, avatar, get, go, meReady, NAME_RE } from "./app.js";
-import { drawCard, CARD_W, CARD_H } from "./card.js";
-import { CARD_THEMES } from "./style-options.js";
-import { has } from "./plans.js";
-import { latestDownloads } from "./mod-downloads.js";
-import { stageAtViewport } from "./motion.js";
-import { confirmFeedback, feedbackLabel } from "./button-feedback.js";
+import { app, esc, num, percent, title, avatar, get, go, meReady, NAME_RE } from "./app.js?v=web-polish-1";
+import { drawCard, CARD_W, CARD_H } from "./card.js?v=web-polish-1";
+import { CARD_THEMES } from "./style-options.js?v=web-polish-1";
+import { has } from "./plans.js?v=web-polish-1";
+import { latestDownloads } from "./mod-downloads.js?v=web-polish-1";
+import { stageAtViewport } from "./motion.js?v=web-polish-1";
+import { confirmFeedback, feedbackLabel } from "./button-feedback.js?v=web-polish-1";
 
 export const downloadUrl = (loader) => `/download/${loader}`;
 

@@ -1,15 +1,15 @@
 import {
   updatesPage, speedBuildersPage, speedBuildPage, comparePage, installPage, playerJourney, watchJourney,
   loadWeekly, renderAchievements, spbBestsSection, loadSpbBests, openShareCard,
-} from "./features.js";
+} from "./features.js?v=web-polish-1";
 import {
   plansPage, insightsPage, wrappedPage, groupsPage, groupPage, resolveVanity, renderPlanCard, supporterChip,
   supporterMark, decorateProfile, featuredAchievement, positionsSection, loadPositions, boardPicker, boardTable,
-} from "./plans.js";
-import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
-import { updateLaunchScreen } from "./launch.js";
-import { elasticPage, stageAtViewport } from "./motion.js";
-import { announceFeedback, clearFeedback, confirmFeedback, feedbackLabel } from "./button-feedback.js";
+} from "./plans.js?v=web-polish-1";
+import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js?v=web-polish-1";
+import { updateLaunchScreen } from "./launch.js?v=web-polish-1";
+import { elasticPage, stageAtViewport } from "./motion.js?v=web-polish-1";
+import { announceFeedback, clearFeedback, confirmFeedback, feedbackLabel } from "./button-feedback.js?v=web-polish-1";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
