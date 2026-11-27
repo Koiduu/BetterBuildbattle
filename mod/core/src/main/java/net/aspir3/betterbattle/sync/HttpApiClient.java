@@ -118,6 +118,30 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(request("GET", "/mod/compare?name=" + java.net.URLEncoder.encode(name, "UTF-8"), null), Compare.class);
     }
 
+    public net.aspir3.betterbattle.pings.TeammatePings.Poll pingPoll(String teammate) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("teammate", teammate);
+        return gson.fromJson(post("/mod/pings/poll", gson.toJson(body)), net.aspir3.betterbattle.pings.TeammatePings.Poll.class);
+    }
+
+    public void pingSend(String teammate, String kind, int[] block) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("teammate", teammate);
+        body.put("kind", kind);
+        if (block != null) {
+            Map<String, Object> at = new LinkedHashMap<String, Object>();
+            at.put("x", block[0]);
+            at.put("y", block[1]);
+            at.put("z", block[2]);
+            body.put("block", at);
+        }
+        post("/mod/pings/send", gson.toJson(body));
+    }
+
+    public void pingLeave() throws Exception {
+        post("/mod/pings/leave", "{}");
+    }
+
     public Bootstrap bootstrap() throws Exception {
         return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
     }

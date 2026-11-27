@@ -50,6 +50,8 @@ public final class Config {
     public boolean roundScreenshots = true;
     /** For slower PCs: far fewer heads drawn at once in the Head Database, which is the heaviest screen. */
     public boolean lowEndMode = false;
+    /** Teams only: callouts and block markers to and from a teammate who also has Better Battle. */
+    public boolean teammatePings = true;
     /** The version whose What's New page was last shown. */
     public String lastSeenVersion = "";
 
@@ -92,6 +94,7 @@ public final class Config {
         new Toggle("spbTimer", "Speed Builders timer", "A stopwatch with your best time while you build"),
         new Toggle("spbShowRecord", "Show world record", "Put the Better Battle record on the timer too"),
         new Toggle("pinnedAchievementsHud", "Pinned achievements HUD", "Keep up to three achievement goals on screen"),
+        new Toggle("teammatePings", "Teammate pings", "Teams only: send callouts and block markers to a teammate with the mod"),
         new Toggle("recap", "Game recap in chat", "A short summary after each game"),
         new Toggle("toasts", "Achievement pop-ups", "The box in the corner when you unlock one"),
         new Toggle("chatMessages", "Chat messages", "Achievement and sync messages in chat"),

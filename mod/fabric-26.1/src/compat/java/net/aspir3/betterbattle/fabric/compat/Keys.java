@@ -12,4 +12,14 @@ public final class Keys {
     public static KeyMapping menuKey(String name, KeyMapping.Category category) {
         return new KeyMapping(name, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, category);
     }
+
+    /** Teams: G opens the ping wheel, rebindable in Controls. */
+    public static KeyMapping pingWheelKey(String name, KeyMapping.Category category) {
+        return new KeyMapping(name, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, category);
+    }
+
+    /** Teams: V marks the block you look at for your teammate, rebindable in Controls. */
+    public static KeyMapping blockPingKey(String name, KeyMapping.Category category) {
+        return new KeyMapping(name, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, category);
+    }
 }

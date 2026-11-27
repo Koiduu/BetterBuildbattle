@@ -64,6 +64,7 @@ public class BetterBattleForge implements Platform {
     private File configDir;
     private BetterBattle core;
     private KeyBinding menuKey;
+    private KeyBinding pingWheelKey, blockPingKey;
     private final ConcurrentLinkedQueue<PacketWatcher.BlockChange> blockChanges = new ConcurrentLinkedQueue<PacketWatcher.BlockChange>();
     private GuiScreen pendingScreen;
     private boolean connected, joined, plotFound;
@@ -85,9 +86,14 @@ public class BetterBattleForge implements Platform {
         core = BetterBattle.init(this, configDir, VERSION, MC_VERSION);
         menuKey = new KeyBinding("key.betterbattle.menu", Keyboard.KEY_B, "key.category.betterbattle");
         ClientRegistry.registerKeyBinding(menuKey);
+        pingWheelKey = new KeyBinding("key.betterbattle.ping_wheel", Keyboard.KEY_G, "key.category.betterbattle");
+        blockPingKey = new KeyBinding("key.betterbattle.block_ping", Keyboard.KEY_V, "key.category.betterbattle");
+        ClientRegistry.registerKeyBinding(pingWheelKey);
+        ClientRegistry.registerKeyBinding(blockPingKey);
         ClientCommandHandler.instance.registerCommand(new BbCommand(this));
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
+        MinecraftForge.EVENT_BUS.register(new net.aspir3.betterbattle.forge.ui.PingToasts());
         MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
         MinecraftForge.EVENT_BUS.register(new PinnedAchievementsHud());
     }
@@ -171,6 +177,7 @@ public class BetterBattleForge implements Platform {
         Minecraft mc = Minecraft.getMinecraft();
 
         while (menuKey.isPressed()) pendingScreen = menu();
+        Pings.tick(mc, core, pingWheelKey, blockPingKey);
         if (pendingScreen != null) {
             mc.displayGuiScreen(pendingScreen);
             pendingScreen = null;
@@ -297,6 +304,16 @@ public class BetterBattleForge implements Platform {
     @Override
     public void openPage(Pages.Page page) {
         pendingScreen = new TextPageScreen(null, page);
+    }
+
+    @Override
+    public void showPing(String title, String text) {
+        net.aspir3.betterbattle.forge.ui.PingToasts.add(title, text);
+    }
+
+    @Override
+    public void showBlockPing(String from, int x, int y, int z, long untilMs) {
+        Pings.mark(x, y, z, untilMs);
     }
 
     @Override
