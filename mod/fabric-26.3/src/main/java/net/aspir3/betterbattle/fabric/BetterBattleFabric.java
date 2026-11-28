@@ -4,6 +4,11 @@ import net.aspir3.betterbattle.fabric.compat.Compat;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.LongArgumentType;
+import net.aspir3.betterbattle.fabric.ui.LobbiesScreen;
+import net.aspir3.betterbattle.fabric.ui.LobbyToast;
+import net.aspir3.betterbattle.fabric.ui.MyLobbyScreen;
+import net.aspir3.betterbattle.fabric.ui.StartLobbyScreen;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.Platform;
@@ -182,6 +187,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                         return open(() -> new HeadsScreen(null, q));
                     })))
                 .then(ClientCommands.literal("banners").executes(c -> open(() -> new BannersScreen(null))))
+                .then(lfgCommand())
                 .then(ClientCommands.literal("settings").executes(c -> open(() -> new SettingsScreen(null))))
                 .then(ClientCommands.literal("sync").executes(c -> {
                     if (!core.active()) {
@@ -219,6 +225,18 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                         : "Debug log §coff§7."));
                     return 1;
                 }))));
+    }
+
+    /** /bb lfg: the lobby browser, and what the clickable chat buttons of lobby messages run. */
+    private com.mojang.brigadier.builder.LiteralArgumentBuilder<net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource> lfgCommand() {
+        return ClientCommands.literal("lfg").executes(c -> open(() -> new LobbiesScreen(null)))
+            .then(ClientCommands.literal("mine").executes(c -> open(() -> new MyLobbyScreen(new LobbiesScreen(null)))))
+            .then(ClientCommands.literal("start").executes(c -> open(() -> new StartLobbyScreen(new LobbiesScreen(null)))))
+            .then(ClientCommands.literal("claim").executes(c -> { core.lfg().claim(); return 1; }))
+            .then(ClientCommands.literal("accept").then(ClientCommands.argument("request", LongArgumentType.longArg(1))
+                .executes(c -> { core.lfg().decide(LongArgumentType.getLong(c, "request"), "accept"); return 1; })))
+            .then(ClientCommands.literal("decline").then(ClientCommands.argument("request", LongArgumentType.longArg(1))
+                .executes(c -> { core.lfg().decide(LongArgumentType.getLong(c, "request"), "decline"); return 1; })));
     }
 
     /** The B menu, or What's New on the first press after an update (Back goes to the menu). */
@@ -470,6 +488,29 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                 image.close();
             }
         });
+    }
+
+    @Override
+    public void lobbyToast(String title, String line) {
+        Compat.toasts(Minecraft.getInstance()).addToast(new LobbyToast(title, line));
+    }
+
+    @Override
+    public void chatButtons(String message, String[][] buttons) {
+        net.minecraft.network.chat.MutableComponent line = Component.literal(message);
+        for (String[] b : buttons) {
+            final String command = b[1];
+            line.append(" ").append(Component.literal(b[0]).withStyle(s -> s
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(command))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal(command)))));
+        }
+        Compat.chatListener(Minecraft.getInstance()).handleSystemMessage(line, false);
+    }
+
+    /** Opens the chat box with the text typed in, on the next tick. Nothing is sent until the player presses Enter. */
+    @Override
+    public void fillChat(String text) {
+        pendingScreen = () -> new net.minecraft.client.gui.screens.ChatScreen(text, false);
     }
 
     @Override

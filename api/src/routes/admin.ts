@@ -8,7 +8,7 @@ import { planOf } from "../lib/plans";
 
 const VOTES = ["super_poop", "poop", "meh", "ok", "good", "epic", "legendary"] as const;
 
-function requireAdmin(req: Req) {
+export function requireAdmin(req: Req) {
   const expected = process.env.ADMIN_TOKEN ?? "";
   const given = String(req.headers["x-admin-token"] ?? "");
   const ok = expected.length >= 16 && given.length === expected.length &&
