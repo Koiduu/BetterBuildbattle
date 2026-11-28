@@ -42,14 +42,14 @@ type MeRow = {
   card_theme: string | null;
   featured_achievement: string | null;
   vanity: string | null;
-  adult_confirmed_at: Date | null;
+  voice_enabled_at: Date | null;
 };
 
 async function getMe(userId: number) {
   const result = await pool.query<MeRow>(
     `SELECT id, email, password_hash, discord_id, discord_name, avatar_url,
             mc_uuid, mc_name, bio, created_at, plan, plan_until, plan_cancels, plan_comped,
-            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity, adult_confirmed_at
+            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity, voice_enabled_at
      FROM users WHERE id = $1`, [userId]);
   const row = result.rows[0];
   if (!row) fail(401, "not_logged_in");
@@ -63,7 +63,7 @@ async function getMe(userId: number) {
     minecraft: row.mc_uuid ? { uuid: row.mc_uuid, name: row.mc_name } : null,
     bio: row.bio,
     // Self-declared, not verified. Voice chat is only offered when it is set.
-    adultConfirmed: !!row.adult_confirmed_at,
+    voiceEnabled: !!row.voice_enabled_at,
     createdAt: row.created_at,
     plan: {
       id: planOf(row),
@@ -152,14 +152,13 @@ export function accountRoutes(app: Router) {
   app.get("/auth/providers", async () => ({ discord: configuredDiscord() }));
 
   app.post("/auth/signup", [rateLimit(10, 60_000, "/auth/signup")], async (req) => {
-    const { email, password, adult } = z.object({ email: EMAIL, password: PASSWORD, adult: z.boolean().default(false) }).parse(req.body);
+    const { email, password } = z.object({ email: EMAIL, password: PASSWORD }).parse(req.body);
     const passwordHash = await hash(password);
     let userId: number;
     try {
       const result = await pool.query(
-        `INSERT INTO users (email, password_hash, claimed, adult_confirmed_at)
-         VALUES ($1, $2, true, CASE WHEN $3 THEN now() END) RETURNING id`,
-        [email, passwordHash, adult]);
+        "INSERT INTO users (email, password_hash, claimed) VALUES ($1, $2, true) RETURNING id",
+        [email, passwordHash]);
       userId = result.rows[0].id;
     } catch (error) {
       if (uniqueViolation(error)) fail(409, "email_taken");
@@ -405,13 +404,13 @@ export function accountRoutes(app: Router) {
     return getMe(req.user.id);
   });
 
-  // "I'm 18 or older". Self-declared: an extra layer for voice chat, not age verification.
-  app.put("/me/adult", [requireWebSession], async (req) => {
-    const { adult } = z.object({ adult: z.boolean() }).parse(req.body);
+  // Voice chat is opt-in: off until the player turns it on here. Turning it off leaves any call straight away.
+  app.put("/me/voice", [requireWebSession], async (req) => {
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
     await pool.query(
-      "UPDATE users SET adult_confirmed_at = CASE WHEN $2 THEN COALESCE(adult_confirmed_at, now()) END WHERE id = $1",
-      [req.user.id, adult]);
-    if (!adult) await dropFromVoice(req.user.id);
+      "UPDATE users SET voice_enabled_at = CASE WHEN $2 THEN COALESCE(voice_enabled_at, now()) END WHERE id = $1",
+      [req.user.id, enabled]);
+    if (!enabled) await dropFromVoice(req.user.id);
     return getMe(req.user.id);
   });
 

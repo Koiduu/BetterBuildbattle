@@ -3,7 +3,8 @@
 //
 // Consent is mutual: a player is let into a channel only after they asked for it from their own mod, and in
 // "team" scope every member must name the same group (so nobody can pull someone in by typing their name).
-// Voice needs a linked Discord account that is in the Better Battle server and a self-declared 18+ flag.
+// Voice is opt-in (off until the player turns it on on the account page) and needs a linked Discord account
+// that is in the Better Battle server, where Discord's own blocking and reporting apply.
 // Nothing is recorded; the rows here only track open channels and go away with them.
 import { pool } from "../db/pool";
 import { fail } from "../http";
@@ -111,12 +112,12 @@ type Me = { name: string; discordId: string };
 /** The asking player, with the reason they can't use voice yet if there is one. */
 async function eligibleMe(b: VoiceBackend, userId: number): Promise<Me> {
   const r = await pool.query(
-    `SELECT u.mc_name, u.adult_confirmed_at,
+    `SELECT u.mc_name, u.voice_enabled_at,
             COALESCE(u.discord_id, (SELECT l.discord_id FROM discord_links l WHERE l.mc_uuid = u.mc_uuid LIMIT 1)) AS discord_id
      FROM users u WHERE u.id = $1`, [userId]);
   const row = r.rows[0];
   if (!row?.mc_name) return fail(400, "no_minecraft");
-  if (!row.adult_confirmed_at) return fail(403, "adult_required");
+  if (!row.voice_enabled_at) return fail(403, "voice_off");
   if (!row.discord_id) return fail(403, "discord_required");
   if (!await b.isMember(row.discord_id)) return fail(403, "not_in_server", { invite: b.inviteUrl });
   return { name: String(row.mc_name), discordId: String(row.discord_id) };
@@ -224,7 +225,7 @@ export async function leaveVoice(userId: number) {
   return { ok: true };
 }
 
-/** For the account page: someone who takes back 18+ or unlinks Discord leaves voice straight away. */
+/** For the account page: someone who turns voice off or unlinks Discord leaves voice straight away. */
 export async function dropFromVoice(userId: number) {
   if (backend) await leaveCurrent(backend, userId).catch((e) => console.error("voice leave failed", e));
 }

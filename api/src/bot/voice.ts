@@ -63,7 +63,7 @@ export function startVoice(client: Client, guildId: string) {
       if (!channel || channel.type !== ChannelType.GuildVoice) return;
       await channel.permissionOverwrites.set(overwrites(g, discordIds));
       await channel.setUserLimit(Math.min(Math.max(discordIds.length, 2), 99));
-      // Anyone connected who isn't allowed any more (left the group, took back 18+) is disconnected
+      // Anyone connected who isn't allowed any more (left the group, turned voice off) is disconnected
       const allowed = new Set(discordIds);
       for (const [id, member] of channel.members) {
         if (!allowed.has(id) && id !== client.user?.id) await member.voice.disconnect().catch(() => {});

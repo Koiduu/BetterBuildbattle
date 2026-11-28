@@ -135,7 +135,7 @@ public final class VoiceScreen extends GuiScreen implements GuiYesNoCallback {
         for (String line : new String[] {
             "Talk on the Better Battle Discord with your teammate or party.",
             "Everyone you name has to press Voice too, so nobody ends up in a call with strangers.",
-            "You need 18+ ticked and Discord linked on your account page on the website.",
+            "Turn on voice chat and link Discord on your account page on the website first.",
         }) {
             drawCenteredString(fontRendererObj, line, cx, y, 0xAAAAAA);
             y += 12;

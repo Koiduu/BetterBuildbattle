@@ -426,7 +426,7 @@ public final class BetterBattle {
         out.add("\u00a7b/bb stats \u00a77Your own numbers: games, wins, win rate by mode");
         out.add("\u00a7b/bb rank \u00a77Where you stand today, this week, this month and all time");
         out.add("\u00a7b/bb compare <name> \u00a77You next to another player");
-        out.add("\u00a7b/bb voice [names] \u00a77Discord voice with your teammate or party (18+). \u00a7b/bb voice leave \u00a77to leave");
+        out.add("\u00a7b/bb voice [names] \u00a77Discord voice with your teammate or party. \u00a7b/bb voice leave \u00a77to leave");
         if (headsAndBanners) out.add("\u00a7b/bb shots \u00a77Your round screenshots, kept for 15 days");
         out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
         out.add("\u00a7b/bb recap \u00a77Your last game in full");
@@ -676,7 +676,7 @@ public final class BetterBattle {
                     } else if (v.waiting()) {
                         String who = v.waitingFor == null || v.waitingFor.isEmpty() ? "the others" : join(v.waitingFor);
                         platform.chat(VOICE_PREFIX + "Waiting for §f" + who + "§7 to press Voice too. They need Better Battle, "
-                            + "18+ ticked on the website and Discord linked. You'll get a message here when the channel is ready.");
+                            + "voice turned on on the website and Discord linked. You'll get a message here when the channel is ready.");
                     } else {
                         platform.chat(VOICE_PREFIX + "You're not in a voice channel.");
                     }

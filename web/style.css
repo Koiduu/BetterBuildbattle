@@ -666,7 +666,6 @@ th.right, td.right { text-align: right; }
 .field small { font-size: 12px; color: var(--muted); }
 .check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .check input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--gold); }
-.check small { display: block; font-size: 12px; color: var(--muted); }
 .voice-card { display: flex; flex-direction: column; gap: 10px; }
 
 .form input,

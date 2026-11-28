@@ -286,8 +286,8 @@ public final class SyncService {
     /** What to tell the player when the server turns voice down: the message, and a page that fixes it or null. */
     public static String[] voiceProblem(Exception e) {
         String m = String.valueOf(e.getMessage());
-        if (m.contains("adult_required")) return new String[] {
-            "Voice chat is for players 18 or older. Tick \"I'm 18 or older\" on your account page on the website first.", "/account"};
+        if (m.contains("voice_off")) return new String[] {
+            "Voice chat is off for your account. Turn on \"Allow voice chat\" on your account page on the website first.", "/account"};
         if (m.contains("discord_required")) return new String[] {
             "Connect your Discord account on your account page on the website first.", "/account"};
         if (m.contains("not_in_server")) {

@@ -76,8 +76,8 @@ public class VoiceTest {
         check(BetterBattle.voiceNames("not-a-name") == null, "dash refused");
         check(BetterBattle.voiceNames("way_too_long_name_x") == null, "17 letters refused");
 
-        String[] p = SyncService.voiceProblem(new Exception("HTTP 403: {\"error\":\"adult_required\"}"));
-        check(p[0].contains("18") && "/account".equals(p[1]), "18+ sends you to the account page");
+        String[] p = SyncService.voiceProblem(new Exception("HTTP 403: {\"error\":\"voice_off\"}"));
+        check(p[0].contains("Allow voice chat") && "/account".equals(p[1]), "voice turned off sends you to the account page");
         p = SyncService.voiceProblem(new Exception("HTTP 403: {\"error\":\"discord_required\"}"));
         check(p[0].contains("Discord") && "/account".equals(p[1]), "no Discord sends you to the account page");
         p = SyncService.voiceProblem(new Exception("HTTP 403: {\"error\":\"not_in_server\",\"invite\":\"https://discord.gg/abc\"}"));

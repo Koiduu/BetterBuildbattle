@@ -1094,11 +1094,6 @@ async function authPage(mode) {
           <input type="password" name="password" autocomplete="${signup ? "new-password" : "current-password"}" required minlength="8" maxlength="200">
           ${signup ? `<small>At least 8 characters.</small>` : `<small><a href="/forgot" data-link>Forgot your password?</a></small>`}
         </label>
-        ${signup ? `
-        <label class="check">
-          <input type="checkbox" name="adult">
-          <span>I'm 18 or older <small>Optional. Voice chat with your teammates is only offered to accounts that tick this. You can change it later on your account page.</small></span>
-        </label>` : ""}
         <p class="form-error" id="auth-error" role="alert"${error ? "" : " hidden"}>${error ?? ""}</p>
         <button class="btn primary wide" type="submit">${signup ? "Create account" : "Log in"}</button>
       </form>
@@ -1123,7 +1118,7 @@ async function authPage(mode) {
     button.disabled = true;
     try {
       setMe(await request("POST", signup ? "/auth/signup" : "/auth/login",
-        signup ? { email, password, adult: form.adult.checked } : { email, password }));
+        { email, password }));
       go("/account");
     } catch (err) {
       errorBox.innerHTML = AUTH_ERRORS[err.message] ?? "Something went wrong. Try again in a minute.";
@@ -1200,16 +1195,16 @@ async function accountPage() {
       <div class="card-head">
         <div>
           <h2>Voice chat</h2>
-          <p class="sub">Talk on the Better Battle Discord with your teammate, your party or the players your LFG lobby host accepted. Press Voice in the B menu or type <code>/bb voice</code> in game.</p>
+          <p class="sub">Talk on the Better Battle Discord with your teammate or your party. Press Voice in the B menu or type <code>/bb voice</code> in game.</p>
         </div>
       </div>
       <label class="check">
-        <input type="checkbox" id="adult"${me.adultConfirmed ? " checked" : ""}>
-        <span>I'm 18 or older</span>
+        <input type="checkbox" id="voice-on"${me.voiceEnabled ? " checked" : ""}>
+        <span>Allow voice chat</span>
       </label>
-      <p class="muted">Voice is only offered to accounts that tick this. It's your own word, not an age check. You also need a linked Discord account in the Better Battle server. Everyone in a call has to press Voice themselves, so nobody is put in a call with strangers. Calls aren't recorded, the channel is deleted once it's empty, and Discord's own blocking, reporting and age rules apply.</p>
+      <p class="muted">Off unless you turn it on, and you can turn it off any time. Turning it off takes you out of any call straight away. You also need a linked Discord account in the Better Battle server. Everyone in a call has to press Voice themselves and name each other, so nobody can put you in a call. You can leave whenever you like, and you can block or report anyone with Discord's own tools. Calls aren't recorded, and the channel is deleted once it's empty.</p>
       <p class="muted">Better Battle isn't made by or affiliated with Hypixel. Follow Hypixel's rules when you use it.</p>
-      <span class="muted saved" id="adult-status" role="status"></span>
+      <span class="muted saved" id="voice-status" role="status"></span>
     </section>
 
     <section class="card" id="pins-card"></section>
@@ -1387,13 +1382,13 @@ async function getLinkCode() {
 }
 
 function setUpVoice() {
-  const box = document.getElementById("adult");
-  const status = document.getElementById("adult-status");
+  const box = document.getElementById("voice-on");
+  const status = document.getElementById("voice-status");
   if (!box) return;
   box.addEventListener("change", async () => {
     box.disabled = true;
     try {
-      setMe(await request("PUT", "/me/adult", { adult: box.checked }));
+      setMe(await request("PUT", "/me/voice", { enabled: box.checked }));
       status.textContent = box.checked ? "Saved. Voice chat is on for your account." : "Saved. Voice chat is off for your account.";
     } catch {
       box.checked = !box.checked;

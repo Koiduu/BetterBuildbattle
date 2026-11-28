@@ -81,7 +81,7 @@ public final class VoiceScreen extends Screen {
         for (String line : new String[] {
             "Talk on the Better Battle Discord with your teammate or party.",
             "Everyone you name has to press Voice too, so nobody ends up in a call with strangers.",
-            "You need 18+ ticked and Discord linked on your account page on the website.",
+            "Turn on voice chat and link Discord on your account page on the website first.",
         }) {
             graphics.centeredText(font, Component.literal(line).withStyle(ChatFormatting.GRAY), cx, y, 0xFFFFFFFF);
             y += 12;
