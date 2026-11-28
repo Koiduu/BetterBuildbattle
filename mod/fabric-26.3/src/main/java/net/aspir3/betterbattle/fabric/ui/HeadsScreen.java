@@ -4,6 +4,7 @@ import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.fabric.BetterBattleFabric;
 import net.aspir3.betterbattle.heads.HeadLibrary;
+import net.aspir3.betterbattle.heads.MyHeads;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -23,7 +24,8 @@ import java.util.Map;
 
 /**
  * The head database. Categories on the left, a grid of heads on the right. Clicking a head gets it
- * in your hotbar during the build phase (creative); right-click to favourite.
+ * in your hotbar during the build phase (creative); right-click to favourite. "My heads" holds the
+ * player's own heads, painted at battle.aspir3.net/heads.
  */
 public final class HeadsScreen extends Screen {
     private static final int CELL = 20, SIDE = 92, TOP = 58;
@@ -36,9 +38,10 @@ public final class HeadsScreen extends Screen {
     private EditBox search;
     private Button playerHead;
     private final List<Button> categoryButtons = new ArrayList<>();
+    private final List<String> categoryIds = new ArrayList<>();
     private String category = "all";
     private List<HeadLibrary.Head> shown = new ArrayList<>();
-    private int scrollRow, lastLoaded = -1;
+    private int scrollRow, lastLoaded = -1, lastMine = -1;
     private String lastQuery = null, lastCategory = null;
     private String given;
 
@@ -70,8 +73,10 @@ public final class HeadsScreen extends Screen {
         }).bounds(width - 132, 30, 122, 20).tooltip(Tooltip.create(Component.literal("Runs /skull with the name you typed"))).build());
 
         categoryButtons.clear();
+        categoryIds.clear();
         int y = 30;
         y = categoryButton("all", "All heads", y);
+        y = categoryButton(MyHeads.CATEGORY, "My heads", y);
         y = categoryButton("favourites", "★ Favourites", y);
         y = categoryButton("recent", "Recent", y);
         y += 4;
@@ -84,9 +89,11 @@ public final class HeadsScreen extends Screen {
         Button b = addRenderableWidget(Button.builder(Component.literal(label), btn -> {
             category = id;
             scrollRow = 0;
+            if (MyHeads.CATEGORY.equals(id)) BetterBattle.get().refreshMyHeads();
         }).bounds(6, y, SIDE - 6, 16).build());
         b.setMessage(Component.literal(label));
         categoryButtons.add(b);
+        categoryIds.add(id);
         return y + 17;
     }
 
@@ -110,8 +117,9 @@ public final class HeadsScreen extends Screen {
     @Override
     public void tick() {
         String q = search.getValue();
-        int loaded = library().loadedCount();
-        if (!q.equals(lastQuery) || !category.equals(lastCategory) || loaded != lastLoaded) {
+        int loaded = library().loadedCount(), mine = MyHeads.version();
+        if (!q.equals(lastQuery) || !category.equals(lastCategory) || loaded != lastLoaded || mine != lastMine) {
+            lastMine = mine;
             shown = library().search(category, q);
             lastQuery = q;
             lastCategory = category;
@@ -170,10 +178,9 @@ public final class HeadsScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
         graphics.centeredText(font, title, width / 2, 10, 0xFFFFFFFF);
-        for (Button b : categoryButtons) {
-            int i = categoryButtons.indexOf(b);
-            String id = i == 0 ? "all" : i == 1 ? "favourites" : i == 2 ? "recent" : HeadLibrary.CATEGORIES.get(i - 3).id;
-            if (id.equals(category)) graphics.outline(b.getX() - 1, b.getY() - 1, b.getWidth() + 2, b.getHeight() + 2, 0xFFFFFF55);
+        for (int i = 0; i < categoryButtons.size(); i++) {
+            Button b = categoryButtons.get(i);
+            if (categoryIds.get(i).equals(category)) graphics.outline(b.getX() - 1, b.getY() - 1, b.getWidth() + 2, b.getHeight() + 2, 0xFFFFFF55);
         }
 
         int x0 = SIDE + 10, cols = columns(), rows = visibleRows();
@@ -181,7 +188,10 @@ public final class HeadsScreen extends Screen {
         boolean anyLoading = false;
         for (HeadLibrary.Category c : HeadLibrary.CATEGORIES) anyLoading |= library().isLoading(c.id);
         String err = HeadLibrary.CATEGORIES.stream().map(c -> library().error(c.id)).filter(e -> e != null).findFirst().orElse(null);
-        if (shown.isEmpty() && anyLoading) info = "Loading heads...";
+        boolean mineView = MyHeads.CATEGORY.equals(category);
+        if (mineView && shown.isEmpty() && search.getValue().trim().isEmpty()) info = "No custom heads yet. Paint your own at " + MyHeads.PAINT_URL + ", then link with /bb link.";
+        else if (mineView) info = shown.size() + (shown.size() == 1 ? " head" : " heads") + " you painted  ·  click to put one in your hotbar  ·  more at " + MyHeads.PAINT_URL;
+        else if (shown.isEmpty() && anyLoading) info = "Loading heads...";
         else if (shown.isEmpty() && err != null) info = "Couldn't load heads: " + err;
         else info = String.format("%,d heads", shown.size()) + (anyLoading ? " (still loading)" : "") + "  ·  click to put one in your hotbar, right-click to favourite";
         graphics.text(font, Component.literal(info).withStyle(ChatFormatting.GRAY), x0, TOP - 12, 0xFFFFFFFF, false);
@@ -211,7 +221,8 @@ public final class HeadsScreen extends Screen {
         String status = given == null ? "" : given;
         ChatFormatting statusColour = BUILD_PHASE_ONLY.equals(given) ? ChatFormatting.RED : ChatFormatting.GRAY;
         graphics.text(font, Component.literal(status).withStyle(statusColour), 8, height - 20, 0xFFFFFFFF, false);
-        graphics.text(font, Component.literal(HeadLibrary.CREDIT).withStyle(ChatFormatting.DARK_GRAY), 8, height - 36, 0xFFFFFFFF, false);
+        String credit = MyHeads.CATEGORY.equals(category) ? MyHeads.NOTICE : HeadLibrary.CREDIT;
+        graphics.text(font, Component.literal(credit).withStyle(ChatFormatting.DARK_GRAY), 8, height - 36, 0xFFFFFFFF, false);
     }
 
     @Override
