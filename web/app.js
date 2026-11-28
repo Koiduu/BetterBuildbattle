@@ -8,6 +8,7 @@ import {
 } from "./plans.js";
 import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
 import { updateLaunchBar } from "./launch.js";
+import { headsPage } from "./heads.js";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
@@ -95,6 +96,7 @@ const routes = [
   { path: /^\/updates\/?$/, page: updatesPage, nav: "updates" },
   { path: /^\/install\/?$/, page: installPage },
   { path: /^\/plans\/?$/, page: plansPage, nav: "plans" },
+  { path: /^\/heads\/?$/, page: headsPage, nav: "heads" },
   { path: /^\/insights\/?$/, page: insightsPage },
   { path: /^\/wrapped\/?$/, page: wrappedPage },
   { path: /^\/groups\/?$/, page: groupsPage },
@@ -198,6 +200,7 @@ function privacyPage() {
     <section><h2>Services involved</h2>
       <p>Cloudflare carries all traffic and sees IP addresses. Player heads load from mc-heads.net, which sees the visitor's IP. Discord avatars load from cdn.discordapp.com. The server contacts Hypixel and Mojang, fetches player heads from mc-heads.net to draw profile card images, and contacts Discord only if you use Discord login.</p>
       <p>If you buy a plan, payment is handled by Stripe, who receive your payment details and email. We store only your Stripe customer and subscription IDs, your plan and when it ends. We never receive your card number.</p>
+      <p>Custom heads you paint are stored with your account, and the site owner looks at each one before it is used. Once approved, the drawing is uploaded to Mojang as the skin of a Better Battle Minecraft account, so Mojang can sign it as a head texture. The head's name and your account are not sent to Mojang. Deleting a head removes it from Better Battle; the texture itself stays on Mojang's servers.</p>
       <p>IP addresses are used only in memory for rate limiting and are never written to the database.</p></section>
     <section><h2>How long data stays</h2>
       <p>Your Better Battle account data stays until you delete your account. Deleting removes your Better Battle data immediately. Public Hypixel stats in the global ranking stay unless you ask support to remove them. Login sessions expire after 30 days.</p></section>

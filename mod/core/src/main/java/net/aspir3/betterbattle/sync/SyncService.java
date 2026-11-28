@@ -1,6 +1,7 @@
 package net.aspir3.betterbattle.sync;
 
 import net.aspir3.betterbattle.game.MatchRecord;
+import net.aspir3.betterbattle.heads.MyHeads;
 import net.aspir3.betterbattle.store.LocalDatabase;
 
 import java.util.ArrayList;
@@ -121,6 +122,27 @@ public final class SyncService {
                     listener.manualResult(false, "Couldn't send the report: login expired. Run /bb report again.");
                 } catch (Exception e) {
                     listener.manualResult(false, "Couldn't send the report: " + explain(e));
+                }
+            }
+        });
+    }
+
+    private volatile long lastHeadsAt;
+
+    /** Fetches the player's custom heads now (the "My heads" section just opened). At most once a minute. */
+    public void refreshMyHeads() {
+        if (System.currentTimeMillis() - lastHeadsAt < 60000L) return;
+        lastHeadsAt = System.currentTimeMillis();
+        exec.execute(new Runnable() {
+            public void run() {
+                if (stopped) return;
+                try {
+                    ensureToken();
+                    MyHeads.set(api.myHeads());
+                } catch (ApiClient.Unauthorized e) {
+                    try { db.setMeta("token", null); } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                    // offline or an older server: the saved copy stays
                 }
             }
         });
@@ -414,6 +436,7 @@ public final class SyncService {
                 try {
                     ApiClient.Bootstrap b = api.bootstrap();
                     lastBootstrapAt = System.currentTimeMillis();
+                    if (b != null) MyHeads.set(b.customHeads);
                     if (b != null) listener.bootstrapped(b);
                 } catch (ApiClient.Unauthorized e) {
                     throw e;

@@ -36,7 +36,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [help|stats|rank|compare|voice|achievements|recap|weekly|news|lfg|settings|sync|link|report|palette|debug]";
+        return "/bb [help|stats|rank|compare|voice|achievements|heads|recap|weekly|news|lfg|settings|sync|link|report|palette|debug]";
     }
 
     @Override
@@ -51,7 +51,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "voice", "achievements", "banners", "recap", "weekly", "news", "lfg", "settings", "sync", "link", "report", "palette", "debug");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "voice", "achievements", "heads", "banners", "recap", "weekly", "news", "lfg", "settings", "sync", "link", "report", "palette", "debug");
         return null;
     }
 
@@ -82,6 +82,8 @@ final class BbCommand extends CommandBase {
             }
         } else if (sub.equals("achievements")) {
             mod.openLater(new AchievementsScreen(null));
+        } else if (sub.equals("heads")) {
+            mod.openLater(new net.aspir3.betterbattle.forge.ui.MyHeadsScreen(null));
         } else if (sub.equals("banners")) {
             mod.openLater(new BannersScreen(null));
         } else if (sub.equals("recap")) {
