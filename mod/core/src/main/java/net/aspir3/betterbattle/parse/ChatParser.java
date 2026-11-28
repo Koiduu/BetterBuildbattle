@@ -22,6 +22,8 @@ public final class ChatParser {
         VOTE, SCORE, PLACEMENT, GAME_END, GTB_CORRECT_GUESS,
         /** "Cool_Ghost correctly guessed the theme!": anyone's guess, yours included (maybe under a nick). */
         GTB_GUESSED,
+        /** Guess the Build: "Round: 1/8", "The theme is 9 characters long", "The theme was: Surfboard!". */
+        GTB_ROUND, GTB_THEME_LENGTH, GTB_THEME_WAS,
         // Speed Builders (from a real game, Nov 2026)
         SPB_PERFECT, SPB_ACCURACY, SPB_ELIMINATED,
         /** "+120 tokens! (2nd Place)" */

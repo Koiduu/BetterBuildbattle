@@ -1,4 +1,5 @@
 import net.aspir3.betterbattle.game.GameStateMachine;
+import net.aspir3.betterbattle.game.GtbGuessTracker;
 import net.aspir3.betterbattle.game.MatchRecord;
 import net.aspir3.betterbattle.parse.ChatParser;
 
@@ -136,11 +137,29 @@ public class GameResultTest {
         game.onSidebar(gtb, Arrays.asList("11/20/26  m85AE", "Builder:", "unzf", "", "Time: 02:00", "", "Theme:", "???", "www.hypixel.net"));
         game.onChat("Round: 1/8");
         game.onChat("The theme is 9 characters long");
+        game.onActionBar("The theme is _ _ _ _ _ _ _ _ _");   // the word hint above the hotbar (format assumed)
         game.onChat("Cool_Ghost correctly guessed the theme!");
         if (player.equals("Koidu")) game.onChat("+40 tokens! (Correct Guess)");   // only the guesser gets this
         game.onChat("+3 points");
+        game.onActionBar("The theme is S _ _ _ _ _ _ _ _");
         game.onChat("mooofies correctly guessed the theme!");
+        check(game.takeGtbGuesses().isEmpty(), player + ": guesses wait for the round to end (the word isn't known yet)");
         game.onChat("The theme was: Surfboard!");
+        // Every correct guess but your own, for the server's unusual-guessing check
+        List<GtbGuessTracker.Guess> guesses = game.takeGtbGuesses();
+        int want = player.equals("Koidu") ? 1 : 2;   // Koidu was Cool_Ghost: their own guess isn't evidence
+        check(guesses.size() == want, player + ": " + want + " guesses from round 1, got " + guesses.size());
+        GtbGuessTracker.Guess moo = guesses.get(guesses.size() - 1);
+        check("mooofies".equals(moo.name), player + ": mooofies guessed, got " + moo.name);
+        check(moo.round == 1 && "unzf".equals(moo.builder), player + ": round 1 by unzf, got " + moo.round + " by " + moo.builder);
+        check(moo.revealed == 1 && moo.msSinceReveal != null, player + ": one letter showing, got " + moo.revealed);
+        check("Surfboard".equals(moo.word) && moo.wordLength == 9, player + ": word Surfboard (9), got " + moo.word + " " + moo.wordLength);
+        check("m85AE|11/20/26|unzf".equals(moo.gameKey), player + ": game key from server, date and first builder, got " + moo.gameKey);
+        if (player.equals("reaxz")) {
+            GtbGuessTracker.Guess ghost = guesses.get(0);
+            check("Cool_Ghost".equals(ghost.name) && ghost.revealed == 0 && ghost.msSinceReveal == null,
+                "reaxz: Cool_Ghost guessed before any letter");
+        }
         game.onChat("Builder: reaxz");
         game.onSidebar(gtb, Arrays.asList("Builder:", "reaxz", "", "Cool_Ghost: 3", "unzf: 3", "mooofies: 2", "", "Time: 02:00", "", "Theme:", "???"));
         game.onChat("Round: 2/8");

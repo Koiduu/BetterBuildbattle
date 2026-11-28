@@ -43,6 +43,26 @@ mod/
 - Block breaks come from left clicks on a block. Check on 1.8.9 that Forge fires `LEFT_CLICK_BLOCK` on the client in
   Speed Builders; if not, Measure Twice and precision will be too generous there.
 - Every one-off challenge has a detector. The Guess the Build chat pattern is a guess to check with `/bb debug`.
+- Guess the Build "unusual guessing": the word hint's exact format above the hotbar is assumed ("The theme is _ _ r _"
+  or bare underscores). `/bb debug` now logs `actionbar:` lines in Guess the Build; `Replay.java` replays them and
+  prints each captured guess.
+
+## Guess the Build: unusual guessing (private, evidence only)
+
+In Guess the Build the mod notes when each *other* player guessed the word: time since the builder started, how
+many hint letters were showing, time since the last letter appeared, and the word. Nothing anyone typed is kept.
+These go to `POST /mod/gtb/guesses` after each round, and are deleted after 90 days.
+
+The API (`api/src/services/gtbWatch.ts`, thresholds in `GTB_WATCH`) scores each player from: guessing before any
+letter, guessing faster than the build could be seen and the word typed, typing the word straight after a letter
+appears, and no slowdown on long or rare words. Nothing shows until a player has 20+ rounds from 3+ different mod
+users. Each reporter counts once per round, readings far from the round's median are dropped, lone rounds count
+half, and the score is worked out again without the most damning reporter, so one person can't frame anyone.
+
+Nothing public uses it. A mod user sees a yellow mark after that player's tab name and one chat line whose hover
+shows the numbers; its **[Report]** button only fills in `/report <name>` for the player to send themselves. The
+Settings toggle "Unusual guessing hints" turns it off. The owner reviews cases (ranked, every round, dismiss and
+notes) on `/admin.html`; dismissed players get no in-game hint.
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
 

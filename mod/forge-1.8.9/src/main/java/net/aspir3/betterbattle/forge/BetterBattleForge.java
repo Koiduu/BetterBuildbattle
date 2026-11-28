@@ -249,6 +249,41 @@ public class BetterBattleForge implements Platform {
         core.onTabList(players);
         NetworkPlayerInfo self = mc.getNetHandler().getPlayerInfo(mc.getSession().getProfile().getId());
         if (self != null) core.onOwnTabName(self.getGameProfile().getName());
+        markUnusualGuessers(infos);
+    }
+
+    /** What each marked player's tab name was before the marker, and the name we put there. */
+    private final java.util.Map<UUID, net.minecraft.util.IChatComponent[]> tabMarks = new java.util.HashMap<UUID, net.minecraft.util.IChatComponent[]>();
+
+    /**
+     * Guess the Build: a small yellow "(!)" after the tab-list name of a player whose guessing looks unusual.
+     * Only this player sees it, and it goes away with the setting or outside Guess the Build. Hypixel may
+     * rewrite a tab name at any time, so the mark is put back when it's gone.
+     */
+    private void markUnusualGuessers(Collection<NetworkPlayerInfo> infos) {
+        java.util.Set<UUID> present = new java.util.HashSet<UUID>();
+        for (NetworkPlayerInfo info : infos) {
+            UUID id = info.getGameProfile().getId();
+            if (id == null) continue;
+            present.add(id);
+            String name = info.getGameProfile().getName();
+            boolean mark = core.unusualGuessing(name) != null;
+            net.minecraft.util.IChatComponent[] was = tabMarks.get(id);
+            if (!mark) {
+                if (was != null) {
+                    if (info.getDisplayName() == was[1]) info.setDisplayName(was[0]);
+                    tabMarks.remove(id);
+                }
+                continue;
+            }
+            if (was != null && info.getDisplayName() == was[1]) continue;   // still marked
+            net.minecraft.util.IChatComponent original = info.getDisplayName();
+            String base = original != null ? original.getFormattedText() : ScorePlayerTeam.formatPlayerName(info.getPlayerTeam(), name);
+            net.minecraft.util.IChatComponent marked = new ChatComponentText(base + " §e(!)");
+            info.setDisplayName(marked);
+            tabMarks.put(id, new net.minecraft.util.IChatComponent[] {original, marked});
+        }
+        tabMarks.keySet().retainAll(present);
     }
 
     private void findPlot(Minecraft mc) {
@@ -305,6 +340,22 @@ public class BetterBattleForge implements Platform {
     @Override
     public void openPage(Pages.Page page) {
         pendingScreen = new TextPageScreen(null, page);
+    }
+
+    @Override
+    public void chatEvidence(String message, String hover, String button, String suggest) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.ingameGUI == null) return;
+        ChatComponentText line = new ChatComponentText(message);
+        line.setChatStyle(new net.minecraft.util.ChatStyle().setChatHoverEvent(new net.minecraft.event.HoverEvent(
+            net.minecraft.event.HoverEvent.Action.SHOW_TEXT, new ChatComponentText(hover))));
+        ChatComponentText report = new ChatComponentText(button);
+        report.setChatStyle(new net.minecraft.util.ChatStyle()
+            .setChatHoverEvent(new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT,
+                new ChatComponentText("§7Puts §f" + suggest + " §7in the chat box. Nothing is sent unless you press Enter.")))
+            .setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.SUGGEST_COMMAND, suggest)));
+        line.appendSibling(report);
+        mc.ingameGUI.getChatGUI().printChatMessage(line);
     }
 
     @Override

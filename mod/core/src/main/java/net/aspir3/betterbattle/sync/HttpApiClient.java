@@ -235,6 +235,36 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
     }
 
+    private static final class GtbAnswer { List<GtbFlag> flags; }
+
+    public List<GtbFlag> gtbGuesses(List<net.aspir3.betterbattle.game.GtbGuessTracker.Guess> guesses) throws Exception {
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+        for (net.aspir3.betterbattle.game.GtbGuessTracker.Guess g : guesses) {
+            Map<String, Object> o = new LinkedHashMap<String, Object>();
+            o.put("gameKey", g.gameKey);
+            o.put("round", g.round);
+            o.put("name", g.name);
+            o.put("builder", g.builder);
+            o.put("msSinceStart", Math.min(600000L, g.msSinceStart));
+            o.put("msSinceReveal", g.msSinceReveal == null ? null : Math.min(600000L, g.msSinceReveal));
+            o.put("revealed", g.revealed);
+            o.put("wordLength", g.wordLength);
+            o.put("word", g.word == null || g.word.length() > 40 ? null : g.word);
+            out.add(o);
+        }
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("modVersion", modVersion);
+        body.put("mcVersion", mcVersion);
+        body.put("guesses", out);
+        try {
+            GtbAnswer a = gson.fromJson(post("/mod/gtb/guesses", gson.toJson(body)), GtbAnswer.class);
+            return a == null || a.flags == null ? new ArrayList<GtbFlag>() : a.flags;
+        } catch (Exception e) {
+            if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) return new ArrayList<GtbFlag>();   // older server
+            throw e;
+        }
+    }
+
     private static final class HeadsReply {
         List<net.aspir3.betterbattle.heads.MyHeads.Entry> heads;
     }

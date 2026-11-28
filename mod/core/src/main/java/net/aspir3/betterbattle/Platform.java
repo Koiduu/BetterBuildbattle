@@ -23,6 +23,14 @@ public interface Platform {
     /** Open a text page (What's New, Last Game...). Called on the main thread. */
     void openPage(net.aspir3.betterbattle.pages.Pages.Page page);
 
+    /**
+     * A chat line only this player sees: hovering it shows {@code hover}, and clicking {@code button} after it
+     * puts {@code suggest} in the chat box for the player to send (or not). Nothing is ever sent for them.
+     */
+    default void chatEvidence(String message, String hover, String button, String suggest) {
+        chat(message);
+    }
+
     /** Save a picture of the game screen to this file (a round screenshot). Called on the main thread; Forge does nothing. */
     default void screenshot(java.io.File file) {
     }

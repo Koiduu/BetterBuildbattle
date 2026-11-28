@@ -19,6 +19,13 @@
   .report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
   .report-log { max-height: 70vh; overflow: auto; padding: 12px; background: #000; border: 2px solid var(--edge); color: var(--soft); font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
   tr[data-report] { cursor: pointer; }
+  tr[data-gtb] { cursor: pointer; }
+  .gtb-score { display: inline-block; min-width: 38px; padding: 2px 8px; border-radius: 999px; text-align: center; font-weight: 700; background: var(--card-2); }
+  .gtb-score.strong { background: #5a3b12; color: #ffcc4d; }
+  .gtb-evidence { margin: 8px 0 14px 18px; color: var(--soft); }
+  .gtb-evidence li { margin: 3px 0; }
+  .gtb-note { width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: var(--card); color: var(--text); font: inherit; }
+  td.hit { color: #ffcc4d; font-weight: 700; }
   .head-review { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; background: var(--card-2); border: 2px solid var(--edge); }
   .head-review + .head-review { margin-top: 8px; }
   .head-strip { width: 320px; height: 80px; background-size: 320px 320px, 20px 20px; background-repeat: no-repeat, repeat; image-rendering: pixelated; border: 2px solid var(--edge);
@@ -145,6 +152,97 @@ async function modUsersSection(el) {
           <td>${esc(when(u.last_seen_at ?? u.last_login))}</td>
         </tr>`).join("")}</tbody>
     </table></div>` : `<p class="empty">No mod users yet. They appear after someone logs in with the mod.</p>`}`;
+}
+
+const GTB_STATUS = { open: "Open", dismissed: "Dismissed", reported: "Passed to Hypixel" };
+const secs = (ms) => (ms == null ? "–" : (ms / 1000).toFixed(1) + " s");
+
+/**
+ * Guess the Build: players whose guessing looks unusual to several mod users. Evidence to check before passing
+ * anything to Hypixel, never a verdict. None of this is shown anywhere public.
+ */
+async function gtbSection(el) {
+  let d;
+  try { d = await get("/admin/gtb"); } catch { el.innerHTML = `<p class="empty">Couldn't load Guess the Build cases.</p>`; return; }
+  const c = d.config;
+  const strong = d.cases.filter((x) => x.status === "open" && x.strong).length;
+  el.innerHTML = `
+    <div class="card-head"><div><h2>Guess the Build: unusual guessing</h2>
+      <p class="sub">Players seen in at least ${c.minRounds} rounds by at least ${c.minReporters} different mod users, strongest first.
+      ${num(strong)} open case${strong === 1 ? "" : "s"} score ${c.showScore}+ and show a private hint in game. Scores are worked out again without
+      the most damning reporter${c.dropTopReporters === 1 ? "" : "s"}, and the lower one counts. This is evidence to check, not proof:
+      fast typists and familiar themes look like this too. ${num(d.totals.events)} guesses about ${num(d.totals.players)} players from
+      ${num(d.totals.reporters)} mod users, kept ${c.keepDays} days.</p></div></div>
+    ${d.cases.length ? `
+    <div class="table-scroll"><table>
+      <thead><tr><th>Player</th><th class="right">Score</th><th class="right">Rounds</th><th class="right">Reporters</th>
+        <th class="right">No letters</th><th class="right">Too fast</th><th class="right">Median</th><th>Status</th></tr></thead>
+      <tbody>${d.cases.map((x) => `
+        <tr data-gtb="${esc(x.name)}">
+          <td><b>${esc(x.name)}</b></td>
+          <td class="right"><span class="gtb-score${x.strong ? " strong" : ""}">${x.score}</span></td>
+          <td class="right">${num(x.rounds)}</td>
+          <td class="right">${num(x.reporters)}</td>
+          <td class="right">${x.signals.noHint.hits}/${x.signals.noHint.of}</td>
+          <td class="right">${x.signals.fastStart.hits}/${x.signals.fastStart.of}</td>
+          <td class="right num">${secs(x.medianMs)}</td>
+          <td>${esc(GTB_STATUS[x.status] ?? x.status)}${x.note ? " · note" : ""}</td>
+        </tr>`).join("")}</tbody>
+    </table></div>` : `<p class="empty">Nobody has enough rounds and reporters yet. Cases show up once mod users have played Guess the Build with the same players.</p>`}`;
+  for (const row of el.querySelectorAll("tr[data-gtb]")) row.addEventListener("click", () => gtbCase(row.dataset.gtb));
+}
+
+async function gtbCase(name) {
+  let x;
+  try { x = await get("/admin/gtb/" + encodeURIComponent(name)); } catch { return overview(); }
+  const hit = (b) => (b ? `<td class="hit">yes</td>` : `<td class="muted">–</td>`);
+  app.innerHTML = `
+    <section class="card">
+      <div class="card-head">
+        <div><h2>${esc(x.name)}</h2><p class="sub">Score ${x.score} (${x.rawScore} with every reporter) · ${num(x.rounds)} rounds ·
+          ${num(x.reporters)} reporters · ${num(x.confirmedRounds)} rounds seen by two or more${x.uuid ? ` · UUID <code>${esc(x.uuid)}</code>` : ""}
+          ${x.droppedReporters.length ? ` · left out of the score: ${x.droppedReporters.map(esc).join(", ")}` : ""}</p></div>
+        <button class="btn" id="back">Back</button>
+      </div>
+      <ul class="gtb-evidence">${x.evidence.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
+      <p class="sub">Check the rounds below before passing anything on. Rounds one reporter saw alone count half; where reporters
+        disagreed, the slower reading was used. Dismissing stops the in-game hint for this player.</p>
+      <div class="report-actions">
+        ${Object.entries(GTB_STATUS).map(([k, v]) => `<button class="btn small${x.status === k ? " primary" : ""}" data-gtb-status="${k}">${v}</button>`).join("")}
+      </div>
+      <label class="sr-only" for="gtb-note">Notes</label>
+      <textarea class="gtb-note" id="gtb-note" maxlength="2000" placeholder="Private notes, e.g. what you checked and when you reported it">${esc(x.note)}</textarea>
+      <div class="report-actions"><button class="btn small" id="gtb-save">Save note</button><span class="sub" id="gtb-saved"></span></div>
+      <h2 style="margin:18px 0 10px">Every round</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>When</th><th>Game</th><th class="right">Round</th><th>Word</th><th class="right">Guessed at</th>
+          <th class="right">Letters</th><th class="right">After letter</th><th>No letters</th><th>Too fast</th><th>Right after letter</th>
+          <th class="right">Weight</th><th>Reporters</th></tr></thead>
+        <tbody>${x.detail.map((r) => `
+          <tr class="static">
+            <td>${r.seenAt ? esc(when(r.seenAt)) : "–"}</td>
+            <td><code>${esc(r.gameKey)}</code></td>
+            <td class="right">${r.round}</td>
+            <td>${esc(r.word ?? "?")}${r.length ? ` <span class="muted">(${r.length})</span>` : ""}</td>
+            <td class="right num">${secs(r.ms)}</td>
+            <td class="right">${r.revealed}</td>
+            <td class="right num">${secs(r.msSinceReveal)}</td>
+            ${hit(r.flags.noHint)}${hit(r.flags.fastStart)}${hit(r.flags.fastReveal)}
+            <td class="right">${r.weight}</td>
+            <td>${r.allReporters.map((n) => r.reporters.includes(n) ? esc(n) : `<s class="muted" title="Too far from the others; left out">${esc(n)}</s>`).join(", ")}</td>
+          </tr>`).join("")}</tbody>
+      </table></div>
+    </section>`;
+  document.getElementById("back").addEventListener("click", overview);
+  const review = (body) => post(`/admin/gtb/${encodeURIComponent(x.name)}/review`, body);
+  for (const b of app.querySelectorAll("[data-gtb-status]")) {
+    b.addEventListener("click", async () => { await review({ status: b.dataset.gtbStatus }).catch(() => {}); gtbCase(x.name); });
+  }
+  document.getElementById("gtb-save").addEventListener("click", async () => {
+    const saved = document.getElementById("gtb-saved");
+    try { await review({ note: document.getElementById("gtb-note").value }); saved.textContent = "Saved."; }
+    catch { saved.textContent = "Couldn't save."; }
+  });
 }
 
 /** LFG lobbies players reported. Enough reports hide the name ("Lobby") until it is reviewed here. */
@@ -361,12 +459,14 @@ async function overview() {
     <section class="card" id="plans"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="modusers"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="reports"><div class="loading" style="height:120px"></div></section>
+    <section class="card" id="gtb"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="lobbies"><div class="loading" style="height:120px"></div></section>`;
   lobbiesSection(document.getElementById("lobbies"));
   headsSection(document.getElementById("heads"));
   planSection(document.getElementById("plans"));
   modUsersSection(document.getElementById("modusers"));
   reportsSection(document.getElementById("reports"));
+  gtbSection(document.getElementById("gtb"));
   document.getElementById("lock").addEventListener("click", () => {
     token = "";
     try { localStorage.removeItem("bb_admin"); } catch {}

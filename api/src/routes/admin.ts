@@ -5,6 +5,7 @@ import { Router, fail, type Req } from "../http";
 import { pool } from "../db/pool";
 import { announcePlanChange } from "../services/stripe";
 import { planOf } from "../lib/plans";
+import { gtbAdminRoutes } from "./gtbWatch";
 
 const VOTES = ["super_poop", "poop", "meh", "ok", "good", "epic", "legendary"] as const;
 
@@ -17,6 +18,8 @@ export function requireAdmin(req: Req) {
 }
 
 export function adminRoutes(app: Router) {
+  gtbAdminRoutes(app, requireAdmin);   // Guess the Build cases to review
+
   // Give (or take back) a plan without Stripe: for testers, friends and prizes.
   app.post("/admin/plan", [requireAdmin], async (req) => {
     const { name, plan } = z.object({

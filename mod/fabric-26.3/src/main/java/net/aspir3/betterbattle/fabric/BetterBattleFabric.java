@@ -345,6 +345,40 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         core.onTabList(players);
         PlayerInfo self = connection.getPlayerInfo(client.getUser().getProfileId());
         if (self != null) core.onOwnTabName(self.getProfile().name());
+        markUnusualGuessers(connection);
+    }
+
+    /** What each marked player's tab name was before the marker, and the name we put there. */
+    private final java.util.Map<UUID, Component[]> tabMarks = new java.util.HashMap<>();
+
+    /**
+     * Guess the Build: a small yellow mark after the tab-list name of a player whose guessing looks unusual. Only
+     * this player sees it (it's never sent anywhere), and it goes away with the setting or outside Guess the Build.
+     * Hypixel may rewrite a tab name at any time, so the mark is put back when it's gone.
+     */
+    private void markUnusualGuessers(ClientPacketListener connection) {
+        java.util.Set<UUID> present = new java.util.HashSet<>();
+        for (PlayerInfo info : connection.getOnlinePlayers()) {
+            UUID id = info.getProfile().id();
+            present.add(id);
+            boolean mark = core.unusualGuessing(info.getProfile().name()) != null;
+            Component[] was = tabMarks.get(id);
+            if (!mark) {
+                if (was != null) {
+                    if (info.getTabListDisplayName() == was[1]) info.setTabListDisplayName(was[0]);
+                    tabMarks.remove(id);
+                }
+                continue;
+            }
+            if (was != null && info.getTabListDisplayName() == was[1]) continue;   // still marked
+            Component original = info.getTabListDisplayName();
+            Component base = original != null ? original.copy()
+                : PlayerTeam.formatNameForTeam(info.getTeam(), Component.literal(info.getProfile().name()));
+            Component marked = base.copy().append(Component.literal(" ⚠").withStyle(ChatFormatting.YELLOW));
+            info.setTabListDisplayName(marked);
+            tabMarks.put(id, new Component[] {original, marked});
+        }
+        tabMarks.keySet().retainAll(present);
     }
 
     /** The block under the player is the floor; the white terracotta around it marks out the plot. */
@@ -495,6 +529,17 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                 image.close();
             }
         });
+    }
+
+    @Override
+    public void chatEvidence(String message, String hover, String button, String suggest) {
+        net.minecraft.network.chat.MutableComponent line = Component.literal(message)
+            .withStyle(style -> style.withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal(hover))));
+        line.append(Component.literal(button).withStyle(style -> style
+            .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("§7Puts §f" + suggest
+                + " §7in the chat box. Nothing is sent unless you press Enter.")))
+            .withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(suggest))));
+        Compat.chatListener(Minecraft.getInstance()).handleSystemMessage(line, false);
     }
 
     @Override
