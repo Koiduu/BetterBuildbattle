@@ -118,6 +118,30 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(request("GET", "/mod/compare?name=" + java.net.URLEncoder.encode(name, "UTF-8"), null), Compare.class);
     }
 
+    public Voice voice(List<String> members) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("scope", "team");
+        body.put("members", members);
+        return gson.fromJson(voiceRequest("POST", gson.toJson(body)), Voice.class);
+    }
+
+    public Voice voiceStatus() throws Exception {
+        return gson.fromJson(voiceRequest("GET", null), Voice.class);
+    }
+
+    public void leaveVoice() throws Exception {
+        voiceRequest("DELETE", null);
+    }
+
+    private String voiceRequest(String method, String json) throws Exception {
+        try {
+            return request(method, "/mod/voice", json);
+        } catch (Exception e) {
+            if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) throw new UnsupportedOperationException("voice");   // older server
+            throw e;
+        }
+    }
+
     // ---- LFG lobbies
 
     private static String enc(String s) throws Exception {

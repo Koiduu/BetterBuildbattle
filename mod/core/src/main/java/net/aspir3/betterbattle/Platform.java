@@ -15,6 +15,11 @@ public interface Platform {
     /** Print a chat line. Uses § colour codes. Called on the main thread. */
     void chat(String message);
 
+    /** A chat line that opens url when clicked. Called on the main thread. */
+    default void chatLink(String message, String url) {
+        chat(message + " §b" + url);
+    }
+
     /** Open a text page (What's New, Last Game...). Called on the main thread. */
     void openPage(net.aspir3.betterbattle.pages.Pages.Page page);
 

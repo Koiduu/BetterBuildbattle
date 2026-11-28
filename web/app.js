@@ -1120,7 +1120,8 @@ async function authPage(mode) {
     const button = form.querySelector("button");
     button.disabled = true;
     try {
-      setMe(await request("POST", signup ? "/auth/signup" : "/auth/login", { email, password }));
+      setMe(await request("POST", signup ? "/auth/signup" : "/auth/login",
+        { email, password }));
       go("/account");
     } catch (err) {
       errorBox.innerHTML = AUTH_ERRORS[err.message] ?? "Something went wrong. Try again in a minute.";
@@ -1193,6 +1194,22 @@ async function accountPage() {
       </section>
     </div>
 
+    <section class="card voice-card">
+      <div class="card-head">
+        <div>
+          <h2>Voice chat</h2>
+          <p class="sub">Talk on the Better Battle Discord with your teammate or your party. Press Voice in the B menu or type <code>/bb voice</code> in game.</p>
+        </div>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="voice-on"${me.voiceEnabled ? " checked" : ""}>
+        <span>Allow voice chat</span>
+      </label>
+      <p class="muted">Off unless you turn it on, and you can turn it off any time. Turning it off takes you out of any call straight away. You also need a linked Discord account in the Better Battle server. Everyone in a call has to press Voice themselves and name each other, so nobody can put you in a call. You can leave whenever you like, and you can block or report anyone with Discord's own tools. Calls aren't recorded, and the channel is deleted once it's empty.</p>
+      <p class="muted">Better Battle isn't made by or affiliated with Hypixel. Follow Hypixel's rules when you use it.</p>
+      <span class="muted saved" id="voice-status" role="status"></span>
+    </section>
+
     <section class="card" id="pins-card"></section>
 
     <section class="card export-card">
@@ -1232,6 +1249,7 @@ async function accountPage() {
   renderMinecraftCard(providers);
   renderPlanCard(document.getElementById("plan-card"));
   setUpBio();
+  setUpVoice();
   setUpPins();
   setUpAccountDeletion();
 }
@@ -1364,6 +1382,23 @@ async function getLinkCode() {
       accountPage();
     }
   }, 3000);
+}
+
+function setUpVoice() {
+  const box = document.getElementById("voice-on");
+  const status = document.getElementById("voice-status");
+  if (!box) return;
+  box.addEventListener("change", async () => {
+    box.disabled = true;
+    try {
+      setMe(await request("PUT", "/me/voice", { enabled: box.checked }));
+      status.textContent = box.checked ? "Saved. Voice chat is on for your account." : "Saved. Voice chat is off for your account.";
+    } catch {
+      box.checked = !box.checked;
+      status.textContent = "Couldn't save. Try again.";
+    }
+    box.disabled = false;
+  });
 }
 
 function setUpBio() {
