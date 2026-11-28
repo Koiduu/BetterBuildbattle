@@ -70,6 +70,7 @@ public final class MenuScreen extends Screen {
 
         LinearLayout bottom = rows.addChild(LinearLayout.horizontal().spacing(8));
         bottom.addChild(Button.builder(Component.literal("Settings"), b -> Compat.setScreen(minecraft, new SettingsScreen(this))).width(100).build());
+        bottom.addChild(Button.builder(Component.literal("Voice"), b -> Compat.setScreen(minecraft, new VoiceScreen(this))).width(100).build());
         bottom.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(100).build());
 
         layout.visitWidgets(this::addRenderableWidget);

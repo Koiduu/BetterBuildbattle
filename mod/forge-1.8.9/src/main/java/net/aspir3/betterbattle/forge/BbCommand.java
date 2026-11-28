@@ -5,6 +5,7 @@ import net.aspir3.betterbattle.forge.ui.AchievementsScreen;
 import net.aspir3.betterbattle.forge.ui.MenuScreen;
 import net.aspir3.betterbattle.forge.ui.SettingsScreen;
 import net.aspir3.betterbattle.forge.ui.TextPageScreen;
+import net.aspir3.betterbattle.forge.ui.VoiceScreen;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.palette.Palettes;
 import net.minecraft.command.CommandBase;
@@ -15,7 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-/** /bb, /bb achievements, /bb recap, /bb weekly, /bb news, /bb settings, /bb sync, /bb palette [size], /bb debug */
+/** /bb, /bb voice [names|leave], /bb achievements, /bb recap, /bb weekly, /bb news, /bb settings, /bb sync, /bb palette [size], /bb debug */
 final class BbCommand extends CommandBase {
     private static final String P = BetterBattleForge.PREFIX;
     private final BetterBattleForge mod;
@@ -31,7 +32,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [help|stats|rank|compare|achievements|recap|weekly|news|settings|sync|link|report|palette|debug]";
+        return "/bb [help|stats|rank|compare|voice|achievements|recap|weekly|news|settings|sync|link|report|palette|debug]";
     }
 
     @Override
@@ -46,7 +47,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "achievements", "recap", "weekly", "news", "settings", "sync", "link", "report", "palette", "debug");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "voice", "achievements", "recap", "weekly", "news", "settings", "sync", "link", "report", "palette", "debug");
         return null;
     }
 
@@ -65,6 +66,16 @@ final class BbCommand extends CommandBase {
         } else if (sub.equals("compare")) {
             if (args.length < 2) mod.chat(P + "Usage: §b/bb compare <name>");
             else core.compare(args[1]);
+        } else if (sub.equals("voice")) {
+            if (args.length < 2) {
+                mod.openLater(new VoiceScreen(null));
+            } else if (args.length == 2 && args[1].equalsIgnoreCase("leave")) {
+                core.leaveVoice();
+            } else {
+                StringBuilder names = new StringBuilder();
+                for (int i = 1; i < args.length; i++) names.append(' ').append(args[i]);
+                core.voice(BetterBattle.voiceNames(names.toString()));
+            }
         } else if (sub.equals("achievements")) {
             mod.openLater(new AchievementsScreen(null));
         } else if (sub.equals("recap")) {

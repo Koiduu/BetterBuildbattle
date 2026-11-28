@@ -304,4 +304,14 @@ public class BetterBattleForge implements Platform {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.ingameGUI != null) mc.ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(message));
     }
+
+    @Override
+    public void chatLink(String message, String url) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.ingameGUI == null) return;
+        ChatComponentText line = new ChatComponentText(message);
+        line.setChatStyle(new net.minecraft.util.ChatStyle()
+            .setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.OPEN_URL, url)));
+        mc.ingameGUI.getChatGUI().printChatMessage(line);
+    }
 }

@@ -72,6 +72,32 @@ public interface ApiClient {
         throw new UnsupportedOperationException("compare");
     }
 
+    /**
+     * A temporary Discord voice channel for this player and the players they named. status is "none",
+     * "waiting" (some named players haven't pressed Voice yet) or "ready" (url opens the channel).
+     */
+    final class Voice {
+        public String status, scope, label, url, notice;
+        public List<String> waitingFor = new ArrayList<String>();
+
+        public boolean ready() { return "ready".equals(status); }
+        public boolean waiting() { return "waiting".equals(status); }
+    }
+
+    /** Pressing Voice with these teammates or party members. Each of them has to press Voice too. Older servers answer 404. */
+    default Voice voice(List<String> members) throws Exception {
+        throw new UnsupportedOperationException("voice");
+    }
+
+    /** The voice group this player is in, if any. */
+    default Voice voiceStatus() throws Exception {
+        throw new UnsupportedOperationException("voice");
+    }
+
+    default void leaveVoice() throws Exception {
+        throw new UnsupportedOperationException("voice");
+    }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 

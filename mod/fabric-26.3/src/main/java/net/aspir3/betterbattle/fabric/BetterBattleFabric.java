@@ -36,6 +36,7 @@ import net.aspir3.betterbattle.fabric.ui.ScreenshotsScreen;
 import net.aspir3.betterbattle.fabric.ui.SettingsScreen;
 import net.aspir3.betterbattle.fabric.ui.SpbTimerToast;
 import net.aspir3.betterbattle.fabric.ui.TextPageScreen;
+import net.aspir3.betterbattle.fabric.ui.VoiceScreen;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
 import net.aspir3.betterbattle.game.JumpTracker;
@@ -165,6 +166,12 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
                 .then(ClientCommands.literal("compare")
                     .then(ClientCommands.argument("name", StringArgumentType.word()).executes(c -> {
                         core.compare(StringArgumentType.getString(c, "name"));
+                        return 1;
+                    })))
+                .then(ClientCommands.literal("voice").executes(c -> open(() -> new VoiceScreen(null)))
+                    .then(ClientCommands.literal("leave").executes(c -> { core.leaveVoice(); return 1; }))
+                    .then(ClientCommands.argument("names", StringArgumentType.greedyString()).executes(c -> {
+                        core.voice(BetterBattle.voiceNames(StringArgumentType.getString(c, "names")));
                         return 1;
                     })))
                 .then(ClientCommands.literal("shots").executes(c -> open(() -> new ScreenshotsScreen(null))))
@@ -469,5 +476,18 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     @Override
     public void chat(String message) {
         Compat.chatListener(Minecraft.getInstance()).handleSystemMessage(Component.literal(message), false);
+    }
+
+    @Override
+    public void chatLink(String message, String url) {
+        java.net.URI uri;
+        try {
+            uri = java.net.URI.create(url);
+        } catch (IllegalArgumentException e) {
+            chat(message);
+            return;
+        }
+        Component line = Component.literal(message).withStyle(s -> s.withClickEvent(new net.minecraft.network.chat.ClickEvent.OpenUrl(uri)));
+        Compat.chatListener(Minecraft.getInstance()).handleSystemMessage(line, false);
     }
 }

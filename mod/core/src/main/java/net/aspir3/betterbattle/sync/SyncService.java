@@ -37,6 +37,15 @@ public final class SyncService {
         void latestVersion(ApiClient.Latest latest);
         /** New weekly challenges or world records arrived. */
         void bootstrapped(ApiClient.Bootstrap b);
+        /**
+         * Where this player's voice group stands. changed: the player pressed something, or the group just
+         * became ready or closed, so it is worth a chat line. A quiet refresh (the Voice screen opening) is false.
+         */
+        default void voice(ApiClient.Voice v, boolean changed) {
+        }
+        /** Voice was turned down. link is a page that fixes it (the account page, the Discord invite), or null. */
+        default void voiceProblem(String message, String link) {
+        }
     }
 
     private static final long BOOTSTRAP_EVERY_MS = 30L * 60L * 1000L;
@@ -166,6 +175,137 @@ public final class SyncService {
                 }
             }
         });
+    }
+
+    /** How often the mod asks whether the others have pressed Voice, and for how long (the server gives up at 10 minutes). */
+    static final long VOICE_POLL_MS = 5000L, VOICE_POLL_FOR_MS = 10L * 60L * 1000L;
+    private java.util.concurrent.ScheduledFuture<?> voicePoll;
+    private volatile ApiClient.Voice voice;
+
+    /** The voice group as last heard from the server, or null before the first answer. */
+    public ApiClient.Voice voiceState() { return voice; }
+
+    /** Pressing Voice with these players. */
+    public void voice(final List<String> members) {
+        exec.execute(new Runnable() {
+            public void run() {
+                voiceCall(new VoiceCall() {
+                    public ApiClient.Voice call() throws Exception { return api.voice(members); }
+                }, true);
+            }
+        });
+    }
+
+    /** What the Voice screen shows when it opens; no chat line. */
+    public void refreshVoice() {
+        exec.execute(new Runnable() {
+            public void run() {
+                voiceCall(new VoiceCall() {
+                    public ApiClient.Voice call() throws Exception { return api.voiceStatus(); }
+                }, false);
+            }
+        });
+    }
+
+    public void leaveVoice() {
+        exec.execute(new Runnable() {
+            public void run() {
+                voiceCall(new VoiceCall() {
+                    public ApiClient.Voice call() throws Exception {
+                        api.leaveVoice();
+                        ApiClient.Voice none = new ApiClient.Voice();
+                        none.status = "none";
+                        return none;
+                    }
+                }, true);
+            }
+        });
+    }
+
+    private interface VoiceCall {
+        ApiClient.Voice call() throws Exception;
+    }
+
+    /** Runs on the sync thread. */
+    private void voiceCall(VoiceCall call, boolean changed) {
+        if (stopped) return;
+        try {
+            ensureToken();
+            ApiClient.Voice v;
+            try {
+                v = call.call();
+            } catch (ApiClient.Unauthorized e) {
+                db.setMeta("token", null);   // the token ran out: log in again once
+                ensureToken();
+                v = call.call();
+            }
+            voice = v;
+            listener.voice(v, changed);
+            if (v.waiting()) pollVoice(System.currentTimeMillis() + VOICE_POLL_FOR_MS);
+            else stopVoicePoll();
+        } catch (UnsupportedOperationException e) {
+            listener.voiceProblem("This stats server doesn't have voice chat yet.", null);
+        } catch (Exception e) {
+            String[] problem = voiceProblem(e);
+            listener.voiceProblem(problem[0], problem[1]);
+        }
+    }
+
+    /** While the others haven't pressed Voice yet, ask every few seconds and say so once the channel is ready. */
+    private void pollVoice(final long until) {
+        if (voicePoll != null && !voicePoll.isDone()) return;
+        voicePoll = exec.scheduleWithFixedDelay(new Runnable() {
+            public void run() {
+                if (stopped || System.currentTimeMillis() > until) {
+                    stopVoicePoll();
+                    return;
+                }
+                try {
+                    ensureToken();
+                    ApiClient.Voice v = api.voiceStatus();
+                    ApiClient.Voice before = voice;
+                    voice = v;
+                    if (!v.waiting()) {
+                        stopVoicePoll();
+                        listener.voice(v, true);   // ready, or the group closed
+                    } else if (before == null || before.waitingFor == null || !before.waitingFor.equals(v.waitingFor)) {
+                        listener.voice(v, false);  // someone else pressed Voice: the screen shows who is left
+                    }
+                } catch (Exception ignored) {
+                    // a blip: try again next time round
+                }
+            }
+        }, VOICE_POLL_MS, VOICE_POLL_MS, TimeUnit.MILLISECONDS);
+    }
+
+    private void stopVoicePoll() {
+        if (voicePoll != null) voicePoll.cancel(false);
+        voicePoll = null;
+    }
+
+    /** What to tell the player when the server turns voice down: the message, and a page that fixes it or null. */
+    public static String[] voiceProblem(Exception e) {
+        String m = String.valueOf(e.getMessage());
+        if (m.contains("adult_required")) return new String[] {
+            "Voice chat is for players 18 or older. Tick \"I'm 18 or older\" on your account page on the website first.", "/account"};
+        if (m.contains("discord_required")) return new String[] {
+            "Connect your Discord account on your account page on the website first.", "/account"};
+        if (m.contains("not_in_server")) {
+            String invite = null;
+            int at = m.indexOf("\"invite\":\"");
+            if (at >= 0) {
+                int end = m.indexOf('"', at + 10);
+                if (end > at + 10) invite = m.substring(at + 10, end);
+            }
+            return new String[] {"Join the Better Battle Discord server first, then press Voice again.", invite};
+        }
+        if (m.contains("no_minecraft")) return new String[] {
+            "Link this Minecraft account to your website account first: run /bb link with the code from the account page.", "/account"};
+        if (m.contains("bad_members")) return new String[] {
+            "Name 1 to 7 other players by their Minecraft names, like /bb voice Teammate.", null};
+        if (m.contains("voice_unavailable")) return new String[] {"Voice chat isn't switched on for the stats server right now.", null};
+        if (m.contains("HTTP 429")) return new String[] {"Slow down a little, then try again.", null};
+        return new String[] {"Couldn't reach voice: " + explain(e), null};
     }
 
     /** Turns an exception into something a player can act on. */

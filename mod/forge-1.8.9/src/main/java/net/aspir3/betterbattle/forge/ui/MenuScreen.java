@@ -18,7 +18,7 @@ import java.util.Map;
 /** The main Better Battle screen, built from 1.8.9's own widgets and textures. */
 public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
     private static final int ACHIEVEMENTS = 0, PROFILE = 1, SYNC = 2, DONE = 4,
-        WHATS_NEW = 5, LAST_GAME = 6, WEEKLY = 7, SETTINGS = 8;
+        WHATS_NEW = 5, LAST_GAME = 6, WEEKLY = 7, SETTINGS = 8, VOICE = 9;
 
     private final GuiScreen parent;
     private boolean tracking;
@@ -45,8 +45,9 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         buttonList.add(new GuiButton(WHATS_NEW, cx - 154, y + 24, 100, 20, "What's New"));
         buttonList.add(new GuiButton(LAST_GAME, cx - 50, y + 24, 100, 20, "Last Game"));
         buttonList.add(new GuiButton(WEEKLY, cx + 54, y + 24, 100, 20, "Weekly"));
-        buttonList.add(new GuiButton(SETTINGS, cx - 104, y + 48, 100, 20, "Settings"));
-        buttonList.add(new GuiButton(DONE, cx + 4, y + 48, 100, 20, "Done"));
+        buttonList.add(new GuiButton(SETTINGS, cx - 154, y + 48, 100, 20, "Settings"));
+        buttonList.add(new GuiButton(VOICE, cx - 50, y + 48, 100, 20, "Voice"));
+        buttonList.add(new GuiButton(DONE, cx + 54, y + 48, 100, 20, "Done"));
     }
 
     private void loadStats() {
@@ -116,6 +117,9 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
                 break;
             case SETTINGS:
                 mc.displayGuiScreen(new SettingsScreen(this));
+                break;
+            case VOICE:
+                mc.displayGuiScreen(new VoiceScreen(this));
                 break;
             default:
                 mc.displayGuiScreen(parent);

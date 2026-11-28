@@ -367,6 +367,57 @@ public final class BetterBattle {
         sync.compare(name);
     }
 
+    private static final String VOICE_PREFIX = "§d§lBetter Battle §8» §7";
+    private volatile String voiceProblem;
+    private volatile boolean voiceNoticeShown;
+
+    /**
+     * The names in "/bb voice Koidu Aspir3" or the Voice screen's box: split on spaces and commas.
+     * Returns null when one isn't a Minecraft name.
+     */
+    public static List<String> voiceNames(String text) {
+        List<String> out = new ArrayList<String>();
+        for (String part : (text == null ? "" : text.trim()).split("[\\s,]+")) {
+            if (part.isEmpty()) continue;
+            if (!part.matches("[A-Za-z0-9_]{1,16}")) return null;
+            out.add(part);
+        }
+        return out;
+    }
+
+    /** Pressing Voice with these teammates or party members. */
+    public void voice(List<String> names) {
+        if (sync == null) {
+            platform.chat(VOICE_PREFIX + "Join Hypixel first, then press Voice again.");
+            return;
+        }
+        if (names == null || names.isEmpty() || names.size() > 7) {
+            platform.chat(VOICE_PREFIX + "Name 1 to 7 other players by their Minecraft names, like §b/bb voice Teammate§7.");
+            return;
+        }
+        voiceProblem = null;
+        sync.voice(names);
+    }
+
+    public void leaveVoice() {
+        if (sync != null) sync.leaveVoice();
+    }
+
+    /** The Voice screen opening: ask the server, without a chat line. */
+    public void refreshVoice() {
+        if (sync != null) sync.refreshVoice();
+    }
+
+    /** The voice group as last heard from the server, or null. */
+    public ApiClient.Voice voiceState() {
+        return sync == null ? null : sync.voiceState();
+    }
+
+    /** Why voice was last turned down, for the Voice screen, or null. */
+    public String voiceProblem() {
+        return voiceProblem;
+    }
+
     /** /bb help. headsAndBanners: the Fabric build has the Head Database and banners; Forge doesn't. */
     public List<String> helpLines(boolean headsAndBanners) {
         List<String> out = new ArrayList<String>();
@@ -375,6 +426,7 @@ public final class BetterBattle {
         out.add("\u00a7b/bb stats \u00a77Your own numbers: games, wins, win rate by mode");
         out.add("\u00a7b/bb rank \u00a77Where you stand today, this week, this month and all time");
         out.add("\u00a7b/bb compare <name> \u00a77You next to another player");
+        out.add("\u00a7b/bb voice [names] \u00a77Discord voice with your teammate or party (18+). \u00a7b/bb voice leave \u00a77to leave");
         if (headsAndBanners) out.add("\u00a7b/bb shots \u00a77Your round screenshots, kept for 15 days");
         out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
         out.add("\u00a7b/bb recap \u00a77Your last game in full");
@@ -608,6 +660,45 @@ public final class BetterBattle {
                     platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb " + (ok ? "\u00a7a" : "\u00a7c") + message);
                 }
             });
+        }
+
+        public void voice(final ApiClient.Voice v, final boolean changed) {
+            voiceProblem = null;
+            if (!changed) return;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    if (v.ready()) {
+                        platform.chatLink(VOICE_PREFIX + "§aVoice is ready: §f" + v.label + "§7. §nClick to open it in Discord", v.url);
+                        if (!voiceNoticeShown && v.notice != null) {
+                            platform.chat("§8" + v.notice);
+                            voiceNoticeShown = true;
+                        }
+                    } else if (v.waiting()) {
+                        String who = v.waitingFor == null || v.waitingFor.isEmpty() ? "the others" : join(v.waitingFor);
+                        platform.chat(VOICE_PREFIX + "Waiting for §f" + who + "§7 to press Voice too. They need Better Battle, "
+                            + "18+ ticked on the website and Discord linked. You'll get a message here when the channel is ready.");
+                    } else {
+                        platform.chat(VOICE_PREFIX + "You're not in a voice channel.");
+                    }
+                }
+            });
+        }
+
+        public void voiceProblem(final String message, final String link) {
+            voiceProblem = message;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    String url = link == null ? null : link.startsWith("/") ? config.website + link : link;
+                    if (url == null) platform.chat(VOICE_PREFIX + "§c" + message);
+                    else platform.chatLink(VOICE_PREFIX + "§c" + message + " §7§nClick to open it", url);
+                }
+            });
+        }
+
+        private String join(List<String> names) {
+            StringBuilder out = new StringBuilder();
+            for (String n : names) out.append(out.length() > 0 ? ", " : "").append(n);
+            return out.toString();
         }
 
         public void lines(final List<String> lines) {
