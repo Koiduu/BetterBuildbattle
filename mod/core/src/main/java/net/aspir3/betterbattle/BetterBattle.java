@@ -48,6 +48,7 @@ public final class BetterBattle {
 
     private LocalDatabase db;
     private SyncService sync;
+    private net.aspir3.betterbattle.pings.TeammatePings pings;
     private GameStateMachine game;
     private String playerName;
     private final Set<UUID> seenThisSession = new HashSet<UUID>();
@@ -166,6 +167,7 @@ public final class BetterBattle {
             db = new LocalDatabase(dir.getParentFile(), uuid.toString());
             HttpApiClient api = new HttpApiClient(config.apiBase, modVersion, mcVersion);
             sync = new SyncService(db, api, name, new SyncListener());
+            pings = new net.aspir3.betterbattle.pings.TeammatePings(new PingTransport(api), new PingListener());
             game = new GameStateMachine(parser, new GameListener(), mcVersion, name);
             game.setSpbRecords(new LocalRecords());
             game.setNick(nicked, nick);
@@ -202,6 +204,8 @@ public final class BetterBattle {
         };
         if (sync != null) sync.shutdown(close);
         else close.run();
+        if (pings != null) pings.shutdown();
+        pings = null;
         if (debugLog != null) debugLog.close();
         sync = null;
         db = null;
@@ -229,6 +233,74 @@ public final class BetterBattle {
             else if (e != null && e.type == ChatParser.Type.NICK_RESET) setNick(false, null);
             game.onChat(line);
         }
+        updatePings();
+    }
+
+    // ---- teammate pings (Teams only)
+
+    private void updatePings() {
+        if (pings != null && game != null) {
+            pings.update(config.teammatePings, game.mode(), game.state().name(), game.teammate());
+        }
+    }
+
+    /** True while the ping wheel and block ping may be used: building in Teams with a teammate. */
+    public boolean pingsActive() {
+        return pings != null && pings.active();
+    }
+
+    /** The teammate pings go to, or null when pings are off. */
+    public String pingTeammate() {
+        return pings == null ? null : pings.teammate();
+    }
+
+    /** Sends a callout to the teammate. block is {x, y, z} for a block ping. Main thread. */
+    public void ping(net.aspir3.betterbattle.pings.TeammatePings.Kind kind, int[] block) {
+        if (pings == null) return;
+        if (!config.teammatePings) {
+            platform.chat("§d§lBetter Battle §8» §7Teammate pings are off. Turn them on in Settings.");
+            return;
+        }
+        String why = pings.send(kind, block, System.currentTimeMillis());
+        if (why != null) platform.showPing("Ping not sent", why);
+    }
+
+    private static final class PingTransport implements net.aspir3.betterbattle.pings.TeammatePings.Transport {
+        private final ApiClient api;
+
+        PingTransport(ApiClient api) { this.api = api; }
+
+        public net.aspir3.betterbattle.pings.TeammatePings.Poll poll(String teammate) throws Exception { return api.pingPoll(teammate); }
+        public void send(String teammate, String kind, int[] block) throws Exception { api.pingSend(teammate, kind, block); }
+        public void leave() throws Exception { api.pingLeave(); }
+    }
+
+    private final class PingListener implements net.aspir3.betterbattle.pings.TeammatePings.Listener {
+        public void received(final String from, final net.aspir3.betterbattle.pings.TeammatePings.Kind kind, final int[] block) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    if (pings == null || !pings.active() || !config.teammatePings) return;   // the game ended meanwhile
+                    debug("ping from teammate: " + kind.id);
+                    if (block != null) {
+                        platform.showBlockPing(from, block[0], block[1], block[2],
+                            System.currentTimeMillis() + net.aspir3.betterbattle.pings.TeammatePings.MARKER_MS);
+                    }
+                    platform.showPing(from, kind.label);
+                }
+            });
+        }
+
+        public void sent(final String to, final net.aspir3.betterbattle.pings.TeammatePings.Kind kind) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() { platform.showPing("Sent to " + to, kind.label); }
+            });
+        }
+
+        public void notice(final String message) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() { platform.showPing("Ping not sent", message); }
+            });
+        }
     }
 
     /** Sidebar title and lines, top to bottom. Call it often; nothing happens unless something changed. */
@@ -247,6 +319,7 @@ public final class BetterBattle {
         lastSidebarTitle = cleanTitle;
         lastSidebar = cleaned;
         game.onSidebar(cleanTitle, cleaned);
+        updatePings();
     }
 
     private static List<String> withoutClock(List<String> lines) {

@@ -21,4 +21,13 @@ public interface Platform {
     /** Save a picture of the game screen to this file (a round screenshot). Called on the main thread; Forge does nothing. */
     default void screenshot(java.io.File file) {
     }
+
+    /** A teammate ping: a small toast like the achievement one. Called on the main thread. */
+    default void showPing(String title, String text) {
+        chat("§d§lBetter Battle §8» §f" + title + "§7: " + text);
+    }
+
+    /** A teammate marked this block: show a marker on it for a few seconds. Called on the main thread. */
+    default void showBlockPing(String from, int x, int y, int z, long untilMs) {
+    }
 }

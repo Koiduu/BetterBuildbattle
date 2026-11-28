@@ -72,6 +72,20 @@ public interface ApiClient {
         throw new UnsupportedOperationException("compare");
     }
 
+    /** Teammate pings: says who your Teams teammate is and fetches the pings they sent. Older servers answer 404. */
+    default net.aspir3.betterbattle.pings.TeammatePings.Poll pingPoll(String teammate) throws Exception {
+        throw new UnsupportedOperationException("pings");
+    }
+
+    /** Sends one ping to the teammate. block is {x, y, z} for a block ping, otherwise null. */
+    default void pingSend(String teammate, String kind, int[] block) throws Exception {
+        throw new UnsupportedOperationException("pings");
+    }
+
+    /** The Teams game ended: the server forgets the teammate. */
+    default void pingLeave() throws Exception {
+    }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 
