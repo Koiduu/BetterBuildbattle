@@ -85,23 +85,39 @@ public final class SpbTracker {
      * clock starts with onBuildClock.
      */
     public void onRound(int number, String name, String difficulty, int playersLeft, long now) {
-        if (eliminated || (current != null && current.number == number)) return;
+        if (eliminated) return;
+        if (current != null && current.number == number) {
+            // Hypixel moves the round number on a moment before the theme: for a second the sidebar shows
+            // "Round: 4" with round 3's build. Until the build clock starts, the newer theme wins.
+            if (current.startedAt == 0 && !buildId(buildKey(name, difficulty)).equals(current.build)) {
+                identify(current, name, difficulty);
+            }
+            return;
+        }
         closeRound();
         Round r = new Round();
         r.number = number;
+        identify(r, name, difficulty);
+        r.playersAtStart = playersLeft;
+        current = r;
+        finishedAt = 0;
+    }
+
+    private void identify(Round r, String name, String difficulty) {
         r.name = name;
         // The same build name comes up at more than one difficulty (Turret on Simple and on Easy are different
         // builds), so the difficulty is part of the id
-        r.build = buildId(difficulty == null ? name : name + " " + difficulty);
+        r.build = buildId(buildKey(name, difficulty));
         r.difficulty = difficulty;
-        r.playersAtStart = playersLeft;
         if (records != null) {
             r.pbBeforeMs = records.personalBest(r.build);
             r.wrMs = records.worldRecord(r.build);
             r.wrHolder = records.worldRecordHolder(r.build);
         }
-        current = r;
-        finishedAt = 0;
+    }
+
+    private static String buildKey(String name, String difficulty) {
+        return difficulty == null ? name : name + " " + difficulty;
     }
 
     /**
