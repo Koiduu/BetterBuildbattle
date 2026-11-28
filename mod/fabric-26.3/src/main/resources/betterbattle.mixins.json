@@ -4,7 +4,8 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"ConnectionAccessor",
-    "SpriteContentsMixin"
+    "SpriteContentsMixin",
+    "ContainerLabelMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

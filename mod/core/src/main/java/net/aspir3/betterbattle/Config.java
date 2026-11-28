@@ -48,6 +48,8 @@ public final class Config {
     public boolean updateNotices = true;
     /** Save a screenshot of your build when each round's building time ends. Kept for 15 days. */
     public boolean roundScreenshots = true;
+    /** The dark, pink-accented look of battle.aspir3.net: a resource pack built into the mod, plus the mod's own screens. */
+    public boolean uiTheme = true;
     /** For slower PCs: far fewer heads drawn at once in the Head Database, which is the heaviest screen. */
     public boolean lowEndMode = false;
     /** The version whose What's New page was last shown. */
@@ -57,6 +59,11 @@ public final class Config {
     public static final class Toggle {
         public final String label, help;
         private final java.lang.reflect.Field field;
+
+        /** True for the toggle that switches this Config field. */
+        public boolean is(String fieldName) {
+            return field.getName().equals(fieldName);
+        }
 
         Toggle(String fieldName, String label, String help) {
             try {
@@ -87,6 +94,7 @@ public final class Config {
 
     /** Everything the Settings screen lets you switch, in order. */
     public static final java.util.List<Toggle> TOGGLES = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
+        new Toggle("uiTheme", "Better Battle look", "Dark menus in the colours of battle.aspir3.net (reloads textures)"),
         new Toggle("lowEndMode", "Low-end mode", "Fewer heads on screen at once in the Head Database, for slower PCs"),
         new Toggle("roundScreenshots", "Round screenshots", "Save a picture of your build each round, kept for 15 days (/bb shots)"),
         new Toggle("spbTimer", "Speed Builders timer", "A stopwatch with your best time while you build"),

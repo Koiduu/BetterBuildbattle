@@ -104,6 +104,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     private boolean plotFound;
     private int plotTries;
     private int ticks;
+    private int themeTicks;
     private final JumpTracker jumpTracker = new JumpTracker();
 
     @Override
@@ -112,6 +113,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
             .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
             .orElse("dev");
         core = BetterBattle.init(this, FabricLoader.getInstance().getConfigDir().toFile(), version, MC_VERSION);
+        ThemePack.register();
 
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(BetterBattle.MOD_ID, "main"));
         menuKey = KeyMappingHelper.registerKeyMapping(
@@ -251,6 +253,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
     private void tick(Minecraft client) {
         NoTextures.tick(client);
+        if (++themeTicks % 40 == 0) ThemePack.follow(client);
         while (menuKey.consumeClick()) pendingScreen = this::menu;
         if (pendingScreen != null) {
             Compat.setScreen(client, pendingScreen.get());

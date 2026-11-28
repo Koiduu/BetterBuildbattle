@@ -3,6 +3,7 @@ package net.aspir3.betterbattle.fabric.ui;
 import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.Config;
+import net.aspir3.betterbattle.fabric.ThemePack;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -27,7 +28,7 @@ public final class SettingsScreen extends Screen {
     protected void init() {
         layout.addTitleHeader(title, font);
         Config config = BetterBattle.get().config();
-        LinearLayout rows = layout.addToContents(LinearLayout.vertical().spacing(4));
+        LinearLayout rows = layout.addToContents(LinearLayout.vertical().spacing(2));   // 2: eight rows still fit at large GUI scales
         LinearLayout row = null;
         for (int i = 0; i < Config.TOGGLES.size(); i++) {
             Config.Toggle t = Config.TOGGLES.get(i);
@@ -35,6 +36,7 @@ public final class SettingsScreen extends Screen {
             row.addChild(Button.builder(label(t, config), b -> {
                 t.flip(config);
                 b.setMessage(label(t, config));
+                if (t.is("uiTheme")) ThemePack.apply(minecraft, config.uiTheme);
             }).width(170).tooltip(Tooltip.create(Component.literal(t.help))).build());
         }
         layout.addToFooter(Button.builder(parent == null ? CommonComponents.GUI_DONE : CommonComponents.GUI_BACK, b -> onClose()).width(200).build());

@@ -46,6 +46,22 @@ mod/
 
 To claim a profile on the website: sign up, open Account, get a code, and run `/bb link <code>` in game.
 
+## The Better Battle look (UI pack)
+
+The mod ships a resource pack that gives Minecraft's menus the website's colours: dark grey panels, pink buttons on
+hover, a pink hotbar selection. Block, item and mob textures are never changed, so a build looks the same to you as
+to the voters. The "Better Battle look" setting (on by default) switches the pack and the restyled B menu together.
+
+- Fabric 26.x: `mod/fabric-26.3/src/main/resources/resourcepacks/betterbattle_ui/`, registered as a built-in pack,
+  so it also appears in the Resource Packs screen. The setting and that screen follow each other.
+- Forge 1.8.9: `mod/forge-1.8.9/src/main/resources/betterbattle_ui/`, added to Minecraft's default packs.
+- Container titles are drawn dark grey by the game, so while the look is on the mod draws them light
+  (a mixin on Fabric, light copies of the chest, inventory and creative screens on Forge).
+- The pack is generated: `python tools/ui-pack/build.py` (needs Pillow and the 26.2 and 1.8.9 jars from your
+  launcher) rebuilds both folders, `tools/ui-pack/preview.py` draws a before/after picture, and `--zip` also writes
+  stand-alone packs. Chest and inventory backgrounds are recoloured from vanilla; buttons, fields, the hotbar and
+  tooltips are drawn by the script.
+
 ## Plans, payments and the Discord bot
 
 Three plans: Builder (free), Architect and Master Builder. Nothing inside a game is paid; plans add profile style and

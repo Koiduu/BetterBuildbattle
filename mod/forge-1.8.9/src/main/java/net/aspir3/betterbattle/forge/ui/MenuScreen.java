@@ -1,6 +1,7 @@
 package net.aspir3.betterbattle.forge.ui;
 
 import net.aspir3.betterbattle.BetterBattle;
+import net.aspir3.betterbattle.Theme;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.store.LocalDatabase;
@@ -148,7 +149,8 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
             return;
         }
 
-        drawCenteredString(fontRendererObj, mc.getSession().getUsername(), cx, y, 0xFFFFFF);
+        boolean themed = Theme.on();
+        drawCenteredString(fontRendererObj, mc.getSession().getUsername(), cx, y, themed ? Theme.TEXT : 0xFFFFFF);
         y += 18;
 
         // Level number and bar, exactly like the vanilla XP bar
@@ -158,16 +160,20 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         fontRendererObj.drawString(lv, lx - 1, y, 0);
         fontRendererObj.drawString(lv, lx, y + 1, 0);
         fontRendererObj.drawString(lv, lx, y - 1, 0);
-        fontRendererObj.drawString(lv, lx, y, 8453920);
+        fontRendererObj.drawString(lv, lx, y, themed ? Theme.PINK_TEXT : 8453920);
         y += 11;
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-        mc.getTextureManager().bindTexture(Gui.icons);
         int barX = cx - 91;
-        drawTexturedModalRect(barX, y, 0, 64, 182, 5);
-        int fill = xpNeeded <= 0 ? 0 : (int) (xpInto * 183L / xpNeeded);
-        if (fill > 0) drawTexturedModalRect(barX, y, 0, 69, fill, 5);
+        if (themed) {
+            levelBar(barX, y, xpNeeded <= 0 ? 0 : (int) (xpInto * 180L / xpNeeded));
+        } else {
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+            mc.getTextureManager().bindTexture(Gui.icons);
+            drawTexturedModalRect(barX, y, 0, 64, 182, 5);
+            int fill = xpNeeded <= 0 ? 0 : (int) (xpInto * 183L / xpNeeded);
+            if (fill > 0) drawTexturedModalRect(barX, y, 0, 69, fill, 5);
+        }
         y += 9;
-        drawCenteredString(fontRendererObj, "Aspiring Level · " + String.format("%,d", xpInto) + " / " + String.format("%,d", xpNeeded) + " XP", cx, y, 0xAAAAAA);
+        drawCenteredString(fontRendererObj, "Aspiring Level · " + String.format("%,d", xpInto) + " / " + String.format("%,d", xpNeeded) + " XP", cx, y, themed ? Theme.MUTED : 0xAAAAAA);
         y += 22;
 
         int panelW = Math.min(300, width - 40);
@@ -178,11 +184,12 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
             {"Achievements", unlocked + " / " + Catalog.all().size(), "Aspiring Points", String.format("%,d", ap)},
             {"Global rank", rank, "", ""},
         };
-        drawRect(px - 6, y - 5, px + panelW + 6, y + rows.length * rowH + 1, 0x66000000);
+        if (themed) card(px - 6, y - 5, px + panelW + 6, y + rows.length * rowH + 1);
+        else drawRect(px - 6, y - 5, px + panelW + 6, y + rows.length * rowH + 1, 0x66000000);
         int half = panelW / 2;
         for (String[] r : rows) {
-            stat(r[0], r[1], px, half - 8, y);
-            if (!r[2].isEmpty()) stat(r[2], r[3], px + half + 8, half - 8, y);
+            stat(r[0], r[1], px, half - 8, y, themed, r == rows[2]);
+            if (!r[2].isEmpty()) stat(r[2], r[3], px + half + 8, half - 8, y, themed, false);
             y += rowH;
         }
         y += 12;
@@ -196,9 +203,30 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
-    private void stat(String label, String value, int x, int w, int y) {
-        fontRendererObj.drawString(label, x, y, 0xAAAAAA);
-        fontRendererObj.drawStringWithShadow(value, x + w - fontRendererObj.getStringWidth(value), y, 0xFFFFFF);
+    private void stat(String label, String value, int x, int w, int y, boolean themed, boolean gold) {
+        fontRendererObj.drawString(label, x, y, themed ? Theme.MUTED : 0xAAAAAA);
+        fontRendererObj.drawStringWithShadow(value, x + w - fontRendererObj.getStringWidth(value), y,
+            themed ? (gold ? Theme.GOLD : Theme.TEXT) : 0xFFFFFF);
+    }
+
+    /** A card like the website's: black edge, bevelled dark fill, pink bar along the top. */
+    private static void card(int x0, int y0, int x1, int y1) {
+        drawRect(x0, y0, x1, y1, Theme.EDGE);
+        drawRect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.CARD_LO);
+        drawRect(x0 + 1, y0 + 1, x1 - 2, y1 - 2, Theme.CARD_HI);
+        drawRect(x0 + 2, y0 + 2, x1 - 2, y1 - 2, Theme.CARD);
+        drawRect(x0 + 1, y0 + 1, x1 - 1, y0 + 3, Theme.PINK);
+    }
+
+    /** The level bar in pink instead of the vanilla XP bar (which the in-game HUD keeps). fill: 0 to 180. */
+    private static void levelBar(int x, int y, int fill) {
+        drawRect(x, y, x + 182, y + 5, Theme.EDGE);
+        drawRect(x + 1, y + 1, x + 181, y + 4, Theme.CARD_2);
+        fill = Math.max(0, Math.min(180, fill));
+        if (fill > 0) {
+            drawRect(x + 1, y + 1, x + 1 + fill, y + 4, Theme.PINK);
+            drawRect(x + 1, y + 1, x + 1 + fill, y + 2, Theme.PINK_HI);
+        }
     }
 
     @Override

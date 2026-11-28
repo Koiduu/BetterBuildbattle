@@ -9,6 +9,7 @@ import net.aspir3.betterbattle.forge.ui.MenuScreen;
 import net.aspir3.betterbattle.forge.ui.SpbTimerOverlay;
 import net.aspir3.betterbattle.forge.ui.PinnedAchievementsHud;
 import net.aspir3.betterbattle.forge.ui.TextPageScreen;
+import net.aspir3.betterbattle.forge.ui.ThemedScreens;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.game.GameStateMachine;
 import net.aspir3.betterbattle.game.JumpTracker;
@@ -83,6 +84,7 @@ public class BetterBattleForge implements Platform {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         core = BetterBattle.init(this, configDir, VERSION, MC_VERSION);
+        ThemePack.install();
         menuKey = new KeyBinding("key.betterbattle.menu", Keyboard.KEY_B, "key.category.betterbattle");
         ClientRegistry.registerKeyBinding(menuKey);
         ClientCommandHandler.instance.registerCommand(new BbCommand(this));
@@ -90,6 +92,7 @@ public class BetterBattleForge implements Platform {
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
         MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
         MinecraftForge.EVENT_BUS.register(new PinnedAchievementsHud());
+        MinecraftForge.EVENT_BUS.register(new ThemedScreens());
     }
 
     BetterBattle core() {

@@ -2,6 +2,7 @@ package net.aspir3.betterbattle.fabric.ui;
 
 import net.aspir3.betterbattle.fabric.compat.Compat;
 import net.aspir3.betterbattle.BetterBattle;
+import net.aspir3.betterbattle.Theme;
 import net.aspir3.betterbattle.achieve.Catalog;
 import net.aspir3.betterbattle.pages.Pages;
 import net.aspir3.betterbattle.store.LocalDatabase;
@@ -149,7 +150,8 @@ public final class MenuScreen extends Screen {
             return;
         }
 
-        graphics.centeredText(font, Component.literal(minecraft.getGameProfile().name()), cx, y, 0xFFFFFFFF);
+        boolean themed = Theme.on();
+        graphics.centeredText(font, Component.literal(minecraft.getGameProfile().name()), cx, y, themed ? Theme.TEXT : 0xFFFFFFFF);
         y += 18;
 
         // Level, drawn like the vanilla XP bar and number
@@ -159,15 +161,20 @@ public final class MenuScreen extends Screen {
         graphics.text(font, lv, lx - 1, y, 0xFF000000, false);
         graphics.text(font, lv, lx, y + 1, 0xFF000000, false);
         graphics.text(font, lv, lx, y - 1, 0xFF000000, false);
-        graphics.text(font, lv, lx, y, 0xFF80FF20, false);
+        graphics.text(font, lv, lx, y, themed ? Theme.PINK_TEXT : 0xFF80FF20, false);
         y += 11;
         int barX = cx - 91;
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, XP_BACKGROUND, barX, y, 182, 5);
-        int fill = xpNeeded <= 0 ? 0 : (int) (xpInto * 183L / xpNeeded);
-        if (fill > 0) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, XP_PROGRESS, 182, 5, 0, 0, barX, y, fill, 5);
+        if (themed) {
+            levelBar(graphics, barX, y, xpNeeded <= 0 ? 0 : (int) (xpInto * 180L / xpNeeded));
+        } else {
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, XP_BACKGROUND, barX, y, 182, 5);
+            int fill = xpNeeded <= 0 ? 0 : (int) (xpInto * 183L / xpNeeded);
+            if (fill > 0) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, XP_PROGRESS, 182, 5, 0, 0, barX, y, fill, 5);
+        }
         y += 9;
-        graphics.centeredText(font, Component.literal("Aspiring Level · " + String.format("%,d", xpInto) + " / " + String.format("%,d", xpNeeded) + " XP")
-            .withStyle(ChatFormatting.GRAY), cx, y, 0xFFFFFFFF);
+        String xpLine = "Aspiring Level · " + String.format("%,d", xpInto) + " / " + String.format("%,d", xpNeeded) + " XP";
+        graphics.centeredText(font, themed ? Component.literal(xpLine) : Component.literal(xpLine).withStyle(ChatFormatting.GRAY),
+            cx, y, themed ? Theme.MUTED : 0xFFFFFFFF);
         y += 22;
 
         // Two columns of numbers on a dark panel, like the vanilla statistics screen
@@ -179,11 +186,12 @@ public final class MenuScreen extends Screen {
             {"Achievements", unlocked + " / " + Catalog.all().size(), "Aspiring Points", String.format("%,d", ap)},
             {"Global rank", rank, "", ""},
         };
-        graphics.fill(px - 6, y - 5, px + panelW + 6, y + rows.length * rowH + 1, 0x66000000);
+        if (themed) card(graphics, px - 6, y - 5, px + panelW + 6, y + rows.length * rowH + 1);
+        else graphics.fill(px - 6, y - 5, px + panelW + 6, y + rows.length * rowH + 1, 0x66000000);
         int half = panelW / 2;
         for (String[] r : rows) {
-            stat(graphics, r[0], r[1], px, half - 8, y);
-            if (!r[2].isEmpty()) stat(graphics, r[2], r[3], px + half + 8, half - 8, y);
+            stat(graphics, r[0], r[1], px, half - 8, y, themed, r == rows[2]);
+            if (!r[2].isEmpty()) stat(graphics, r[2], r[3], px + half + 8, half - 8, y, themed, false);
             y += rowH;
         }
         y += 12;
@@ -198,9 +206,34 @@ public final class MenuScreen extends Screen {
         }
     }
 
-    private void stat(GuiGraphicsExtractor graphics, String label, String value, int x, int w, int y) {
+    private void stat(GuiGraphicsExtractor graphics, String label, String value, int x, int w, int y, boolean themed, boolean gold) {
+        if (themed) {
+            graphics.text(font, label, x, y, Theme.MUTED, false);
+            graphics.text(font, value, x + w - font.width(value), y, gold ? Theme.GOLD : Theme.TEXT, false);
+            return;
+        }
         graphics.text(font, Component.literal(label).withStyle(ChatFormatting.GRAY), x, y, 0xFFFFFFFF, false);
         graphics.text(font, value, x + w - font.width(value), y, 0xFFFFFFFF, false);
+    }
+
+    /** A card like the website's: black edge, bevelled dark fill, pink bar along the top. */
+    static void card(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1) {
+        graphics.fill(x0, y0, x1, y1, Theme.EDGE);
+        graphics.fill(x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.CARD_LO);
+        graphics.fill(x0 + 1, y0 + 1, x1 - 2, y1 - 2, Theme.CARD_HI);
+        graphics.fill(x0 + 2, y0 + 2, x1 - 2, y1 - 2, Theme.CARD);
+        graphics.fill(x0 + 1, y0 + 1, x1 - 1, y0 + 3, Theme.PINK);
+    }
+
+    /** The level bar in pink instead of the vanilla XP bar (which the in-game HUD keeps). fill: 0 to 180. */
+    private static void levelBar(GuiGraphicsExtractor graphics, int x, int y, int fill) {
+        graphics.fill(x, y, x + 182, y + 5, Theme.EDGE);
+        graphics.fill(x + 1, y + 1, x + 181, y + 4, Theme.CARD_2);
+        fill = Math.max(0, Math.min(180, fill));
+        if (fill > 0) {
+            graphics.fill(x + 1, y + 1, x + 1 + fill, y + 4, Theme.PINK);
+            graphics.fill(x + 1, y + 1, x + 1 + fill, y + 2, Theme.PINK_HI);
+        }
     }
 
     @Override
