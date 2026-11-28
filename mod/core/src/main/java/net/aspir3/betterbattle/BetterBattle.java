@@ -13,6 +13,7 @@ import net.aspir3.betterbattle.store.LocalDatabase;
 import net.aspir3.betterbattle.sync.ApiClient;
 import net.aspir3.betterbattle.sync.HttpApiClient;
 import net.aspir3.betterbattle.sync.SyncService;
+import net.aspir3.betterbattle.lfg.LfgService;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -48,6 +49,7 @@ public final class BetterBattle {
 
     private LocalDatabase db;
     private SyncService sync;
+    private net.aspir3.betterbattle.pings.TeammatePings pings;
     private GameStateMachine game;
     private String playerName;
     private final Set<UUID> seenThisSession = new HashSet<UUID>();
@@ -61,6 +63,7 @@ public final class BetterBattle {
     private boolean newerAnnounced;
     private GameStateMachine.State lastState = GameStateMachine.State.IDLE;
     private long joinedAt;
+    private final LfgService lfg;
 
     private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
         this.platform = platform;
@@ -76,6 +79,21 @@ public final class BetterBattle {
         }
         this.parser = new ChatParser(new InputStreamReader(
             BetterBattle.class.getResourceAsStream("/betterbattle/patterns.json"), StandardCharsets.UTF_8));
+        this.lfg = new LfgService(new LfgService.Backend() {
+            public boolean connected() { return sync != null; }
+
+            public void call(SyncService.ApiCall call, SyncService.Failure failure) {
+                SyncService s = sync;
+                if (s != null) s.call(call, failure);
+                else if (failure != null) failure.failed(new Exception("Join Hypixel first."));
+            }
+        }, platform::runOnMainThread, new LfgService.Ui() {
+            public void toast(String title, String line) { platform.lobbyToast(title, line); }
+            public void chat(String message) { platform.chat(message); }
+            public void chatButtons(String message, String[][] buttons) { platform.chatButtons(message, buttons); }
+            public void fillChat(String text) { platform.fillChat(text); }
+            public void changed() { platform.lobbiesChanged(); }
+        }, () -> config.lobbyNotifications);
     }
 
     public static BetterBattle init(Platform platform, File configDir, String modVersion, String mcVersion) {
@@ -94,6 +112,8 @@ public final class BetterBattle {
     public LocalDatabase db() { return db; }
     public String modVersion() { return modVersion; }
     public File dir() { return dir; }
+    /** LFG lobbies: the list, the lobby you host, your requests and your place in line. */
+    public LfgService lfg() { return lfg; }
 
     private boolean nicked;
     private String nick;
@@ -166,6 +186,7 @@ public final class BetterBattle {
             db = new LocalDatabase(dir.getParentFile(), uuid.toString());
             HttpApiClient api = new HttpApiClient(config.apiBase, modVersion, mcVersion);
             sync = new SyncService(db, api, name, new SyncListener());
+            pings = new net.aspir3.betterbattle.pings.TeammatePings(new PingTransport(api), new PingListener());
             game = new GameStateMachine(parser, new GameListener(), mcVersion, name);
             game.setSpbRecords(new LocalRecords());
             game.setNick(nicked, nick);
@@ -200,8 +221,11 @@ public final class BetterBattle {
                 }
             }
         };
+        if (sync != null) lfg.onLeave();   // closes the lobby you host; queued before the sync stops
         if (sync != null) sync.shutdown(close);
         else close.run();
+        if (pings != null) pings.shutdown();
+        pings = null;
         if (debugLog != null) debugLog.close();
         sync = null;
         db = null;
@@ -229,6 +253,74 @@ public final class BetterBattle {
             else if (e != null && e.type == ChatParser.Type.NICK_RESET) setNick(false, null);
             game.onChat(line);
         }
+        updatePings();
+    }
+
+    // ---- teammate pings (Teams only)
+
+    private void updatePings() {
+        if (pings != null && game != null) {
+            pings.update(config.teammatePings, game.mode(), game.state().name(), game.teammate());
+        }
+    }
+
+    /** True while the ping wheel and block ping may be used: building in Teams with a teammate. */
+    public boolean pingsActive() {
+        return pings != null && pings.active();
+    }
+
+    /** The teammate pings go to, or null when pings are off. */
+    public String pingTeammate() {
+        return pings == null ? null : pings.teammate();
+    }
+
+    /** Sends a callout to the teammate. block is {x, y, z} for a block ping. Main thread. */
+    public void ping(net.aspir3.betterbattle.pings.TeammatePings.Kind kind, int[] block) {
+        if (pings == null) return;
+        if (!config.teammatePings) {
+            platform.chat("§d§lBetter Battle §8» §7Teammate pings are off. Turn them on in Settings.");
+            return;
+        }
+        String why = pings.send(kind, block, System.currentTimeMillis());
+        if (why != null) platform.showPing("Ping not sent", why);
+    }
+
+    private static final class PingTransport implements net.aspir3.betterbattle.pings.TeammatePings.Transport {
+        private final ApiClient api;
+
+        PingTransport(ApiClient api) { this.api = api; }
+
+        public net.aspir3.betterbattle.pings.TeammatePings.Poll poll(String teammate) throws Exception { return api.pingPoll(teammate); }
+        public void send(String teammate, String kind, int[] block) throws Exception { api.pingSend(teammate, kind, block); }
+        public void leave() throws Exception { api.pingLeave(); }
+    }
+
+    private final class PingListener implements net.aspir3.betterbattle.pings.TeammatePings.Listener {
+        public void received(final String from, final net.aspir3.betterbattle.pings.TeammatePings.Kind kind, final int[] block) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    if (pings == null || !pings.active() || !config.teammatePings) return;   // the game ended meanwhile
+                    debug("ping from teammate: " + kind.id);
+                    if (block != null) {
+                        platform.showBlockPing(from, block[0], block[1], block[2],
+                            System.currentTimeMillis() + net.aspir3.betterbattle.pings.TeammatePings.MARKER_MS);
+                    }
+                    platform.showPing(from, kind.label);
+                }
+            });
+        }
+
+        public void sent(final String to, final net.aspir3.betterbattle.pings.TeammatePings.Kind kind) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() { platform.showPing("Sent to " + to, kind.label); }
+            });
+        }
+
+        public void notice(final String message) {
+            platform.runOnMainThread(new Runnable() {
+                public void run() { platform.showPing("Ping not sent", message); }
+            });
+        }
     }
 
     /** Sidebar title and lines, top to bottom. Call it often; nothing happens unless something changed. */
@@ -247,6 +339,7 @@ public final class BetterBattle {
         lastSidebarTitle = cleanTitle;
         lastSidebar = cleaned;
         game.onSidebar(cleanTitle, cleaned);
+        updatePings();
     }
 
     private static List<String> withoutClock(List<String> lines) {
@@ -358,6 +451,11 @@ public final class BetterBattle {
         sync.rank();
     }
 
+    /** The Head Database's "My heads" section opened: ask the server for new ones. Quiet if not on Hypixel. */
+    public void refreshMyHeads() {
+        if (sync != null) sync.refreshMyHeads();
+    }
+
     /** /bb compare name */
     public void compare(String name) {
         if (sync == null) {
@@ -367,7 +465,58 @@ public final class BetterBattle {
         sync.compare(name);
     }
 
-    /** /bb help. headsAndBanners: the Fabric build has the Head Database and banners; Forge doesn't. */
+    private static final String VOICE_PREFIX = "§d§lBetter Battle §8» §7";
+    private volatile String voiceProblem;
+    private volatile boolean voiceNoticeShown;
+
+    /**
+     * The names in "/bb voice Koidu Aspir3" or the Voice screen's box: split on spaces and commas.
+     * Returns null when one isn't a Minecraft name.
+     */
+    public static List<String> voiceNames(String text) {
+        List<String> out = new ArrayList<String>();
+        for (String part : (text == null ? "" : text.trim()).split("[\\s,]+")) {
+            if (part.isEmpty()) continue;
+            if (!part.matches("[A-Za-z0-9_]{1,16}")) return null;
+            out.add(part);
+        }
+        return out;
+    }
+
+    /** Pressing Voice with these teammates or party members. */
+    public void voice(List<String> names) {
+        if (sync == null) {
+            platform.chat(VOICE_PREFIX + "Join Hypixel first, then press Voice again.");
+            return;
+        }
+        if (names == null || names.isEmpty() || names.size() > 7) {
+            platform.chat(VOICE_PREFIX + "Name 1 to 7 other players by their Minecraft names, like §b/bb voice Teammate§7.");
+            return;
+        }
+        voiceProblem = null;
+        sync.voice(names);
+    }
+
+    public void leaveVoice() {
+        if (sync != null) sync.leaveVoice();
+    }
+
+    /** The Voice screen opening: ask the server, without a chat line. */
+    public void refreshVoice() {
+        if (sync != null) sync.refreshVoice();
+    }
+
+    /** The voice group as last heard from the server, or null. */
+    public ApiClient.Voice voiceState() {
+        return sync == null ? null : sync.voiceState();
+    }
+
+    /** Why voice was last turned down, for the Voice screen, or null. */
+    public String voiceProblem() {
+        return voiceProblem;
+    }
+
+    /** /bb help. headsAndBanners: the Fabric build has the Head Database and round screenshots; Forge doesn't. */
     public List<String> helpLines(boolean headsAndBanners) {
         List<String> out = new ArrayList<String>();
         out.add("\u00a7d\u00a7lBetter Battle \u00a78\u00bb \u00a76Commands");
@@ -375,15 +524,16 @@ public final class BetterBattle {
         out.add("\u00a7b/bb stats \u00a77Your own numbers: games, wins, win rate by mode");
         out.add("\u00a7b/bb rank \u00a77Where you stand today, this week, this month and all time");
         out.add("\u00a7b/bb compare <name> \u00a77You next to another player");
+        out.add("\u00a7b/bb voice [names] \u00a77Discord voice with your teammate or party. \u00a7b/bb voice leave \u00a77to leave");
         if (headsAndBanners) out.add("\u00a7b/bb shots \u00a77Your round screenshots, kept for 15 days");
         out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
         out.add("\u00a7b/bb recap \u00a77Your last game in full");
         out.add("\u00a7b/bb weekly \u00a77This week's challenges");
+        out.add("\u00a7b/bb lfg \u00a77Lobbies: find players, or host your own");
         out.add("\u00a7b/bb news \u00a77What's new in this version");
-        if (headsAndBanners) {
-            out.add("\u00a7b/bb heads [search] \u00a77The Head Database");
-            out.add("\u00a7b/bb banners \u00a77Banner designs");
-        }
+        if (headsAndBanners) out.add("\u00a7b/bb heads [search] \u00a77The Head Database, with your own heads under My heads");
+        else out.add("\u00a7b/bb heads \u00a77Your custom heads, painted at " + net.aspir3.betterbattle.heads.MyHeads.PAINT_URL);
+        out.add("\u00a7b/bb banners \u00a77The Banner Database: flags, letters, symbols and more");
         out.add("\u00a7b/bb palette [size] \u00a77A random block palette to build with");
         out.add("\u00a7b/bb settings \u00a77Switch features on and off, including Low-end mode");
         out.add("\u00a7b/bb sync \u00a77Upload your games now");
@@ -608,6 +758,45 @@ public final class BetterBattle {
                     platform.chat("\u00a7d\u00a7lBetter Battle \u00a78\u00bb " + (ok ? "\u00a7a" : "\u00a7c") + message);
                 }
             });
+        }
+
+        public void voice(final ApiClient.Voice v, final boolean changed) {
+            voiceProblem = null;
+            if (!changed) return;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    if (v.ready()) {
+                        platform.chatLink(VOICE_PREFIX + "§aVoice is ready: §f" + v.label + "§7. §nClick to open it in Discord", v.url);
+                        if (!voiceNoticeShown && v.notice != null) {
+                            platform.chat("§8" + v.notice);
+                            voiceNoticeShown = true;
+                        }
+                    } else if (v.waiting()) {
+                        String who = v.waitingFor == null || v.waitingFor.isEmpty() ? "the others" : join(v.waitingFor);
+                        platform.chat(VOICE_PREFIX + "Waiting for §f" + who + "§7 to press Voice too. They need Better Battle, "
+                            + "voice turned on on the website and Discord linked. You'll get a message here when the channel is ready.");
+                    } else {
+                        platform.chat(VOICE_PREFIX + "You're not in a voice channel.");
+                    }
+                }
+            });
+        }
+
+        public void voiceProblem(final String message, final String link) {
+            voiceProblem = message;
+            platform.runOnMainThread(new Runnable() {
+                public void run() {
+                    String url = link == null ? null : link.startsWith("/") ? config.website + link : link;
+                    if (url == null) platform.chat(VOICE_PREFIX + "§c" + message);
+                    else platform.chatLink(VOICE_PREFIX + "§c" + message + " §7§nClick to open it", url);
+                }
+            });
+        }
+
+        private String join(List<String> names) {
+            StringBuilder out = new StringBuilder();
+            for (String n : names) out.append(out.length() > 0 ? ", " : "").append(n);
+            return out.toString();
         }
 
         public void lines(final List<String> lines) {

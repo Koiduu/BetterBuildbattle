@@ -19,7 +19,7 @@ import java.util.Map;
 /** The main Better Battle screen, built from 1.8.9's own widgets and textures. */
 public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
     private static final int ACHIEVEMENTS = 0, PROFILE = 1, SYNC = 2, DONE = 4,
-        WHATS_NEW = 5, LAST_GAME = 6, WEEKLY = 7, SETTINGS = 8;
+        WHATS_NEW = 5, LAST_GAME = 6, WEEKLY = 7, SETTINGS = 8, BANNERS = 9, LOBBIES = 10, VOICE = 11;
 
     private final GuiScreen parent;
     private boolean tracking;
@@ -43,11 +43,14 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
         GuiButton sync = new GuiButton(SYNC, cx + 54, y, 100, 20, "Sync Now");
         sync.enabled = tracking;
         buttonList.add(sync);
-        buttonList.add(new GuiButton(WHATS_NEW, cx - 154, y + 24, 100, 20, "What's New"));
-        buttonList.add(new GuiButton(LAST_GAME, cx - 50, y + 24, 100, 20, "Last Game"));
-        buttonList.add(new GuiButton(WEEKLY, cx + 54, y + 24, 100, 20, "Weekly"));
-        buttonList.add(new GuiButton(SETTINGS, cx - 104, y + 48, 100, 20, "Settings"));
-        buttonList.add(new GuiButton(DONE, cx + 4, y + 48, 100, 20, "Done"));
+        buttonList.add(new GuiButton(WHATS_NEW, cx - 154, y + 24, 74, 20, "What's New"));
+        buttonList.add(new GuiButton(LAST_GAME, cx - 76, y + 24, 74, 20, "Last Game"));
+        buttonList.add(new GuiButton(WEEKLY, cx + 2, y + 24, 74, 20, "Weekly"));
+        buttonList.add(new GuiButton(VOICE, cx + 80, y + 24, 74, 20, "Voice"));
+        buttonList.add(new GuiButton(SETTINGS, cx - 154, y + 48, 66, 20, "Settings"));
+        buttonList.add(new GuiButton(BANNERS, cx - 84, y + 48, 96, 20, "Banner Database"));
+        buttonList.add(new GuiButton(LOBBIES, cx + 16, y + 48, 70, 20, "Lobbies"));
+        buttonList.add(new GuiButton(DONE, cx + 90, y + 48, 64, 20, "Done"));
     }
 
     private void loadStats() {
@@ -115,8 +118,17 @@ public final class MenuScreen extends GuiScreen implements GuiYesNoCallback {
             case WEEKLY:
                 mc.displayGuiScreen(new TextPageScreen(this, BetterBattle.get().weeklyPage()));
                 break;
+            case LOBBIES:
+                mc.displayGuiScreen(new LobbiesScreen(this));
+                break;
             case SETTINGS:
                 mc.displayGuiScreen(new SettingsScreen(this));
+                break;
+            case VOICE:
+                mc.displayGuiScreen(new VoiceScreen(this));
+                break;
+            case BANNERS:
+                mc.displayGuiScreen(new BannersScreen(this));
                 break;
             default:
                 mc.displayGuiScreen(parent);

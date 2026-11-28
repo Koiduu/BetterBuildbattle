@@ -10,6 +10,7 @@ rem    bb logs             follow the app's logs (Ctrl+C to exit)
 rem    bb status           show what's running
 rem    bb seed [guild]     add a guild to the ranking (default: Aspiring)
 rem    bb snapshot         record today's ranks now
+rem    bb skin-login       sign in the custom-head skin account (once)
 rem    bb update           rebuild after downloading new code
 rem    bb backup           save a compressed database dump (keeps 14)
 rem    bb restore <file>   replace the database from a dump (asks first)
@@ -35,6 +36,7 @@ if /i "%CMD%"=="log"      ( docker compose logs -f --tail 100 app & goto :done )
 if /i "%CMD%"=="status"   ( docker compose ps & goto :done )
 if /i "%CMD%"=="seed"     goto :seed
 if /i "%CMD%"=="snapshot" ( docker compose exec app npm run snapshot & goto :done )
+if /i "%CMD%"=="skin-login" ( docker compose exec app npm run skin-login & goto :done )
 if /i "%CMD%"=="update"   ( docker compose up -d --build & goto :done )
 if /i "%CMD%"=="backup"   goto :backup
 if /i "%CMD%"=="restore"  goto :restore

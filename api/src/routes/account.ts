@@ -12,6 +12,7 @@ import { endWebSession, rateLimit, readWebSession, requireModToken, requireWebSe
 import { queuePlayers } from "../jobs/crawler";
 import { PLANS, limit, planOf } from "../lib/plans";
 import { cancelSubscriptionNow, stripeConfigured } from "../services/stripe";
+import { dropFromVoice } from "../services/voice";
 
 const EMAIL = z.string().trim().email().max(254);
 const PASSWORD = z.string().min(8).max(200);
@@ -41,13 +42,14 @@ type MeRow = {
   card_theme: string | null;
   featured_achievement: string | null;
   vanity: string | null;
+  voice_enabled_at: Date | null;
 };
 
 async function getMe(userId: number) {
   const result = await pool.query<MeRow>(
     `SELECT id, email, password_hash, discord_id, discord_name, avatar_url,
             mc_uuid, mc_name, bio, created_at, plan, plan_until, plan_cancels, plan_comped,
-            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity
+            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity, voice_enabled_at
      FROM users WHERE id = $1`, [userId]);
   const row = result.rows[0];
   if (!row) fail(401, "not_logged_in");
@@ -60,6 +62,8 @@ async function getMe(userId: number) {
       : null,
     minecraft: row.mc_uuid ? { uuid: row.mc_uuid, name: row.mc_name } : null,
     bio: row.bio,
+    // Self-declared, not verified. Voice chat is only offered when it is set.
+    voiceEnabled: !!row.voice_enabled_at,
     createdAt: row.created_at,
     plan: {
       id: planOf(row),
@@ -68,7 +72,8 @@ async function getMe(userId: number) {
       cancels: row.plan_cancels,
       comped: row.plan_comped,
       hasBilling: !!row.stripe_customer_id,
-      limits: { pins: limit(planOf(row), "pins"), comparePlayers: limit(planOf(row), "comparePlayers") },
+      limits: { pins: limit(planOf(row), "pins"), comparePlayers: limit(planOf(row), "comparePlayers"),
+                customHeads: limit(planOf(row), "customHeads") },
     },
     style: { accent: row.accent, banner: row.banner, cardTheme: row.card_theme,
              featuredAchievement: row.featured_achievement, vanity: row.vanity },
@@ -290,7 +295,7 @@ export function accountRoutes(app: Router) {
     const [
       sessions, matches, matchVotes, pinnedMatches, userStats, userProgress,
       userAchievements, userWeeklyChallenges, userThemes, spbPersonalBests,
-      rankSnapshots, linkCodes, dailyActivity, bugReports,
+      rankSnapshots, linkCodes, dailyActivity, bugReports, customHeads,
     ] = await Promise.all([
       pool.query(
         `SELECT id, kind, mod_version, mc_version, expires_at, created_at
@@ -308,6 +313,9 @@ export function accountRoutes(app: Router) {
       pool.query("SELECT * FROM link_codes WHERE user_id = $1 ORDER BY expires_at", [userId]),
       pool.query("SELECT day::date::text AS day, games, wins FROM daily_activity WHERE user_id = $1 ORDER BY day", [userId]),
       pool.query("SELECT id, mod_version, mc_version, note, log, created_at FROM bug_reports WHERE user_id = $1 ORDER BY created_at", [userId]),
+      pool.query(
+        `SELECT id, name, status, reject_reason, texture_hash, encode(png, 'base64') AS png_base64, created_at, reviewed_at, ready_at
+         FROM custom_heads WHERE user_id = $1 ORDER BY created_at`, [userId]),
     ]);
     req.reply.headers["content-disposition"] = 'attachment; filename="better-battle-data.json"';
     return {
@@ -331,6 +339,7 @@ export function accountRoutes(app: Router) {
         linkCodes: linkCodes.rows,
         bugReports: bugReports.rows,
         dailyActivity: dailyActivity.rows,
+        customHeads: customHeads.rows,
       },
     };
   });
@@ -397,6 +406,16 @@ export function accountRoutes(app: Router) {
     const { bio } = z.object({ bio: z.string().trim().max(1000).nullable() }).parse(req.body);
     if (flaggedWord(bio)) fail(400, "inappropriate");
     await pool.query("UPDATE users SET bio = $2 WHERE id = $1", [req.user.id, bio?.trim() || null]);
+    return getMe(req.user.id);
+  });
+
+  // Voice chat is opt-in: off until the player turns it on here. Turning it off leaves any call straight away.
+  app.put("/me/voice", [requireWebSession], async (req) => {
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+    await pool.query(
+      "UPDATE users SET voice_enabled_at = CASE WHEN $2 THEN COALESCE(voice_enabled_at, now()) END WHERE id = $1",
+      [req.user.id, enabled]);
+    if (!enabled) await dropFromVoice(req.user.id);
     return getMe(req.user.id);
   });
 
@@ -530,6 +549,8 @@ export async function claimMinecraft(webUserId: number, uuid: string, name: stri
       if (stub.rows[0].claimed) fail(409, "already_claimed");
       finalUserId = stub.rows[0].id;
       await client.query("UPDATE sessions SET user_id = $1 WHERE user_id = $2", [finalUserId, webUserId]);
+      // Heads painted on the website before linking belong to the merged account too.
+      await client.query("UPDATE custom_heads SET user_id = $1 WHERE user_id = $2", [finalUserId, webUserId]);
       const source = await client.query(
         `DELETE FROM users WHERE id = $1
          RETURNING email, password_hash, discord_id, discord_name, avatar_url, bio`,

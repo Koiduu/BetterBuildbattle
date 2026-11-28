@@ -8,6 +8,7 @@ import {
 } from "./plans.js";
 import { profileSkeleton, leaderboardSkeleton, reveal, tally, watchReveals } from "./skeleton.js";
 import { updateLaunchBar } from "./launch.js";
+import { headsPage } from "./heads.js";
 
 const API = "/bb/v1";
 const app = document.getElementById("app");
@@ -95,6 +96,7 @@ const routes = [
   { path: /^\/updates\/?$/, page: updatesPage, nav: "updates" },
   { path: /^\/install\/?$/, page: installPage },
   { path: /^\/plans\/?$/, page: plansPage, nav: "plans" },
+  { path: /^\/heads\/?$/, page: headsPage, nav: "heads" },
   { path: /^\/insights\/?$/, page: insightsPage },
   { path: /^\/wrapped\/?$/, page: wrappedPage },
   { path: /^\/groups\/?$/, page: groupsPage },
@@ -198,6 +200,7 @@ function privacyPage() {
     <section><h2>Services involved</h2>
       <p>Cloudflare carries all traffic and sees IP addresses. Player heads load from mc-heads.net, which sees the visitor's IP. Discord avatars load from cdn.discordapp.com. The server contacts Hypixel and Mojang, fetches player heads from mc-heads.net to draw profile card images, and contacts Discord only if you use Discord login.</p>
       <p>If you buy a plan, payment is handled by Stripe, who receive your payment details and email. We store only your Stripe customer and subscription IDs, your plan and when it ends. We never receive your card number.</p>
+      <p>Custom heads you paint are stored with your account, and the site owner looks at each one before it is used. Once approved, the drawing is uploaded to Mojang as the skin of a Better Battle Minecraft account, so Mojang can sign it as a head texture. The head's name and your account are not sent to Mojang. Deleting a head removes it from Better Battle; the texture itself stays on Mojang's servers.</p>
       <p>IP addresses are used only in memory for rate limiting and are never written to the database.</p></section>
     <section><h2>How long data stays</h2>
       <p>Your Better Battle account data stays until you delete your account. Deleting removes your Better Battle data immediately. Public Hypixel stats in the global ranking stay unless you ask support to remove them. Login sessions expire after 30 days.</p></section>
@@ -1117,7 +1120,8 @@ async function authPage(mode) {
     const button = form.querySelector("button");
     button.disabled = true;
     try {
-      setMe(await request("POST", signup ? "/auth/signup" : "/auth/login", { email, password }));
+      setMe(await request("POST", signup ? "/auth/signup" : "/auth/login",
+        { email, password }));
       go("/account");
     } catch (err) {
       errorBox.innerHTML = AUTH_ERRORS[err.message] ?? "Something went wrong. Try again in a minute.";
@@ -1190,6 +1194,22 @@ async function accountPage() {
       </section>
     </div>
 
+    <section class="card voice-card">
+      <div class="card-head">
+        <div>
+          <h2>Voice chat</h2>
+          <p class="sub">Talk on the Better Battle Discord with your teammate or your party. Press Voice in the B menu or type <code>/bb voice</code> in game.</p>
+        </div>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="voice-on"${me.voiceEnabled ? " checked" : ""}>
+        <span>Allow voice chat</span>
+      </label>
+      <p class="muted">Off unless you turn it on, and you can turn it off any time. Turning it off takes you out of any call straight away. You also need a linked Discord account in the Better Battle server. Everyone in a call has to press Voice themselves and name each other, so nobody can put you in a call. You can leave whenever you like, and you can block or report anyone with Discord's own tools. Calls aren't recorded, and the channel is deleted once it's empty.</p>
+      <p class="muted">Better Battle isn't made by or affiliated with Hypixel. Follow Hypixel's rules when you use it.</p>
+      <span class="muted saved" id="voice-status" role="status"></span>
+    </section>
+
     <section class="card" id="pins-card"></section>
 
     <section class="card export-card">
@@ -1229,6 +1249,7 @@ async function accountPage() {
   renderMinecraftCard(providers);
   renderPlanCard(document.getElementById("plan-card"));
   setUpBio();
+  setUpVoice();
   setUpPins();
   setUpAccountDeletion();
 }
@@ -1361,6 +1382,23 @@ async function getLinkCode() {
       accountPage();
     }
   }, 3000);
+}
+
+function setUpVoice() {
+  const box = document.getElementById("voice-on");
+  const status = document.getElementById("voice-status");
+  if (!box) return;
+  box.addEventListener("change", async () => {
+    box.disabled = true;
+    try {
+      setMe(await request("PUT", "/me/voice", { enabled: box.checked }));
+      status.textContent = box.checked ? "Saved. Voice chat is on for your account." : "Saved. Voice chat is off for your account.";
+    } catch {
+      box.checked = !box.checked;
+      status.textContent = "Couldn't save. Try again.";
+    }
+    box.disabled = false;
+  });
 }
 
 function setUpBio() {

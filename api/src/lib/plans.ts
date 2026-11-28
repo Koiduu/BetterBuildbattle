@@ -1,9 +1,10 @@
 // The three plans and what each one unlocks. This file is the only place that decides who gets what:
 // change a feature's plan here and the API, the website and the Discord bot all follow.
 //
-// The rule: nothing that touches a game is ever paid. The mod, tracking, achievements, the Speed
-// Builders timer, weekly challenges and the rankings are the same for everyone. Paid plans add looks
-// (Architect) and deeper statistics (Master Builder), on the website and in Discord only.
+// The mod, tracking, achievements, the Speed Builders timer, weekly challenges and the rankings are the
+// same for everyone. Paid plans add looks (Architect) and deeper statistics (Master Builder) on the website
+// and in Discord, and room for more custom heads (painted on the website, used in the mod's Head Database).
+// Every plan can make custom heads; only how many differs.
 
 export type Plan = "free" | "architect" | "master";
 
@@ -37,6 +38,10 @@ export const LIMITS = {
   comparePlayers: { free: 2, architect: 2, master: 4 },
   historyGames: { free: 100, architect: 100, master: Infinity },
   ownedBoards: { free: 0, architect: 0, master: 5 },
+  // Custom heads waiting for review, in the upload queue or ready. Rejected and deleted ones give the slot back.
+  customHeads: { free: 5, architect: 20, master: 40 },
+  // New custom heads a player can send in per 24 hours, on every plan.
+  customHeadsPerDay: { free: 5, architect: 5, master: 5 },
 } as const satisfies Record<string, Record<Plan, number>>;
 
 export const can = (plan: Plan, feature: Feature) => PLANS[plan].rank >= PLANS[FEATURES[feature]].rank;
@@ -58,6 +63,7 @@ export const PERKS: Record<Plan, string[]> = {
     "Weekly challenges and game recaps",
     "Your full profile, global rank and share card",
     "Compare with another player",
+    "Paint up to 5 custom heads for the mod's Head Database",
   ],
   architect: [
     "Supporter badge on your profile, the leaderboards, cards and in Discord",
@@ -67,6 +73,7 @@ export const PERKS: Record<Plan, string[]> = {
     "Pin up to 20 builds",
     "Your own link: battle.aspir3.net/yourname",
     "Your position on every Build Battle leaderboard, on the site and with /leaderboards",
+    "Up to 20 custom heads",
   ],
   master: [
     "Everything in Architect",
@@ -76,5 +83,6 @@ export const PERKS: Record<Plan, string[]> = {
     "Your full game history, with a spreadsheet (CSV) export",
     "Compare up to 4 players at once",
     "Private leaderboards for your guild or friends, with a weekly race",
+    "Up to 40 custom heads",
   ],
 };
