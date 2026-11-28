@@ -68,6 +68,14 @@ public final class GameStateMachine {
     /** "solo", "gtb", "speed_builders"... from the sidebar, or null. */
     public String mode() { return mode; }
 
+    /** Teams mode: the teammate the sidebar names ("Teammate:" then the name), or null if none or not known. */
+    private String teammate;
+
+    /** Your teammate in a Teams game, from the sidebar. Null outside Teams, or with no teammate ("None"). */
+    public String teammate() {
+        return "teams".equals(mode) ? teammate : null;
+    }
+
     /** The theme of the game being played, or null if it isn't known yet. */
     public String theme() { return current == null ? null : current.theme; }
 
@@ -170,6 +178,7 @@ public final class GameStateMachine {
                 String next = lines.get(i + 1);
                 if (line.equals("Theme:") && !next.isEmpty() && !next.equals("Vote Now!") && !next.equals("???")) theme = next;
                 if (line.equals("Builder:") && !next.isEmpty()) builder = next;
+                if (line.equals("Teammate:")) teammate = next.matches("[A-Za-z0-9_]{1,16}") && !next.equals("None") ? next : null;
                 if (line.equals("Winner:") && current != null && current.placement == null
                     && next.toLowerCase(Locale.ROOT).endsWith(playerName.toLowerCase(Locale.ROOT))) {
                     current.placement = 1;
@@ -488,6 +497,7 @@ public final class GameStateMachine {
         plot = null;
         players = null;
         teams = null;
+        teammate = null;
         setState(State.IDLE);
     }
 

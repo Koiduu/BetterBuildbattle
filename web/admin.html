@@ -26,6 +26,17 @@
   .gtb-evidence li { margin: 3px 0; }
   .gtb-note { width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: var(--card); color: var(--text); font: inherit; }
   td.hit { color: #ffcc4d; font-weight: 700; }
+  .head-review { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; background: var(--card-2); border: 2px solid var(--edge); }
+  .head-review + .head-review { margin-top: 8px; }
+  .head-strip { width: 320px; height: 80px; background-size: 320px 320px, 20px 20px; background-repeat: no-repeat, repeat; image-rendering: pixelated; border: 2px solid var(--edge);
+    background-color: #2a2a30; background-image: var(--png), repeating-conic-gradient(#26262c 0 25%, #1c1c21 0 50%); }
+  .head-strip.big { width: 640px; height: 160px; background-size: 640px 640px, 20px 20px; }
+  .head-review .meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .head-review .actions { display: flex; flex-direction: column; gap: 6px; }
+  .head-review .actions input { height: 30px; padding: 0 10px; background: var(--card); border: 2px solid var(--edge); color: var(--text); font: inherit; }
+  .head-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .head-tabs .btn[aria-pressed="true"] { outline: 2px solid var(--gold); }
+  @media (max-width: 900px) { .head-review { grid-template-columns: 1fr; } .head-strip { width: 100%; max-width: 320px; } }
 </style>
 </head>
 <body>
@@ -234,6 +245,53 @@ async function gtbCase(name) {
   });
 }
 
+/** LFG lobbies players reported. Enough reports hide the name ("Lobby") until it is reviewed here. */
+async function lobbiesSection(el) {
+  let d;
+  try { d = await get("/admin/lfg/reported"); } catch { el.innerHTML = `<p class="empty">Couldn't load reported lobbies.</p>`; return; }
+  const TAG = { teams: "Teams", solo: "Solo", gtb: "GTB", spb: "SPB", pro: "Pro", other: "Other" };
+  el.innerHTML = `
+    <div class="card-head"><div><h2>Reported lobbies</h2>
+      <p class="sub">LFG lobbies players reported from the mod. ${num(d.reportsToHide)} reports from different players hide the name until you review it here. Keep or rename to unhide; Close ends the lobby.</p></div></div>
+    ${d.lobbies.length ? `
+    <div class="table-scroll"><table>
+      <thead><tr><th>Name</th><th>Host</th><th>Tag</th><th class="right">Reports</th><th>Reported by</th><th>State</th><th></th></tr></thead>
+      <tbody>${d.lobbies.map((l) => `
+        <tr class="static" data-lobby="${esc(l.id)}">
+          <td><b>${esc(l.name)}</b>${(l.reported_names ?? []).filter((n) => n !== l.name).map((n) => `<br><span class="muted">was: ${esc(n)}</span>`).join("")}</td>
+          <td>${esc(l.host)}${l.host_banned ? ` <span class="muted">(can't host)</span>` : ""}</td>
+          <td>${esc(TAG[l.tag] ?? l.tag)}</td>
+          <td class="right">${num(l.reports)}</td>
+          <td>${esc((l.reporters ?? []).join(", "))}</td>
+          <td>${l.status === "open" ? "Open" : "Closed"}${l.name_hidden ? " · name hidden" : ""}</td>
+          <td style="white-space:nowrap">
+            <button class="btn" data-act="keep">Keep</button>
+            <button class="btn" data-act="rename">Rename</button>
+            ${l.status === "open" ? `<button class="btn" data-act="close">Close</button>` : ""}
+            <button class="btn" data-act="ban" data-host="${esc(l.host)}" data-banned="${l.host_banned ? "1" : ""}">${l.host_banned ? "Allow hosting" : "Block from hosting"}</button>
+          </td>
+        </tr>`).join("")}</tbody>
+    </table></div>` : `<p class="empty">No reported lobbies.</p>`}`;
+  for (const row of el.querySelectorAll("tr[data-lobby]")) {
+    const id = row.dataset.lobby;
+    for (const b of row.querySelectorAll("button[data-act]")) b.addEventListener("click", async () => {
+      try {
+        if (b.dataset.act === "keep") await post(`/admin/lfg/${id}/review`, {});
+        if (b.dataset.act === "rename") {
+          const name = prompt("New name for this lobby (up to 32 characters):", "Lobby");
+          if (name === null) return;
+          await post(`/admin/lfg/${id}/review`, { name: name.slice(0, 32) });
+        }
+        if (b.dataset.act === "close") await post(`/admin/lfg/${id}/close`, {});
+        if (b.dataset.act === "ban") await post("/admin/lfg/host-ban", { name: b.dataset.host, banned: !b.dataset.banned });
+      } catch (err) {
+        alert("Couldn't do that (" + err.message + ").");
+      }
+      lobbiesSection(el);
+    });
+  }
+}
+
 /** Bug reports from /bb report. Loaded after the votes so a slow list doesn't hold them up. */
 async function reportsSection(el) {
   let reports;
@@ -307,6 +365,62 @@ function login(message) {
   });
 }
 
+/**
+ * Custom heads waiting for review. Nothing is uploaded to Mojang until you approve it here; then the skin
+ * account sets it as its skin (about one a minute) to get a signed texture. Left half of each strip is the
+ * head, right half the hat layer, in the skin's own layout: top/bottom on the first row, then right, front,
+ * left and back.
+ */
+let headTab = "pending";
+async function headsSection(el) {
+  let d;
+  try { d = await get("/admin/heads?status=" + headTab); } catch { el.innerHTML = `<p class="empty">Couldn't load custom heads.</p>`; return; }
+  const u = d.uploader;
+  const upNote = !u.configured ? "Uploads are off: set SKIN_MS_CLIENT_ID and SKIN_TOKEN_KEY (docs/custom-heads-setup.md)."
+    : !u.signedIn ? "The skin account isn't signed in yet. Run bb skin-login."
+    : `Skin account: ${esc(u.account?.name ?? "signed in")}${u.lastUploadAt ? ` · last upload ${esc(when(u.lastUploadAt))}` : ""}`
+      + (u.pausedUntil ? ` · paused until ${esc(when(u.pausedUntil))}` : "")
+      + (u.lastError ? ` · last error (${esc(when(u.lastErrorAt))}): ${esc(u.lastError)}` : "");
+  const TABS = { pending: `To review (${num(d.counts.pending)})`, approved: `Upload queue (${num(d.counts.approved)})`, ready: "Ready", rejected: "Rejected" };
+  el.innerHTML = `
+    <div class="card-head"><div><h2>Custom heads</h2>
+      <p class="sub">${upNote}</p></div>
+      <div class="head-tabs">${Object.entries(TABS).map(([k, label]) => `<button class="btn small" data-tab="${k}" aria-pressed="${k === headTab}">${label}</button>`).join("")}</div></div>
+    ${d.heads.length ? d.heads.map((h) => `
+      <div class="head-review" data-head="${h.id}">
+        <div class="head-strip" style="--png:url('${h.png}')" role="img" aria-label="${esc(h.name)}" title="Click to zoom"></div>
+        <div class="meta">
+          <b>${esc(h.name)}</b>
+          <span class="sub">by ${esc(h.player.name ?? "unknown")} (${esc(h.player.plan)}) · ${num(h.player.ready)} ready, ${num(h.player.rejected)} rejected before · sent ${esc(when(h.createdAt))}</span>
+          ${h.alreadyUploaded ? `<span class="chip">Same drawing was uploaded before: no new upload needed</span>` : ""}
+          ${h.status === "approved" ? `<span class="sub">${h.uploadedAt ? "Skin set, waiting for Mojang to sign it" : `Attempts: ${num(h.attempts)}${h.nextAttemptAt ? ` · next try ${esc(when(h.nextAttemptAt))}` : ""}`}${h.lastError ? ` · ${esc(h.lastError)}` : ""}</span>` : ""}
+          ${h.status === "rejected" && h.rejectReason ? `<span class="sub">Reason: ${esc(h.rejectReason)}</span>` : ""}
+          ${h.status === "ready" && h.textureHash ? `<span class="sub">Texture ${esc(h.textureHash.slice(0, 16))}…</span>` : ""}
+        </div>
+        <div class="actions">
+          ${h.status === "pending" ? `
+            <button class="btn small primary" data-approve="${h.id}">Approve</button>
+            <input data-reason="${h.id}" placeholder="Reason (optional, shown to them)" maxlength="200">
+            <button class="btn small danger" data-reject="${h.id}">Reject</button>` : ""}
+          ${h.status === "approved" && !h.uploadedAt ? `
+            <button class="btn small" data-retry="${h.id}">Try now</button>
+            <button class="btn small danger" data-reject="${h.id}">Pull back</button>` : ""}
+        </div>
+      </div>`).join("") : `<p class="empty">${headTab === "pending" ? "Nothing to review." : "Nothing here."}</p>`}`;
+  el.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { headTab = b.dataset.tab; headsSection(el); }));
+  el.querySelectorAll(".head-strip").forEach((s) => s.addEventListener("click", () => s.classList.toggle("big")));
+  const act = (attr, path, body) => el.querySelectorAll(`[${attr}]`).forEach((b) => b.addEventListener("click", async () => {
+    const id = b.getAttribute(attr);
+    b.disabled = true;
+    try { await post(`/admin/heads/${id}/${path}`, body ? body(id) : {}); }
+    catch { alert("That didn't work. Someone may have changed it already; reloading."); }
+    headsSection(el);
+  }));
+  act("data-approve", "approve");
+  act("data-retry", "retry");
+  act("data-reject", "reject", (id) => ({ reason: el.querySelector(`[data-reason="${id}"]`)?.value.trim() || null }));
+}
+
 async function overview() {
   if (!token) return login();
   let players;
@@ -320,6 +434,7 @@ async function overview() {
   for (const p of players) for (const k in totals) { totals[k] += p.counts[k]; all += p.counts[k]; }
 
   app.innerHTML = `
+    <section class="card" id="heads"><div class="loading" style="height:120px"></div></section>
     <section class="card">
       <div class="card-head">
         <div><h2>How everyone votes</h2><p class="sub">${num(all)} vote${all === 1 ? "" : "s"} from ${num(players.length)} player${players.length === 1 ? "" : "s"} using the mod. Click a player for details.</p></div>
@@ -344,7 +459,10 @@ async function overview() {
     <section class="card" id="plans"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="modusers"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="reports"><div class="loading" style="height:120px"></div></section>
-    <section class="card" id="gtb"><div class="loading" style="height:120px"></div></section>`;
+    <section class="card" id="gtb"><div class="loading" style="height:120px"></div></section>
+    <section class="card" id="lobbies"><div class="loading" style="height:120px"></div></section>`;
+  lobbiesSection(document.getElementById("lobbies"));
+  headsSection(document.getElementById("heads"));
   planSection(document.getElementById("plans"));
   modUsersSection(document.getElementById("modusers"));
   reportsSection(document.getElementById("reports"));

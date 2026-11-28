@@ -17,6 +17,7 @@ import { pool } from "../db/pool";
 import { HttpError } from "../http";
 import { siteOrigin } from "../lib/site";
 import { verifyHypixelDiscord } from "../lib/verifyHypixelDiscord";
+import { dropFromVoice } from "../services/voice";
 import { latestRelease } from "../services/modRelease";
 import { renderStatsCard, type StatsCardData } from "./card";
 import { resolveStatsName, saveDiscordLink } from "./data";
@@ -147,7 +148,12 @@ async function verify(interaction: ChatInputCommandInteraction) {
 }
 
 async function unverify(interaction: ChatInputCommandInteraction) {
-  const result = await pool.query("DELETE FROM discord_links WHERE discord_id = $1", [interaction.user.id]);
+  const result = await pool.query("DELETE FROM discord_links WHERE discord_id = $1 RETURNING mc_uuid", [interaction.user.id]);
+  // Voice needs the link, so leave any voice group that came from it
+  for (const row of result.rows) {
+    const user = await pool.query("SELECT id FROM users WHERE mc_uuid = $1 AND discord_id IS NULL", [row.mc_uuid]);
+    if (user.rows[0]) await dropFromVoice(user.rows[0].id);
+  }
   return replyEphemeral(interaction, result.rowCount ? "Your verified Minecraft link was removed." : "You don't have a verified Minecraft link.");
 }
 

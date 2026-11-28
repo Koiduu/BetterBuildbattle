@@ -1,7 +1,7 @@
 -- Guess the Build: one row per correct guess a mod user saw someone else make. Evidence for the owner to
 -- review before passing a case to Hypixel, never a verdict: nothing public reads these tables.
 -- Kept to what the check needs (no chat), and deleted after 90 days (api/src/services/gtbWatch.ts).
--- Renumber at merge if another migration took 014. Safe to re-run (every boot runs migrations from 003 on).
+-- Numbered 017 after 014-016 on main (018 and 019 are reserved). Safe to re-run (every boot runs migrations from 003 on).
 CREATE TABLE IF NOT EXISTS gtb_guess_events (
   id              BIGSERIAL PRIMARY KEY,
   reporter_id     BIGINT NOT NULL REFERENCES users ON DELETE CASCADE,

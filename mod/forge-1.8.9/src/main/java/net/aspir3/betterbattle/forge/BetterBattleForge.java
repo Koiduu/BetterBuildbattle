@@ -64,6 +64,7 @@ public class BetterBattleForge implements Platform {
     private File configDir;
     private BetterBattle core;
     private KeyBinding menuKey;
+    private KeyBinding pingWheelKey, blockPingKey;
     private final ConcurrentLinkedQueue<PacketWatcher.BlockChange> blockChanges = new ConcurrentLinkedQueue<PacketWatcher.BlockChange>();
     private GuiScreen pendingScreen;
     private boolean connected, joined, plotFound;
@@ -85,9 +86,15 @@ public class BetterBattleForge implements Platform {
         core = BetterBattle.init(this, configDir, VERSION, MC_VERSION);
         menuKey = new KeyBinding("key.betterbattle.menu", Keyboard.KEY_B, "key.category.betterbattle");
         ClientRegistry.registerKeyBinding(menuKey);
+        pingWheelKey = new KeyBinding("key.betterbattle.ping_wheel", Keyboard.KEY_G, "key.category.betterbattle");
+        blockPingKey = new KeyBinding("key.betterbattle.block_ping", Keyboard.KEY_V, "key.category.betterbattle");
+        ClientRegistry.registerKeyBinding(pingWheelKey);
+        ClientRegistry.registerKeyBinding(blockPingKey);
         ClientCommandHandler.instance.registerCommand(new BbCommand(this));
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
+        MinecraftForge.EVENT_BUS.register(new net.aspir3.betterbattle.forge.ui.LobbyToasts());
+        MinecraftForge.EVENT_BUS.register(new net.aspir3.betterbattle.forge.ui.PingToasts());
         MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
         MinecraftForge.EVENT_BUS.register(new PinnedAchievementsHud());
     }
@@ -171,6 +178,7 @@ public class BetterBattleForge implements Platform {
         Minecraft mc = Minecraft.getMinecraft();
 
         while (menuKey.isPressed()) pendingScreen = menu();
+        Pings.tick(mc, core, pingWheelKey, blockPingKey);
         if (pendingScreen != null) {
             mc.displayGuiScreen(pendingScreen);
             pendingScreen = null;
@@ -351,8 +359,54 @@ public class BetterBattleForge implements Platform {
     }
 
     @Override
+    public void lobbyToast(String title, String line) {
+        net.aspir3.betterbattle.forge.ui.LobbyToasts.add(title, line);
+    }
+
+    @Override
+    public void chatButtons(String message, String[][] buttons) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.ingameGUI == null) return;
+        ChatComponentText line = new ChatComponentText(message);
+        for (String[] b : buttons) {
+            ChatComponentText button = new ChatComponentText(" " + b[0]);
+            button.setChatStyle(new net.minecraft.util.ChatStyle()
+                .setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.RUN_COMMAND, b[1]))
+                .setChatHoverEvent(new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT, new ChatComponentText(b[1]))));
+            line.appendSibling(button);
+        }
+        mc.ingameGUI.getChatGUI().printChatMessage(line);
+    }
+
+    /** Opens the chat box with the text typed in, on the next tick. Nothing is sent until the player presses Enter. */
+    @Override
+    public void fillChat(String text) {
+        pendingScreen = new net.minecraft.client.gui.GuiChat(text);
+    }
+
+    @Override
+    public void showPing(String title, String text) {
+        net.aspir3.betterbattle.forge.ui.PingToasts.add(title, text);
+    }
+
+    @Override
+    public void showBlockPing(String from, int x, int y, int z, long untilMs) {
+        Pings.mark(x, y, z, untilMs);
+    }
+
+    @Override
     public void chat(String message) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.ingameGUI != null) mc.ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(message));
+    }
+
+    @Override
+    public void chatLink(String message, String url) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.ingameGUI == null) return;
+        ChatComponentText line = new ChatComponentText(message);
+        line.setChatStyle(new net.minecraft.util.ChatStyle()
+            .setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.OPEN_URL, url)));
+        mc.ingameGUI.getChatGUI().printChatMessage(line);
     }
 }

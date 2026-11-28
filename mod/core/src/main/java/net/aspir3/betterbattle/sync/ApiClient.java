@@ -87,6 +87,114 @@ public interface ApiClient {
         throw new UnsupportedOperationException("gtbGuesses");
     }
 
+    /**
+     * A temporary Discord voice channel for this player and the players they named. status is "none",
+     * "waiting" (some named players haven't pressed Voice yet) or "ready" (url opens the channel).
+     */
+    final class Voice {
+        public String status, scope, label, url, notice;
+        public List<String> waitingFor = new ArrayList<String>();
+
+        public boolean ready() { return "ready".equals(status); }
+        public boolean waiting() { return "waiting".equals(status); }
+    }
+
+    /** Pressing Voice with these teammates or party members. Each of them has to press Voice too. Older servers answer 404. */
+    default Voice voice(List<String> members) throws Exception {
+        throw new UnsupportedOperationException("voice");
+    }
+
+    /** The voice group this player is in, if any. */
+    default Voice voiceStatus() throws Exception {
+        throw new UnsupportedOperationException("voice");
+    }
+
+    default void leaveVoice() throws Exception {
+        throw new UnsupportedOperationException("voice");
+    }
+
+    // ---- LFG lobbies. Older servers answer 404; HttpApiClient implements these.
+
+    /** One lobby as the browser shows it. */
+    final class Lobby {
+        public String id, host, name, tag, region, note, myRequest, createdAt, expiresAt;
+        public int maxSize, players;
+        public boolean locked, mine, nameHidden, closesSoon;
+    }
+
+    final class LobbyList {
+        public List<Lobby> lobbies = new ArrayList<Lobby>();
+        public String notice;
+    }
+
+    /** Someone asking to join the lobby you host. */
+    final class LobbyRequest {
+        public long id;
+        public String name, status;
+    }
+
+    /** One of your own requests to join someone else's lobby. */
+    final class Joining {
+        public String lobbyId, host, name, tag, status;
+        public boolean lobbyOpen;
+    }
+
+    /** Your place in line while every lobby slot is taken. offerUntil is set while a slot is held for you. */
+    final class LobbyQueue {
+        public Integer position;
+        public String offerUntil;
+    }
+
+    final class LobbyPoll {
+        public Lobby hosting;
+        public List<LobbyRequest> requests = new ArrayList<LobbyRequest>();
+        public List<Joining> joining = new ArrayList<Joining>();
+        public LobbyQueue queue;
+    }
+
+    /** Starting a lobby either opens it or puts you in line. */
+    final class LobbyStarted {
+        public Lobby lobby;
+        public LobbyQueue queued;
+    }
+
+    final class LobbySettings {
+        public String name, tag, region = "any", note = "";
+        public int maxSize;
+    }
+
+    /** The host's answer. invite is "/p invite name" after an accept, for the host to send themselves. */
+    final class Decided {
+        public String status, name, invite;
+    }
+
+    default LobbyList lfgList(String tag, String search) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default LobbyStarted lfgStart(LobbySettings settings, String password) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default LobbyStarted lfgClaim() throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgLeaveQueue() throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgClose(String lobbyId) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default Lobby lfgRename(String lobbyId, String name) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgReport(String lobbyId) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgJoin(String lobbyId, String password) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgLeave(String lobbyId) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    /** action: accept, decline, kick or block. */
+    default Decided lfgDecide(long requestId, String action) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default LobbyPoll lfgPoll() throws Exception { throw new UnsupportedOperationException("lfg"); }
+
+    /** Teammate pings: says who your Teams teammate is and fetches the pings they sent. Older servers answer 404. */
+    default net.aspir3.betterbattle.pings.TeammatePings.Poll pingPoll(String teammate) throws Exception {
+        throw new UnsupportedOperationException("pings");
+    }
+
+    /** Sends one ping to the teammate. block is {x, y, z} for a block ping, otherwise null. */
+    default void pingSend(String teammate, String kind, int[] block) throws Exception {
+        throw new UnsupportedOperationException("pings");
+    }
+
+    /** The Teams game ended: the server forgets the teammate. */
+    default void pingLeave() throws Exception {
+    }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 
@@ -107,6 +215,13 @@ public interface ApiClient {
         public List<Weekly> weeklyChallenges = new ArrayList<Weekly>();
         public String weekEndsAt;
         public List<WorldRecord> worldRecords = new ArrayList<WorldRecord>();
+        /** The player's ready custom heads. Null from servers that don't have them yet. */
+        public List<net.aspir3.betterbattle.heads.MyHeads.Entry> customHeads;
+    }
+
+    /** The player's ready custom heads ("My heads"). */
+    default List<net.aspir3.betterbattle.heads.MyHeads.Entry> myHeads() throws Exception {
+        throw new UnsupportedOperationException("myHeads");
     }
 
     final class Rejection {

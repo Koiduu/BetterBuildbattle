@@ -14,6 +14,7 @@ import { updateProgressBoards, updateModeWinRates } from "../services/boards";
 import { recordBroken, type RecordBroken } from "../lib/events";
 import { rankSummary, playerSummary } from "../services/modInfo";
 import { gtbModRoutes } from "./gtbWatch";
+import { readyHeads } from "../services/customHeads";
 
 const Mode = z.enum(["solo", "teams", "pro", "gtb", "speed_builders"]);
 
@@ -143,10 +144,11 @@ export function modRoutes(app: Router) {
 
   // ---- Bootstrap: catalog, weekly challenges with progress, confirmed achievements, Speed Builders records ----
   app.get("/mod/bootstrap", [requireModToken], async (req) => {
-    const [mine, weekly, records] = await Promise.all([
+    const [mine, weekly, records, heads] = await Promise.all([
       pool.query("SELECT achievement_id FROM user_achievements WHERE user_id = $1", [req.user.id]),
       weeklyProgress(pool, req.user.id),
       worldRecords(),
+      readyHeads(req.user.id),
     ]);
     return {
       catalogVersion: catalog.catalog_version,
@@ -155,6 +157,8 @@ export function modRoutes(app: Router) {
       weekEndsAt: weekly.weekEndsAt,
       // Times only: the mod shows them next to its timer. No placements, so nothing can guide a build.
       worldRecords: records.map((r) => ({ build: r.build, name: r.name, holder: r.holder, timeMs: r.timeMs })),
+      // Custom heads painted on the website and ready to use: the "My heads" section of the Head Database.
+      customHeads: heads,
     };
   });
 
