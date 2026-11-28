@@ -72,6 +72,74 @@ public interface ApiClient {
         throw new UnsupportedOperationException("compare");
     }
 
+    // ---- LFG lobbies. Older servers answer 404; HttpApiClient implements these.
+
+    /** One lobby as the browser shows it. */
+    final class Lobby {
+        public String id, host, name, tag, region, note, myRequest, createdAt, expiresAt;
+        public int maxSize, players;
+        public boolean locked, mine, nameHidden, closesSoon;
+    }
+
+    final class LobbyList {
+        public List<Lobby> lobbies = new ArrayList<Lobby>();
+        public String notice;
+    }
+
+    /** Someone asking to join the lobby you host. */
+    final class LobbyRequest {
+        public long id;
+        public String name, status;
+    }
+
+    /** One of your own requests to join someone else's lobby. */
+    final class Joining {
+        public String lobbyId, host, name, tag, status;
+        public boolean lobbyOpen;
+    }
+
+    /** Your place in line while every lobby slot is taken. offerUntil is set while a slot is held for you. */
+    final class LobbyQueue {
+        public Integer position;
+        public String offerUntil;
+    }
+
+    final class LobbyPoll {
+        public Lobby hosting;
+        public List<LobbyRequest> requests = new ArrayList<LobbyRequest>();
+        public List<Joining> joining = new ArrayList<Joining>();
+        public LobbyQueue queue;
+    }
+
+    /** Starting a lobby either opens it or puts you in line. */
+    final class LobbyStarted {
+        public Lobby lobby;
+        public LobbyQueue queued;
+    }
+
+    final class LobbySettings {
+        public String name, tag, region = "any", note = "";
+        public int maxSize;
+    }
+
+    /** The host's answer. invite is "/p invite name" after an accept, for the host to send themselves. */
+    final class Decided {
+        public String status, name, invite;
+    }
+
+    default LobbyList lfgList(String tag, String search) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default LobbyStarted lfgStart(LobbySettings settings, String password) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default LobbyStarted lfgClaim() throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgLeaveQueue() throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgClose(String lobbyId) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default Lobby lfgRename(String lobbyId, String name) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgReport(String lobbyId) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgJoin(String lobbyId, String password) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default void lfgLeave(String lobbyId) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    /** action: accept, decline, kick or block. */
+    default Decided lfgDecide(long requestId, String action) throws Exception { throw new UnsupportedOperationException("lfg"); }
+    default LobbyPoll lfgPoll() throws Exception { throw new UnsupportedOperationException("lfg"); }
+
     /** World records, weekly challenges and the like. Fetched now and then, not every sync. */
     Bootstrap bootstrap() throws Exception;
 

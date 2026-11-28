@@ -88,6 +88,7 @@ public class BetterBattleForge implements Platform {
         ClientCommandHandler.instance.registerCommand(new BbCommand(this));
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new AchievementToasts());
+        MinecraftForge.EVENT_BUS.register(new net.aspir3.betterbattle.forge.ui.LobbyToasts());
         MinecraftForge.EVENT_BUS.register(new SpbTimerOverlay());
         MinecraftForge.EVENT_BUS.register(new PinnedAchievementsHud());
     }
@@ -297,6 +298,32 @@ public class BetterBattleForge implements Platform {
     @Override
     public void openPage(Pages.Page page) {
         pendingScreen = new TextPageScreen(null, page);
+    }
+
+    @Override
+    public void lobbyToast(String title, String line) {
+        net.aspir3.betterbattle.forge.ui.LobbyToasts.add(title, line);
+    }
+
+    @Override
+    public void chatButtons(String message, String[][] buttons) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.ingameGUI == null) return;
+        ChatComponentText line = new ChatComponentText(message);
+        for (String[] b : buttons) {
+            ChatComponentText button = new ChatComponentText(" " + b[0]);
+            button.setChatStyle(new net.minecraft.util.ChatStyle()
+                .setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.RUN_COMMAND, b[1]))
+                .setChatHoverEvent(new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT, new ChatComponentText(b[1]))));
+            line.appendSibling(button);
+        }
+        mc.ingameGUI.getChatGUI().printChatMessage(line);
+    }
+
+    /** Opens the chat box with the text typed in, on the next tick. Nothing is sent until the player presses Enter. */
+    @Override
+    public void fillChat(String text) {
+        pendingScreen = new net.minecraft.client.gui.GuiChat(text);
     }
 
     @Override

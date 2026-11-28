@@ -118,6 +118,71 @@ public final class HttpApiClient implements ApiClient {
         return gson.fromJson(request("GET", "/mod/compare?name=" + java.net.URLEncoder.encode(name, "UTF-8"), null), Compare.class);
     }
 
+    // ---- LFG lobbies
+
+    private static String enc(String s) throws Exception {
+        return java.net.URLEncoder.encode(s, "UTF-8");
+    }
+
+    public LobbyList lfgList(String tag, String search) throws Exception {
+        StringBuilder path = new StringBuilder("/mod/lfg");
+        String sep = "?";
+        if (tag != null) { path.append(sep).append("tag=").append(enc(tag)); sep = "&"; }
+        if (search != null && !search.trim().isEmpty()) path.append(sep).append("q=").append(enc(search.trim()));
+        return gson.fromJson(request("GET", path.toString(), null), LobbyList.class);
+    }
+
+    public LobbyStarted lfgStart(LobbySettings settings, String password) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("settings", settings);
+        body.put("password", password == null || password.isEmpty() ? null : password);
+        return gson.fromJson(post("/mod/lfg", gson.toJson(body)), LobbyStarted.class);
+    }
+
+    public LobbyStarted lfgClaim() throws Exception {
+        return gson.fromJson(post("/mod/lfg/claim", "{}"), LobbyStarted.class);
+    }
+
+    public void lfgLeaveQueue() throws Exception {
+        post("/mod/lfg/queue/leave", "{}");
+    }
+
+    public void lfgClose(String lobbyId) throws Exception {
+        post("/mod/lfg/" + enc(lobbyId) + "/close", "{}");
+    }
+
+    private static final class Renamed { Lobby lobby; }
+
+    public Lobby lfgRename(String lobbyId, String name) throws Exception {
+        Map<String, String> body = new HashMap<String, String>();
+        body.put("name", name);
+        return gson.fromJson(post("/mod/lfg/" + enc(lobbyId) + "/rename", gson.toJson(body)), Renamed.class).lobby;
+    }
+
+    public void lfgReport(String lobbyId) throws Exception {
+        post("/mod/lfg/" + enc(lobbyId) + "/report", "{}");
+    }
+
+    public void lfgJoin(String lobbyId, String password) throws Exception {
+        Map<String, String> body = new HashMap<String, String>();
+        body.put("password", password == null || password.isEmpty() ? null : password);
+        post("/mod/lfg/" + enc(lobbyId) + "/join", gson.toJson(body));
+    }
+
+    public void lfgLeave(String lobbyId) throws Exception {
+        post("/mod/lfg/" + enc(lobbyId) + "/leave", "{}");
+    }
+
+    public Decided lfgDecide(long requestId, String action) throws Exception {
+        Map<String, String> body = new HashMap<String, String>();
+        body.put("action", action);
+        return gson.fromJson(post("/mod/lfg/requests/" + requestId, gson.toJson(body)), Decided.class);
+    }
+
+    public LobbyPoll lfgPoll() throws Exception {
+        return gson.fromJson(request("GET", "/mod/lfg/poll", null), LobbyPoll.class);
+    }
+
     public Bootstrap bootstrap() throws Exception {
         return gson.fromJson(request("GET", "/mod/bootstrap", null), Bootstrap.class);
     }

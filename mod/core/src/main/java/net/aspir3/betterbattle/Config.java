@@ -48,6 +48,8 @@ public final class Config {
     public boolean updateNotices = true;
     /** Save a screenshot of your build when each round's building time ends. Kept for 15 days. */
     public boolean roundScreenshots = true;
+    /** Pop-ups when someone asks to join your lobby, the host answers you, or a lobby slot frees up. */
+    public boolean lobbyNotifications = true;
     /** For slower PCs: far fewer heads drawn at once in the Head Database, which is the heaviest screen. */
     public boolean lowEndMode = false;
     /** The version whose What's New page was last shown. */
@@ -95,6 +97,7 @@ public final class Config {
         new Toggle("recap", "Game recap in chat", "A short summary after each game"),
         new Toggle("toasts", "Achievement pop-ups", "The box in the corner when you unlock one"),
         new Toggle("chatMessages", "Chat messages", "Achievement and sync messages in chat"),
+        new Toggle("lobbyNotifications", "Lobby notifications", "Pop-ups for join requests, answers and free lobby slots"),
         new Toggle("weeklyAlerts", "Weekly challenge alerts", "Tell me when I finish a weekly challenge"),
         new Toggle("whatsNew", "What's New after updates", "Show the patch notes once after the mod updates"),
         new Toggle("challengeNoHints", "Challenge: no word hint", "Hide Guess the Build's word hint above the hotbar"),

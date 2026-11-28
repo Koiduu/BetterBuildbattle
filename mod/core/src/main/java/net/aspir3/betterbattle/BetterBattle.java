@@ -13,6 +13,7 @@ import net.aspir3.betterbattle.store.LocalDatabase;
 import net.aspir3.betterbattle.sync.ApiClient;
 import net.aspir3.betterbattle.sync.HttpApiClient;
 import net.aspir3.betterbattle.sync.SyncService;
+import net.aspir3.betterbattle.lfg.LfgService;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -61,6 +62,7 @@ public final class BetterBattle {
     private boolean newerAnnounced;
     private GameStateMachine.State lastState = GameStateMachine.State.IDLE;
     private long joinedAt;
+    private final LfgService lfg;
 
     private BetterBattle(Platform platform, File configDir, String modVersion, String mcVersion) {
         this.platform = platform;
@@ -76,6 +78,21 @@ public final class BetterBattle {
         }
         this.parser = new ChatParser(new InputStreamReader(
             BetterBattle.class.getResourceAsStream("/betterbattle/patterns.json"), StandardCharsets.UTF_8));
+        this.lfg = new LfgService(new LfgService.Backend() {
+            public boolean connected() { return sync != null; }
+
+            public void call(SyncService.ApiCall call, SyncService.Failure failure) {
+                SyncService s = sync;
+                if (s != null) s.call(call, failure);
+                else if (failure != null) failure.failed(new Exception("Join Hypixel first."));
+            }
+        }, platform::runOnMainThread, new LfgService.Ui() {
+            public void toast(String title, String line) { platform.lobbyToast(title, line); }
+            public void chat(String message) { platform.chat(message); }
+            public void chatButtons(String message, String[][] buttons) { platform.chatButtons(message, buttons); }
+            public void fillChat(String text) { platform.fillChat(text); }
+            public void changed() { platform.lobbiesChanged(); }
+        }, () -> config.lobbyNotifications);
     }
 
     public static BetterBattle init(Platform platform, File configDir, String modVersion, String mcVersion) {
@@ -94,6 +111,8 @@ public final class BetterBattle {
     public LocalDatabase db() { return db; }
     public String modVersion() { return modVersion; }
     public File dir() { return dir; }
+    /** LFG lobbies: the list, the lobby you host, your requests and your place in line. */
+    public LfgService lfg() { return lfg; }
 
     private boolean nicked;
     private String nick;
@@ -200,6 +219,7 @@ public final class BetterBattle {
                 }
             }
         };
+        if (sync != null) lfg.onLeave();   // closes the lobby you host; queued before the sync stops
         if (sync != null) sync.shutdown(close);
         else close.run();
         if (debugLog != null) debugLog.close();
@@ -379,6 +399,7 @@ public final class BetterBattle {
         out.add("\u00a7b/bb achievements \u00a77Your achievements and goals");
         out.add("\u00a7b/bb recap \u00a77Your last game in full");
         out.add("\u00a7b/bb weekly \u00a77This week's challenges");
+        out.add("\u00a7b/bb lfg \u00a77Lobbies: find players, or host your own");
         out.add("\u00a7b/bb news \u00a77What's new in this version");
         if (headsAndBanners) {
             out.add("\u00a7b/bb heads [search] \u00a77The Head Database");

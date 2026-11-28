@@ -21,4 +21,23 @@ public interface Platform {
     /** Save a picture of the game screen to this file (a round screenshot). Called on the main thread; Forge does nothing. */
     default void screenshot(java.io.File file) {
     }
+
+    // ---- LFG lobbies. Called on the main thread.
+
+    /** A pop-up in the corner for lobby news. */
+    default void lobbyToast(String title, String line) {
+    }
+
+    /** A chat line followed by clickable buttons; each button is {label, command to run}. */
+    default void chatButtons(String message, String[][] buttons) {
+        chat(message);
+    }
+
+    /** Opens the chat box with this text typed in. The player presses Enter (or doesn't) themselves. */
+    default void fillChat(String text) {
+    }
+
+    /** Lobby state changed: an open lobby screen redraws. */
+    default void lobbiesChanged() {
+    }
 }
