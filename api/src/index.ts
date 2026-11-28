@@ -14,6 +14,8 @@ import { sightingRoutes } from "./routes/sightings";
 import { challengeRoutes } from "./routes/challenges";
 import { headRoutes } from "./routes/heads";
 import { startSkinUploader } from "./jobs/skinUploader";
+import { lfgRoutes } from "./routes/lfg";
+import { pingRoutes } from "./routes/pings";
 import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
@@ -35,6 +37,8 @@ perkRoutes(api);
 sightingRoutes(api);
 challengeRoutes(api);
 headRoutes(api);
+lfgRoutes(api);
+pingRoutes(api);
 downloadRoutes(api, downloads);
 api.get("/health", async () => {
   await pool.query("SELECT 1");

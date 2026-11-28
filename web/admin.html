@@ -147,6 +147,53 @@ async function modUsersSection(el) {
     </table></div>` : `<p class="empty">No mod users yet. They appear after someone logs in with the mod.</p>`}`;
 }
 
+/** LFG lobbies players reported. Enough reports hide the name ("Lobby") until it is reviewed here. */
+async function lobbiesSection(el) {
+  let d;
+  try { d = await get("/admin/lfg/reported"); } catch { el.innerHTML = `<p class="empty">Couldn't load reported lobbies.</p>`; return; }
+  const TAG = { teams: "Teams", solo: "Solo", gtb: "GTB", spb: "SPB", pro: "Pro", other: "Other" };
+  el.innerHTML = `
+    <div class="card-head"><div><h2>Reported lobbies</h2>
+      <p class="sub">LFG lobbies players reported from the mod. ${num(d.reportsToHide)} reports from different players hide the name until you review it here. Keep or rename to unhide; Close ends the lobby.</p></div></div>
+    ${d.lobbies.length ? `
+    <div class="table-scroll"><table>
+      <thead><tr><th>Name</th><th>Host</th><th>Tag</th><th class="right">Reports</th><th>Reported by</th><th>State</th><th></th></tr></thead>
+      <tbody>${d.lobbies.map((l) => `
+        <tr class="static" data-lobby="${esc(l.id)}">
+          <td><b>${esc(l.name)}</b>${(l.reported_names ?? []).filter((n) => n !== l.name).map((n) => `<br><span class="muted">was: ${esc(n)}</span>`).join("")}</td>
+          <td>${esc(l.host)}${l.host_banned ? ` <span class="muted">(can't host)</span>` : ""}</td>
+          <td>${esc(TAG[l.tag] ?? l.tag)}</td>
+          <td class="right">${num(l.reports)}</td>
+          <td>${esc((l.reporters ?? []).join(", "))}</td>
+          <td>${l.status === "open" ? "Open" : "Closed"}${l.name_hidden ? " · name hidden" : ""}</td>
+          <td style="white-space:nowrap">
+            <button class="btn" data-act="keep">Keep</button>
+            <button class="btn" data-act="rename">Rename</button>
+            ${l.status === "open" ? `<button class="btn" data-act="close">Close</button>` : ""}
+            <button class="btn" data-act="ban" data-host="${esc(l.host)}" data-banned="${l.host_banned ? "1" : ""}">${l.host_banned ? "Allow hosting" : "Block from hosting"}</button>
+          </td>
+        </tr>`).join("")}</tbody>
+    </table></div>` : `<p class="empty">No reported lobbies.</p>`}`;
+  for (const row of el.querySelectorAll("tr[data-lobby]")) {
+    const id = row.dataset.lobby;
+    for (const b of row.querySelectorAll("button[data-act]")) b.addEventListener("click", async () => {
+      try {
+        if (b.dataset.act === "keep") await post(`/admin/lfg/${id}/review`, {});
+        if (b.dataset.act === "rename") {
+          const name = prompt("New name for this lobby (up to 32 characters):", "Lobby");
+          if (name === null) return;
+          await post(`/admin/lfg/${id}/review`, { name: name.slice(0, 32) });
+        }
+        if (b.dataset.act === "close") await post(`/admin/lfg/${id}/close`, {});
+        if (b.dataset.act === "ban") await post("/admin/lfg/host-ban", { name: b.dataset.host, banned: !b.dataset.banned });
+      } catch (err) {
+        alert("Couldn't do that (" + err.message + ").");
+      }
+      lobbiesSection(el);
+    });
+  }
+}
+
 /** Bug reports from /bb report. Loaded after the votes so a slow list doesn't hold them up. */
 async function reportsSection(el) {
   let reports;
@@ -313,7 +360,9 @@ async function overview() {
     </section>
     <section class="card" id="plans"><div class="loading" style="height:120px"></div></section>
     <section class="card" id="modusers"><div class="loading" style="height:120px"></div></section>
-    <section class="card" id="reports"><div class="loading" style="height:120px"></div></section>`;
+    <section class="card" id="reports"><div class="loading" style="height:120px"></div></section>
+    <section class="card" id="lobbies"><div class="loading" style="height:120px"></div></section>`;
+  lobbiesSection(document.getElementById("lobbies"));
   headsSection(document.getElementById("heads"));
   planSection(document.getElementById("plans"));
   modUsersSection(document.getElementById("modusers"));

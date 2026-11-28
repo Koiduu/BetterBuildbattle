@@ -2,6 +2,10 @@ package net.aspir3.betterbattle.forge;
 
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.forge.ui.AchievementsScreen;
+import net.aspir3.betterbattle.forge.ui.BannersScreen;
+import net.aspir3.betterbattle.forge.ui.LobbiesScreen;
+import net.aspir3.betterbattle.forge.ui.MyLobbyScreen;
+import net.aspir3.betterbattle.forge.ui.StartLobbyScreen;
 import net.aspir3.betterbattle.forge.ui.MenuScreen;
 import net.aspir3.betterbattle.forge.ui.SettingsScreen;
 import net.aspir3.betterbattle.forge.ui.TextPageScreen;
@@ -31,7 +35,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/bb [help|stats|rank|compare|achievements|recap|weekly|news|settings|sync|link|report|palette|debug]";
+        return "/bb [help|stats|rank|compare|achievements|heads|recap|weekly|news|lfg|settings|sync|link|report|palette|debug]";
     }
 
     @Override
@@ -46,7 +50,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "achievements", "heads", "recap", "weekly", "news", "settings", "sync", "link", "report", "palette", "debug");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "achievements", "heads", "banners", "recap", "weekly", "news", "lfg", "settings", "sync", "link", "report", "palette", "debug");
         return null;
     }
 
@@ -69,12 +73,16 @@ final class BbCommand extends CommandBase {
             mod.openLater(new AchievementsScreen(null));
         } else if (sub.equals("heads")) {
             mod.openLater(new net.aspir3.betterbattle.forge.ui.MyHeadsScreen(null));
+        } else if (sub.equals("banners")) {
+            mod.openLater(new BannersScreen(null));
         } else if (sub.equals("recap")) {
             mod.openLater(new TextPageScreen(null, core.lastGamePage()));
         } else if (sub.equals("weekly")) {
             mod.openLater(new TextPageScreen(null, core.weeklyPage()));
         } else if (sub.equals("news")) {
             mod.openLater(new TextPageScreen(null, BetterBattle.get().whatsNewPage()));
+        } else if (sub.equals("lfg")) {
+            lfg(args);
         } else if (sub.equals("settings")) {
             mod.openLater(new SettingsScreen(null));
         } else if (sub.equals("sync")) {
@@ -118,6 +126,26 @@ final class BbCommand extends CommandBase {
                 : "Debug log §coff§7."));
         } else {
             mod.chat(P + "Usage: " + getCommandUsage(sender));
+        }
+    }
+
+    /** /bb lfg [mine|start|claim|accept <id>|decline <id>]. accept and decline are what lobby chat buttons run. */
+    private void lfg(String[] args) {
+        String what = args.length > 1 ? args[1].toLowerCase() : "";
+        if (what.equals("mine")) {
+            mod.openLater(new MyLobbyScreen(new LobbiesScreen(null)));
+        } else if (what.equals("start")) {
+            mod.openLater(new StartLobbyScreen(new LobbiesScreen(null)));
+        } else if (what.equals("claim")) {
+            mod.core().lfg().claim();
+        } else if ((what.equals("accept") || what.equals("decline")) && args.length > 2) {
+            try {
+                mod.core().lfg().decide(Long.parseLong(args[2]), what);
+            } catch (NumberFormatException e) {
+                mod.chat(P + "Usage: /bb lfg " + what + " <request>");
+            }
+        } else {
+            mod.openLater(new LobbiesScreen(null));
         }
     }
 

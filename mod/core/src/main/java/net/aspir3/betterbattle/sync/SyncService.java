@@ -153,6 +153,43 @@ public final class SyncService {
         });
     }
 
+    /** Something to do with the logged-in API on the sync thread (LFG lobbies use this). */
+    public interface ApiCall {
+        void run(ApiClient api) throws Exception;
+    }
+
+    /** Where an ApiCall that failed reports why. */
+    public interface Failure {
+        void failed(Exception e);
+    }
+
+    /**
+     * Runs call on the sync thread once logged in. A login that expired is renewed once and the call retried.
+     * Runs even after shutdown() has been called for calls already queued, so a lobby can still be closed on leaving.
+     */
+    public void call(final ApiCall call, final Failure failure) {
+        try {
+            exec.execute(new Runnable() {
+                public void run() {
+                    try {
+                        try {
+                            ensureToken();
+                            call.run(api);
+                        } catch (ApiClient.Unauthorized e) {
+                            db.setMeta("token", null);
+                            ensureToken();
+                            call.run(api);
+                        }
+                    } catch (Exception e) {
+                        if (failure != null) failure.failed(e);
+                    }
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException stopped) {
+            if (failure != null) failure.failed(new Exception("not connected"));
+        }
+    }
+
     /** /bb rank: asks the server where this player stands and shows it in chat. */
     public void rank() {
         exec.execute(new Runnable() {
@@ -191,7 +228,7 @@ public final class SyncService {
     }
 
     /** Turns an exception into something a player can act on. */
-    static String explain(Exception e) {
+    public static String explain(Exception e) {
         String m = String.valueOf(e.getMessage());
         if (e instanceof java.net.UnknownHostException) return "can't find the stats server (" + m + "). Check apiBase in the config.";
         if (e instanceof java.net.ConnectException || e instanceof java.net.SocketTimeoutException) return "the stats server isn't answering. It may be offline.";
