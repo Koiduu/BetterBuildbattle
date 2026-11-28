@@ -1,11 +1,13 @@
 import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { statsCommands } from "./stats";
+import { lfgCommands } from "./lfg";
 
 const moderate = PermissionFlagsBits.ModerateMembers;
 const manageGuild = PermissionFlagsBits.ManageGuild;
 
 export const commands = [
   ...statsCommands,
+  ...lfgCommands,
   new SlashCommandBuilder()
     .setName("setup").setDescription("Configure Better Battle moderation and ticket settings")
     .setDefaultMemberPermissions(manageGuild)

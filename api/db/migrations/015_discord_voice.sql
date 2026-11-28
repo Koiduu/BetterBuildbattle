@@ -1,5 +1,5 @@
 -- Temporary Discord voice channels for Better Battle teams, parties and LFG lobbies.
--- Renumber at merge if another branch took 014. Safe to re-run on every boot.
+-- Renumber at merge if another branch took 015. Safe to re-run on every boot.
 
 -- Voice chat is off until the player turns it on on their account page, and they can turn it off again.
 -- (An earlier draft of this file called the column adult_confirmed_at; rename it where that ran.)

@@ -10,6 +10,7 @@ import {
 } from "discord.js";
 import { commands } from "./commands";
 import { handleFeatureCommand } from "./features";
+import { handleLfgCommand, startLfgPosts } from "./lfg";
 import { handleModerationCommand } from "./moderation";
 import { handleTicketButton, handleTicketCommand, handleTicketModal } from "./tickets";
 import { handleAutocomplete, handleStatsButton, handleStatsCommand, startStatsBackground } from "./stats";
@@ -69,6 +70,7 @@ export async function startDiscordBot(token: string, guildId: string) {
     console.log(`Discord bot ready as ${ready.user.tag}. Invite it: ${invite}`);
     startStatsBackground(client, guildId);
     startVoice(client, guildId);
+    startLfgPosts(client, guildId);
     if (client.guilds.cache.has(guildId)) {
       void registerCommands(client);
     } else {
@@ -83,6 +85,7 @@ export async function startDiscordBot(token: string, guildId: string) {
       if (interaction.isChatInputCommand()) {
         if (await handleStatsCommand(interaction) !== false) return;
         if (await handleFeatureCommand(interaction) !== false) return;
+        if (await handleLfgCommand(interaction) !== false) return;
         if (await handleTicketCommand(interaction) !== false) return;
         await handleModerationCommand(interaction);
       } else if (interaction.isAutocomplete()) {
