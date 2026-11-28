@@ -13,6 +13,7 @@ import { handleFeatureCommand } from "./features";
 import { handleModerationCommand } from "./moderation";
 import { handleTicketButton, handleTicketCommand, handleTicketModal } from "./tickets";
 import { handleAutocomplete, handleStatsButton, handleStatsCommand, startStatsBackground } from "./stats";
+import { startVoice } from "./voice";
 
 const oneLine = (error: unknown) => String(error instanceof Error ? error.message : error).replace(/\s+/g, " ").slice(0, 240);
 
@@ -28,7 +29,7 @@ async function reportInteractionError(interaction: Interaction, error: unknown) 
 
 export async function startDiscordBot(token: string, guildId: string) {
   if (!guildId) throw new Error("DISCORD_GUILD_ID is required when DISCORD_BOT_TOKEN is set");
-  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
   const permissions = PermissionsBitField.resolve([
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
@@ -44,6 +45,9 @@ export async function startDiscordBot(token: string, guildId: string) {
     PermissionFlagsBits.CreatePrivateThreads,
     PermissionFlagsBits.SendMessagesInThreads,
     PermissionFlagsBits.ManageThreads,
+    PermissionFlagsBits.ManageChannels,  // temporary voice channels for teams and lobbies
+    PermissionFlagsBits.Connect,
+    PermissionFlagsBits.MoveMembers,     // disconnects someone who left a voice group
   ]).toString();
   const guildHint = "Is the bot in the server with DISCORD_GUILD_ID? Open the invite link above; commands register as soon as it joins.";
   const registerCommands = async (client: Client) => {
@@ -64,6 +68,7 @@ export async function startDiscordBot(token: string, guildId: string) {
     const invite = `https://discord.com/oauth2/authorize?client_id=${ready.user.id}&scope=bot+applications.commands&permissions=${permissions}`;
     console.log(`Discord bot ready as ${ready.user.tag}. Invite it: ${invite}`);
     startStatsBackground(client, guildId);
+    startVoice(client, guildId);
     if (client.guilds.cache.has(guildId)) {
       void registerCommands(client);
     } else {

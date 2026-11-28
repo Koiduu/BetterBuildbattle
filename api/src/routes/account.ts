@@ -12,6 +12,7 @@ import { endWebSession, rateLimit, readWebSession, requireModToken, requireWebSe
 import { queuePlayers } from "../jobs/crawler";
 import { PLANS, limit, planOf } from "../lib/plans";
 import { cancelSubscriptionNow, stripeConfigured } from "../services/stripe";
+import { dropFromVoice } from "../services/voice";
 
 const EMAIL = z.string().trim().email().max(254);
 const PASSWORD = z.string().min(8).max(200);
@@ -41,13 +42,14 @@ type MeRow = {
   card_theme: string | null;
   featured_achievement: string | null;
   vanity: string | null;
+  adult_confirmed_at: Date | null;
 };
 
 async function getMe(userId: number) {
   const result = await pool.query<MeRow>(
     `SELECT id, email, password_hash, discord_id, discord_name, avatar_url,
             mc_uuid, mc_name, bio, created_at, plan, plan_until, plan_cancels, plan_comped,
-            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity
+            stripe_customer_id, accent, banner, card_theme, featured_achievement, vanity, adult_confirmed_at
      FROM users WHERE id = $1`, [userId]);
   const row = result.rows[0];
   if (!row) fail(401, "not_logged_in");
@@ -60,6 +62,8 @@ async function getMe(userId: number) {
       : null,
     minecraft: row.mc_uuid ? { uuid: row.mc_uuid, name: row.mc_name } : null,
     bio: row.bio,
+    // Self-declared, not verified. Voice chat is only offered when it is set.
+    adultConfirmed: !!row.adult_confirmed_at,
     createdAt: row.created_at,
     plan: {
       id: planOf(row),
@@ -148,13 +152,14 @@ export function accountRoutes(app: Router) {
   app.get("/auth/providers", async () => ({ discord: configuredDiscord() }));
 
   app.post("/auth/signup", [rateLimit(10, 60_000, "/auth/signup")], async (req) => {
-    const { email, password } = z.object({ email: EMAIL, password: PASSWORD }).parse(req.body);
+    const { email, password, adult } = z.object({ email: EMAIL, password: PASSWORD, adult: z.boolean().default(false) }).parse(req.body);
     const passwordHash = await hash(password);
     let userId: number;
     try {
       const result = await pool.query(
-        "INSERT INTO users (email, password_hash, claimed) VALUES ($1, $2, true) RETURNING id",
-        [email, passwordHash]);
+        `INSERT INTO users (email, password_hash, claimed, adult_confirmed_at)
+         VALUES ($1, $2, true, CASE WHEN $3 THEN now() END) RETURNING id`,
+        [email, passwordHash, adult]);
       userId = result.rows[0].id;
     } catch (error) {
       if (uniqueViolation(error)) fail(409, "email_taken");
@@ -397,6 +402,16 @@ export function accountRoutes(app: Router) {
     const { bio } = z.object({ bio: z.string().trim().max(1000).nullable() }).parse(req.body);
     if (flaggedWord(bio)) fail(400, "inappropriate");
     await pool.query("UPDATE users SET bio = $2 WHERE id = $1", [req.user.id, bio?.trim() || null]);
+    return getMe(req.user.id);
+  });
+
+  // "I'm 18 or older". Self-declared: an extra layer for voice chat, not age verification.
+  app.put("/me/adult", [requireWebSession], async (req) => {
+    const { adult } = z.object({ adult: z.boolean() }).parse(req.body);
+    await pool.query(
+      "UPDATE users SET adult_confirmed_at = CASE WHEN $2 THEN COALESCE(adult_confirmed_at, now()) END WHERE id = $1",
+      [req.user.id, adult]);
+    if (!adult) await dropFromVoice(req.user.id);
     return getMe(req.user.id);
   });
 

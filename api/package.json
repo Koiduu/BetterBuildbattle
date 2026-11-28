@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "seed-guild": "tsx scripts/seed-guild.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "snapshot": "tsx scripts/snapshot.ts"
   },
   "dependencies": {

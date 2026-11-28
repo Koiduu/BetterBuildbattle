@@ -12,6 +12,7 @@ import { downloadRoutes } from "./routes/download";
 import { perkRoutes } from "./routes/perks";
 import { sightingRoutes } from "./routes/sightings";
 import { challengeRoutes } from "./routes/challenges";
+import { voiceRoutes } from "./routes/voice";
 import { ensureBoards } from "./services/boards";
 import { seedCatalog, catalog } from "./services/achievementEngine";
 import { runCrawler, crawlLeaderboards, checkKey } from "./jobs/crawler";
@@ -32,6 +33,7 @@ billingRoutes(api);
 perkRoutes(api);
 sightingRoutes(api);
 challengeRoutes(api);
+voiceRoutes(api);
 downloadRoutes(api, downloads);
 api.get("/health", async () => {
   await pool.query("SELECT 1");
