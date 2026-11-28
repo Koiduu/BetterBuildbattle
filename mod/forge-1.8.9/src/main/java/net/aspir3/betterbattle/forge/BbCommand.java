@@ -2,6 +2,7 @@ package net.aspir3.betterbattle.forge;
 
 import net.aspir3.betterbattle.BetterBattle;
 import net.aspir3.betterbattle.forge.ui.AchievementsScreen;
+import net.aspir3.betterbattle.forge.ui.BannersScreen;
 import net.aspir3.betterbattle.forge.ui.LobbiesScreen;
 import net.aspir3.betterbattle.forge.ui.MyLobbyScreen;
 import net.aspir3.betterbattle.forge.ui.StartLobbyScreen;
@@ -49,7 +50,7 @@ final class BbCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "achievements", "recap", "weekly", "news", "lfg", "settings", "sync", "link", "report", "palette", "debug");
+        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "help", "stats", "rank", "compare", "achievements", "banners", "recap", "weekly", "news", "lfg", "settings", "sync", "link", "report", "palette", "debug");
         return null;
     }
 
@@ -70,6 +71,8 @@ final class BbCommand extends CommandBase {
             else core.compare(args[1]);
         } else if (sub.equals("achievements")) {
             mod.openLater(new AchievementsScreen(null));
+        } else if (sub.equals("banners")) {
+            mod.openLater(new BannersScreen(null));
         } else if (sub.equals("recap")) {
             mod.openLater(new TextPageScreen(null, core.lastGamePage()));
         } else if (sub.equals("weekly")) {

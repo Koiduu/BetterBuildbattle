@@ -104,6 +104,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
 
     private BetterBattle core;
     private KeyMapping menuKey;
+    private KeyMapping pingWheelKey, blockPingKey;
     private final ConcurrentLinkedQueue<PacketWatcher.BlockChange> blockChanges = new ConcurrentLinkedQueue<>();
     private Supplier<Screen> pendingScreen;
     private boolean plotFound;
@@ -121,6 +122,10 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(BetterBattle.MOD_ID, "main"));
         menuKey = KeyMappingHelper.registerKeyMapping(
             net.aspir3.betterbattle.fabric.compat.Keys.menuKey("key.betterbattle.menu", category));
+        pingWheelKey = KeyMappingHelper.registerKeyMapping(
+            net.aspir3.betterbattle.fabric.compat.Keys.pingWheelKey("key.betterbattle.ping_wheel", category));
+        blockPingKey = KeyMappingHelper.registerKeyMapping(
+            net.aspir3.betterbattle.fabric.compat.Keys.blockPingKey("key.betterbattle.block_ping", category));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             ServerData server = client.getCurrentServer();
@@ -270,6 +275,7 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     private void tick(Minecraft client) {
         NoTextures.tick(client);
         while (menuKey.consumeClick()) pendingScreen = this::menu;
+        Pings.tick(client, core, pingWheelKey, blockPingKey);
         if (pendingScreen != null) {
             Compat.setScreen(client, pendingScreen.get());
             pendingScreen = null;
@@ -505,6 +511,16 @@ public final class BetterBattleFabric implements ClientModInitializer, Platform 
     @Override
     public void fillChat(String text) {
         pendingScreen = () -> new net.minecraft.client.gui.screens.ChatScreen(text, false);
+    }
+
+    @Override
+    public void showPing(String title, String text) {
+        Compat.toasts(Minecraft.getInstance()).addToast(new net.aspir3.betterbattle.fabric.ui.PingToast(title, text));
+    }
+
+    @Override
+    public void showBlockPing(String from, int x, int y, int z, long untilMs) {
+        Pings.mark(x, y, z, untilMs);
     }
 
     @Override
